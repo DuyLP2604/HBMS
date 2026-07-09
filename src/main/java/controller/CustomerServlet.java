@@ -72,6 +72,11 @@ public class CustomerServlet extends HttpServlet {
             Customer cus = daoCus.getCustomerById(id);
             request.setAttribute("customer", cus); 
             request.getRequestDispatcher("update-customer-info.jsp").forward(request, response);
+        } else if (action.equalsIgnoreCase("viewDetail")) {
+            String id = request.getParameter("id");
+            Customer cus = daoCus.getCustomerById(id);
+            request.setAttribute("customer", cus);
+            request.getRequestDispatcher("customer-detail.jsp").forward(request, response);
         }
     }
 
@@ -103,10 +108,10 @@ public class CustomerServlet extends HttpServlet {
         
         if (action.equalsIgnoreCase("add")){
             daoCus.insertCustomer(c);
-            response.sendRedirect("customers?action=list");
+            response.sendRedirect("customer?action=list");
         } else if (action.equalsIgnoreCase("update")){
             daoCus.updateCustomer(c);
-            response.sendRedirect("customers?action=list");
+            response.sendRedirect("customer?action=list");
         }
     }
 

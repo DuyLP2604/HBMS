@@ -25,7 +25,7 @@ public class CustomerDAO extends DBContext {
             while (rs.next()) {
                 list.add(new Customer(rs.getString("CustomerID"), rs.getString("FullName"),
                         rs.getString("Phone"), rs.getString("Email"), rs.getString("Address"),
-                        rs.getString("CCCD"), rs.getString("PassportNumber"), rs.getString("Nationality")));
+                        rs.getString("CCCD"), rs.getString("PassportNumber"), rs.getString("NationalityID")));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -34,7 +34,7 @@ public class CustomerDAO extends DBContext {
     }
 
     public void insertCustomer(Customer c) {
-        String sql = "INSERT INTO CUSTOMER (CustomerID, FullName, Phone, Email, Address, CCCD, PassportNumber, Nationality) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO CUSTOMER (CustomerID, FullName, Phone, Email, Address, CCCD, PassportNumber, NationalityID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try {
             PreparedStatement ps = conn.prepareStatement(sql);
             ps.setString(1, c.getId());
@@ -60,7 +60,7 @@ public class CustomerDAO extends DBContext {
             if (rs.next()) {
                 return new Customer(rs.getString("CustomerID"), rs.getString("FullName"),
                         rs.getString("Phone"), rs.getString("Email"), rs.getString("Address"),
-                        rs.getString("CCCD"), rs.getString("PassportNumber"), rs.getString("Nationality"));
+                        rs.getString("CCCD"), rs.getString("PassportNumber"), rs.getString("NationalityID"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -69,7 +69,7 @@ public class CustomerDAO extends DBContext {
     }
 
     public void updateCustomer(Customer c) {
-        String sql = "UPDATE CUSTOMER SET FullName = ?, Phone = ?, Email = ?, Address = ?, CCCD = ?, PassportNumber = ?, Nationality = ? WHERE CustomerID = ?";
+        String sql = "UPDATE CUSTOMER SET FullName = ?, Phone = ?, Email = ?, Address = ?, CCCD = ?, PassportNumber = ?, NationalityID = ? WHERE CustomerID = ?";
         try {
             PreparedStatement ps = conn.prepareStatement(sql);
             ps.setString(1, c.getName());

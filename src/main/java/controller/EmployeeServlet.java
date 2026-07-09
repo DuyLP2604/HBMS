@@ -73,7 +73,7 @@ public class EmployeeServlet extends HttpServlet {
         String action = request.getParameter("action");
         if (action.equalsIgnoreCase("list")){
             List<Employee> list = daoEmp.getAllEmployees();
-            request.setAttribute("employee", list);
+            request.setAttribute("employees", list);
             request.getRequestDispatcher("employees.jsp").forward(request, response);
             
         } else if (action.equalsIgnoreCase("add")){
@@ -83,6 +83,11 @@ public class EmployeeServlet extends HttpServlet {
             Employee e = daoEmp.getEmployeeById(id);
             request.setAttribute("employee", e);
             request.getRequestDispatcher("update-employee-info.jsp").forward(request, response);
+        } else if (action.equalsIgnoreCase("viewDetail")) {
+            String id = request.getParameter("id");
+            Employee e = daoEmp.getEmployeeById(id);
+            request.setAttribute("employee", e);
+            request.getRequestDispatcher("employee-detail.jsp").forward(request, response);
         }
     }
 
@@ -116,7 +121,7 @@ public class EmployeeServlet extends HttpServlet {
         } else {
             daoEmp.insertEmployee(e);
         }
-        response.sendRedirect("employees");
+        response.sendRedirect("employee?action=list");
     }
 
     /**

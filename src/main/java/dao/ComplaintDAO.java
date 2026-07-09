@@ -14,6 +14,7 @@ import model.Complaint;
  * @author TAN LOI
  */
 public class ComplaintDAO extends DBContext {
+
     public List<Complaint> getAllComplaints() {
         List<Complaint> list = new ArrayList<>();
         String sql = "SELECT c.*, cust.FullName FROM COMPLAINT c LEFT JOIN CUSTOMER cust ON c.CustomerID = cust.CustomerID ORDER BY c.CreatedAt DESC";
@@ -21,12 +22,27 @@ public class ComplaintDAO extends DBContext {
             PreparedStatement ps = conn.prepareStatement(sql);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                list.add(new Complaint(rs.getInt("ComplaintID"), rs.getString("Title"), 
-                    rs.getString("Content"), rs.getTimestamp("CreatedAt"), 
+                list.add(new Complaint(rs.getInt("ComplaintID"), rs.getString("Title"),
+                    rs.getString("Content"), rs.getTimestamp("CreatedAt"),
                     rs.getString("Status"), rs.getString("FullName")));
             }
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
+    }
+
+    public Complaint getComplaintById(int id) {
+        String sql = "SELECT c.*, cust.FullName FROM COMPLAINT c LEFT JOIN CUSTOMER cust ON c.CustomerID = cust.CustomerID WHERE c.ComplaintID = ?";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new Complaint(rs.getInt("ComplaintID"), rs.getString("Title"),
+                    rs.getString("Content"), rs.getTimestamp("CreatedAt"),
+                    rs.getString("Status"), rs.getString("FullName"));
+            }
+        } catch (SQLException e) { e.printStackTrace(); }
+        return null;
     }
 
     public void insertComplaint(Complaint cp, String customerId) {
@@ -36,6 +52,16 @@ public class ComplaintDAO extends DBContext {
             ps.setString(1, cp.getTitle());
             ps.setString(2, cp.getContent());
             ps.setString(3, (customerId == null || customerId.isEmpty()) ? null : customerId);
+            ps.executeUpdate();
+        } catch (SQLException e) { e.printStackTrace(); }
+    }
+
+    public void updateStatus(int id, String status) {
+        String sql = "UPDATE COMPLAINT SET Status = ? WHERE ComplaintID = ?";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, status);
+            ps.setInt(2, id);
             ps.executeUpdate();
         } catch (SQLException e) { e.printStackTrace(); }
     }
