@@ -132,7 +132,4 @@ public class EmployeeDAO extends DBContext {
             ex.printStackTrace();
         }
     }
-    >>>>>>> CUS
-    -and
-    -EMP
 }
