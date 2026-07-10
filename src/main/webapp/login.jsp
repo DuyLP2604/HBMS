@@ -5,8 +5,7 @@
 <html>
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <title>Hotel Management - Login</title>  
-        <link rel="stylesheet" href="fontawesome/css/all.min.css">
+        <title>Hotel Management - Login</title> 
         <style>
             *{
                 margin:0;
@@ -130,22 +129,24 @@
                 color: #c8a96b;
             }
 
-            .error-message{
-                margin-bottom:15px;
-                padding:12px;
-
-                background:rgba(255,0,0,0.15);
-                border:1px solid rgba(255,255,255,0.15);
-                border-left:4px solid #ff6b6b;
-
-                border-radius:8px;
-
-                color:#ffffff;
+            .register-link {
+                text-align: center;
+                margin: 15px 0;
+                color: white;
+                font-size: 14px;
             }
 
-            .error-message i{
-                color:#ff6b6b;
-                margin-right:6px;
+            .register-link a {
+                color: #c8a96b;
+                text-decoration: none;
+                font-weight: 600;
+                margin-left: 5px;
+                transition: all 0.3s ease;
+            }
+
+            .register-link a:hover {
+                color: #c8a96b;
+                text-decoration: underline;
             }
         </style>
     </head>
@@ -176,12 +177,11 @@
                     </div>
                 </div>
 
-                <c:if test="${not empty loginError}">
-                    <div class="error-message">
-                        <i class="fa-solid fa-circle-exclamation"></i>
-                        ${loginError}
-                    </div>
-                </c:if>
+                <jsp:include page="components/errorMessage.jsp" />
+                <div class="register-link">
+                    Don't have an account?
+                    <a href="register">Register</a>
+                </div>
                 <button type="submit" class="login-btn">
                     Sign In
                 </button>
@@ -189,6 +189,6 @@
             </form>
         </div>
 
-        <script src ="js/login.js"></script>
+        <script src ="js/togglePassword.js"></script>
     </body>
 </html>

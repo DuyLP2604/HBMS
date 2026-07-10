@@ -9,6 +9,7 @@ package model;
  * @author default
  */
 public class Customer {
+
     private String id;
     private String fullname;
     private String phone;
@@ -16,13 +17,13 @@ public class Customer {
     private String address;
     private String cccd;
     private String passportNumber;
-    private String nationality;
     private User user;
+    private Nationality nationality;
 
     public Customer() {
     }
 
-    public Customer(String id, String fullname, String phone, String email, String address, String cccd, String passportNumber, String nationality, User user) {
+    public Customer(String id, String fullname, String phone, String email, String address, String cccd, String passportNumber, User user, Nationality nationality) {
         this.id = id;
         this.fullname = fullname;
         this.phone = phone;
@@ -30,11 +31,10 @@ public class Customer {
         this.address = address;
         this.cccd = cccd;
         this.passportNumber = passportNumber;
-        this.nationality = nationality;
         this.user = user;
+        this.nationality = nationality;
     }
 
-    
     public String getId() {
         return id;
     }
@@ -91,11 +91,11 @@ public class Customer {
         this.passportNumber = passportNumber;
     }
 
-    public String getNationality() {
+    public Nationality getNationality() {
         return nationality;
     }
 
-    public void setNationality(String nationality) {
+    public void setNationality(Nationality nationality) {
         this.nationality = nationality;
     }
 
@@ -109,9 +109,7 @@ public class Customer {
 
     @Override
     public String toString() {
-        return "Customer{" + "id=" + id + ", fullname=" + fullname + ", phone=" + phone + ", email=" + email + ", address=" + address + ", cccd=" + cccd + ", passportNumber=" + passportNumber + ", nationality=" + nationality + ", user=" + user + '}';
+        return "Customer{" + "id=" + id + ", fullname=" + fullname + ", phone=" + phone + ", email=" + email + ", address=" + address + ", cccd=" + cccd + ", passportNumber=" + passportNumber + ", user=" + user + ", nationality=" + nationality + '}';
     }
-    
-    
-   
+
 }

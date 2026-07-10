@@ -1,6 +1,6 @@
 <%-- 
-    Document   : register.jsp
-    Created on : Jul 9, 2026, 6:43:34 PM
+    Document   : error
+    Created on : Jul 9, 2026, 8:56:43 PM
     Author     : default
 --%>
 
@@ -9,9 +9,9 @@
 <html>
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <title>Re</title>
+        <title>Error</title>
     </head>
     <body>
-        <h1>Hello World!</h1>
+        <h1>Error</h1>
     </body>
 </html>

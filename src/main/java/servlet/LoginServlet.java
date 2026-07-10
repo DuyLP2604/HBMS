@@ -54,7 +54,7 @@ public class LoginServlet extends HttpServlet {
         
         User u = udao.login(user,pass);
         if(u.getId() == 0){
-            request.setAttribute("loginError", "Username or Password invalid!");
+            request.setAttribute("error", "Username or Password invalid!");
             request.getRequestDispatcher("login.jsp").forward(request, response);
         } else {
             HttpSession session = request.getSession();
