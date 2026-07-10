@@ -51,14 +51,15 @@ public class LoginServlet extends HttpServlet {
         String user = request.getParameter("username");
         String pass = request.getParameter("password");
         UserDAO udao = new UserDAO();
-        
-        User u = udao.login(user,pass);
-        if(u.getId() == 0){
+
+        User u = udao.login(user, pass);
+        if (u.getId() == 0) {
             request.setAttribute("error", "Username or Password invalid!");
             request.getRequestDispatcher("login.jsp").forward(request, response);
         } else {
             HttpSession session = request.getSession();
             session.setAttribute("user", u);
+            session.setAttribute("role", u.getRole());
             response.sendRedirect("index.jsp");
         }
     }

@@ -1,4 +1,5 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <!DOCTYPE html>
 <html>
     <head>
@@ -7,6 +8,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body class="bg-light">
+        <jsp:include page="components/navbar.jsp" />
         <div class="container my-5">
             <div class="row justify-content-center">
                 <div class="col-md-6">
@@ -18,7 +20,7 @@
                         <div class="card-body p-4">
                             <div class="row mb-3 border-bottom pb-2">
                                 <div class="col-sm-4 text-muted">Họ tên nhân viên:</div>
-                                <div class="col-sm-8 fw-bold">${employee.name}</div>
+                                <div class="col-sm-8 fw-bold">${employee.fullname}</div>
                             </div>
                             <div class="row mb-3 border-bottom pb-2">
                                 <div class="col-sm-4 text-muted">Chức vụ / Vị trí:</div>
@@ -42,7 +44,7 @@
                             </div>
                             <div class="row mb-3">
                                 <div class="col-sm-4 text-muted">Mã cơ sở Hotel ID:</div>
-                                <div class="col-sm-8 fw-bold text-primary">${employee.hotelId}</div>
+                                <div class="col-sm-8 fw-bold text-primary">${employee.hotel.id}</div>
                             </div>
                         </div>
                         <div class="card-footer bg-light text-end p-3">

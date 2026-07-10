@@ -1,4 +1,5 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <!DOCTYPE html>
 <html>
     <head>
@@ -7,6 +8,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body class="bg-light">
+        <jsp:include page="components/navbar.jsp" />
         <div class="container my-5">
             <div class="row justify-content-center">
                 <div class="col-md-8">
@@ -46,8 +48,15 @@
                                         <input type="text" name="passport" class="form-control" placeholder="Nhập số hộ chiếu nếu có...">
                                     </div>
                                     <div class="col-12">
-                                        <label class="form-label fw-semibold">Quốc tịch</label>
-                                        <input type="text" name="nation" class="form-control" value="Việt Nam">
+                                        <label class="form-label fw-semibold">Quốc tịch *</label>
+                                        <select name="nation" class="form-select" required>
+                                            <option value="" disabled selected>Chọn quốc tịch</option>
+                                            <c:forEach items="${listNat}" var="n">
+                                                <option value="${n.id}">
+                                                    ${n.name}
+                                                </option>
+                                            </c:forEach>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-end gap-2 mt-4">

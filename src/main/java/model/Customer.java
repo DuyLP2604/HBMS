@@ -24,7 +24,8 @@ public class Customer {
     public Customer() {
     }
 
-    public Customer(String id, String fullname, String phone, String email, String address, String cccd, String passportNumber, User user, Nationality nationality) {
+    public Customer(String id, String fullname, String phone, String email, String address,
+            String cccd, String passportNumber, User user, Nationality nationality) {
         this.id = id;
         this.fullname = fullname;
         this.phone = phone;

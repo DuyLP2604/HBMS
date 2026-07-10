@@ -1,4 +1,5 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <!DOCTYPE html>
 <html>
     <head>
@@ -7,6 +8,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body class="bg-light">
+        <jsp:include page="components/navbar.jsp" />
         <div class="container my-5">
             <div class="row justify-content-center">
                 <div class="col-md-8">
@@ -23,7 +25,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-semibold">Họ và tên *</label>
-                                        <input type="text" name="name" class="form-control" value="${employee.name}" required>
+                                        <input type="text" name="name" class="form-control" value="${employee.fullname}" required>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-semibold">Chức vụ</label>
@@ -47,7 +49,14 @@
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label fw-semibold">Mã cơ sở khách sạn (HotelID) *</label>
-                                        <input type="text" name="hotelId" class="form-control" value="${employee.hotelId}" required>
+                                        <select name="hotelId" class="form-select" required>
+                                            <option value="" disabled>Chọn khách sạn</option>
+                                            <c:forEach var="h" items="${listHotel}">
+                                                <option value="${h.id}" <c:if test="${h.id eq employee.hotel.id}">selected</c:if>>
+                                                ${h.name} (${h.id})
+                                                </option>
+                                            </c:forEach>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-end gap-2 mt-4">

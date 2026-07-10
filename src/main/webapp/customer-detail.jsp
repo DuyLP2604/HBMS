@@ -1,4 +1,5 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <!DOCTYPE html>
 <html>
     <head>
@@ -7,6 +8,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body class="bg-light">
+        <jsp:include page="components/navbar.jsp" />
         <div class="container my-5">
             <div class="row justify-content-center">
                 <div class="col-md-6">
@@ -18,7 +20,7 @@
                         <div class="card-body p-4">
                             <div class="row mb-3 border-bottom pb-2">
                                 <div class="col-sm-4 text-muted">Họ tên:</div>
-                                <div class="col-sm-8 fw-bold">${customer.name}</div>
+                                <div class="col-sm-8 fw-bold">${customer.fullname}</div>
                             </div>
                             <div class="row mb-3 border-bottom pb-2">
                                 <div class="col-sm-4 text-muted">Điện thoại:</div>
@@ -38,11 +40,11 @@
                             </div>
                             <div class="row mb-3 border-bottom pb-2">
                                 <div class="col-sm-4 text-muted">Số Passport:</div>
-                                <div class="col-sm-8 fw-bold">${not empty customer.passport ? customer.passport : '...'}</div>
+                                <div class="col-sm-8 fw-bold">${not empty customer.passportNumber ? customer.passportNumber : '...'}</div>
                             </div>
                             <div class="row mb-3">
                                 <div class="col-sm-4 text-muted">Quốc tịch:</div>
-                                <div class="col-sm-8 fw-bold"><span class="badge bg-info text-dark">${customer.nation}</span></div>
+                                <div class="col-sm-8 fw-bold"><span class="badge bg-info text-dark">${customer.nationality.name}</span></div>
                             </div>
                         </div>
                         <div class="card-footer bg-light text-end p-3">

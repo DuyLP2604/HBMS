@@ -8,6 +8,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body class="bg-light">
+        <jsp:include page="components/navbar.jsp" />
         <div class="container my-5">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
@@ -47,9 +48,9 @@
                                     <c:if test="${empty param.searchId or c.id.trim().equalsIgnoreCase(param.searchId.trim())}">
                                         <tr>
                                             <td class="fw-bold text-secondary">${c.id}</td>
-                                            <td>${c.name}</td>
+                                            <td>${c.fullname}</td>
                                             <td>${c.phone}</td>
-                                            <td>${c.nation}</td>
+                                            <td>${c.nationality.name}</td>
                                             <td class="text-center">
                                                 <a href="customer?action=viewDetail&id=${c.id}" class="btn btn-outline-info btn-sm me-1">Chi tiết</a>
                                                 <a href="customer?action=update&id=${c.id}" class="btn btn-outline-warning btn-sm">Sửa</a>

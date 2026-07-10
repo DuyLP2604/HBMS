@@ -1,4 +1,5 @@
 <%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <!DOCTYPE html>
 <html>
     <head>
@@ -7,6 +8,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     </head>
     <body class="bg-light">
+        <jsp:include page="components/navbar.jsp" />
         <div class="container my-5">
             <div class="row justify-content-center">
                 <div class="col-md-8">
@@ -23,7 +25,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-semibold">Họ và tên *</label>
-                                        <input type="text" name="name" class="form-control" value="${customer.name}" required>
+                                        <input type="text" name="name" class="form-control" value="${customer.fullname}" required>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-semibold">Số điện thoại</label>
@@ -43,11 +45,18 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-semibold">Số Passport</label>
-                                        <input type="text" name="passport" class="form-control" value="${customer.passport}">
+                                        <input type="text" name="passport" class="form-control" value="${customer.passportNumber}">
                                     </div>
                                     <div class="col-12">
-                                        <label class="form-label fw-semibold">Quốc tịch</label>
-                                        <input type="text" name="nation" class="form-control" value="${customer.nation}">
+                                        <label class="form-label fw-semibold">Quốc tịch *</label>
+                                        <select name="nation" class="form-select" required>
+                                            <option value="" disabled>Chọn quốc tịch</option>
+                                            <c:forEach var="nat" items="${listNat}">
+                                                <option value="${nat.id}" <c:if test="${nat.id eq customer.nationality.id}">selected</c:if>>
+                                                    ${nat.name}
+                                                </option>
+                                            </c:forEach>
+                                        </select>
                                     </div>
                                 </div>
                                 <div class="d-flex justify-content-end gap-2 mt-4">

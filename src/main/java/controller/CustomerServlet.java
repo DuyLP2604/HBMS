@@ -5,8 +5,8 @@
 package controller;
 
 import dao.CustomerDAO;
+import dao.NationalityDAO;
 import java.io.IOException;
-import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 import model.Customer;
+import model.Nationality;
 
 /**
  *
@@ -22,29 +23,28 @@ import model.Customer;
 @WebServlet(name = "CustomerServlet", urlPatterns = {"/customer"})
 public class CustomerServlet extends HttpServlet {
 
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
      * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
      */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String action = request.getParameter("action");
         CustomerDAO daoCus = new CustomerDAO();
+        NationalityDAO daoNat = new NationalityDAO();
         if (action.equalsIgnoreCase("list")) {
             List<Customer> list = daoCus.getAllCustomers();
             request.setAttribute("customers", list);
             request.getRequestDispatcher("customers.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("add")) {
+            List<Nationality> listNat = daoNat.getAll();
+            request.setAttribute("listNat", listNat);
             request.getRequestDispatcher("add-customer.jsp").forward(request, response);
-        } else if (action.equalsIgnoreCase("update")){
+        } else if (action.equalsIgnoreCase("update")) {
             String id = request.getParameter("id");
             Customer cus = daoCus.getCustomerById(id);
-            request.setAttribute("customer", cus); 
+            request.setAttribute("customer", cus);
+            List<Nationality> listNat = daoNat.getAll();
+            request.setAttribute("listNat", listNat);
             request.getRequestDispatcher("update-customer-info.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("viewDetail")) {
             String id = request.getParameter("id");
@@ -56,11 +56,6 @@ public class CustomerServlet extends HttpServlet {
 
     /**
      * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
      */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -68,23 +63,36 @@ public class CustomerServlet extends HttpServlet {
         request.setCharacterEncoding("UTF-8");
         String action = request.getParameter("action");
         CustomerDAO daoCus = new CustomerDAO();
-        
-        String id = request.getParameter("id");
+
         String name = request.getParameter("name");
         String phone = request.getParameter("phone");
         String email = request.getParameter("email");
         String address = request.getParameter("address");
         String cccd = request.getParameter("cccd");
         String passport = request.getParameter("passport");
-        String nation = request.getParameter("nation");
-        
-        // missing UserId
-        Customer c = new Customer(id, name, phone, email, address, cccd, passport, nation);
-        
-        if (action.equalsIgnoreCase("add")){
-            daoCus.insertCustomer(c);
+        String nationalityId = request.getParameter("nation");
+
+        if (action.equalsIgnoreCase("add")) {
+            // TODO: nếu sau này add-customer.jsp có form tạo tài khoản đăng nhập
+            // (username/password) thì gọi UserDAO.insertUser(...) trước để lấy userId,
+            // rồi truyền userId đó vào thay vì null.
+            String newId = daoCus.generateCustomerID();
+            daoCus.insertCustomer(newId, name, phone, email, address, cccd, passport, nationalityId, null);
             response.sendRedirect("customer?action=list");
-        } else if (action.equalsIgnoreCase("update")){
+
+        } else if (action.equalsIgnoreCase("update")) {
+            String id = request.getParameter("id");
+
+            Customer c = new Customer();
+            c.setId(id);
+            c.setFullname(name);
+            c.setPhone(phone);
+            c.setEmail(email);
+            c.setAddress(address);
+            c.setCccd(cccd);
+            c.setPassportNumber(passport);
+            c.setNationality(new Nationality(nationalityId, null));
+
             daoCus.updateCustomer(c);
             response.sendRedirect("customer?action=list");
         }
@@ -92,12 +100,9 @@ public class CustomerServlet extends HttpServlet {
 
     /**
      * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
      */
     @Override
     public String getServletInfo() {
         return "Short description";
-    }// </editor-fold>
-
+    }
 }

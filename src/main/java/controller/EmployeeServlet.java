@@ -4,18 +4,20 @@
  */
 package controller;
 
+import dao.HotelDAO;
 import dao.EmployeeDAO;
+import dao.UserDAO;
 import java.io.IOException;
-import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import java.math.BigDecimal;
 import java.util.List;
 import model.Employee;
+import model.Hotel;
+import model.User;
 
 /**
  *
@@ -24,38 +26,37 @@ import model.Employee;
 @WebServlet(name = "EmployeeServlet", urlPatterns = {"/employee"})
 public class EmployeeServlet extends HttpServlet {
 
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
      * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
      */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         EmployeeDAO daoEmp = new EmployeeDAO();
+        HotelDAO daoHotel = new HotelDAO();
         HttpSession session = request.getSession();
-        String role = (String) session.getAttribute("role"); 
-        
+        String role = (String) session.getAttribute("role");
+
         if (role == null || (!role.equalsIgnoreCase("Admin") && !role.equalsIgnoreCase("Staff"))) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Bạn không có quyền truy cập!");
             return;
         }
         String action = request.getParameter("action");
-        if (action.equalsIgnoreCase("list")){
+        if (action.equalsIgnoreCase("list")) {
             List<Employee> list = daoEmp.getAllEmployees();
             request.setAttribute("employees", list);
             request.getRequestDispatcher("employees.jsp").forward(request, response);
-            
-        } else if (action.equalsIgnoreCase("add")){
+
+        } else if (action.equalsIgnoreCase("add")) {
+            List<Hotel> listHotel = daoHotel.getAllHotels();
+            request.setAttribute("listHotel", listHotel);
             request.getRequestDispatcher("add-employee.jsp").forward(request, response);
-        } else if (action.equalsIgnoreCase("update")){
+        } else if (action.equalsIgnoreCase("update")) {
             String id = request.getParameter("id");
             Employee e = daoEmp.getEmployeeById(id);
             request.setAttribute("employee", e);
+            List<Hotel> listHotel = daoHotel.getAllHotels();
+            request.setAttribute("listHotel", listHotel);
             request.getRequestDispatcher("update-employee-info.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("viewDetail")) {
             String id = request.getParameter("id");
@@ -67,33 +68,52 @@ public class EmployeeServlet extends HttpServlet {
 
     /**
      * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
      */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
         String action = request.getParameter("action");
         EmployeeDAO daoEmp = new EmployeeDAO();
-        
-        // missing userId
-        Employee e = new Employee(
-            request.getParameter("id"),
-            request.getParameter("name"),
-            request.getParameter("position"),
-            new BigDecimal(request.getParameter("salary")),
-            request.getParameter("shift"),
-            request.getParameter("address"),
-            request.getParameter("phone"),
-            request.getParameter("hotelId")
-        );
+
+        String id = request.getParameter("id");
+        String name = request.getParameter("name");
+        String position = request.getParameter("position");
+        double salary = Double.parseDouble(request.getParameter("salary"));
+        String shift = request.getParameter("shift");
+        String address = request.getParameter("address");
+        String phone = request.getParameter("phone");
+        String hotelId = request.getParameter("hotelId");
+
+        Hotel hotel = new Hotel();
+        hotel.setId(hotelId);
 
         if ("update".equals(action)) {
+            // Không đổi tài khoản đăng nhập khi cập nhật -> chỉ cần Hotel để lấy HotelID
+            Employee e = new Employee();
+            e.setId(id);
+            e.setFullname(name);
+            e.setPosition(position);
+            e.setSalary(salary);
+            e.setShift(shift);
+            e.setAddress(address);
+            e.setPhone(phone);
+            e.setHotel(hotel);
+
             daoEmp.updateEmployee(e);
         } else {
+            // Thêm mới: EMPLOYEE bắt buộc có UserID (JOIN USERS là INNER JOIN)
+            // -> cần tạo tài khoản đăng nhập trước.
+            // TODO: add-employee.jsp cần có input "username" và "password".
+            String username = request.getParameter("username");
+            String password = request.getParameter("password");
+
+            UserDAO daoUser = new UserDAO();
+            int userId = daoUser.insertUser(username, password, "Staff");
+
+            User user = new User();
+            user.setId(userId);
+
+            Employee e = new Employee(id, name, position, salary, shift, address, phone, hotel, user);
             daoEmp.insertEmployee(e);
         }
         response.sendRedirect("employee?action=list");
@@ -101,12 +121,9 @@ public class EmployeeServlet extends HttpServlet {
 
     /**
      * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
      */
     @Override
     public String getServletInfo() {
         return "Short description";
-    }// </editor-fold>
-
+    }
 }
