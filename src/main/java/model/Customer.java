@@ -12,6 +12,7 @@ public class Customer {
 
     private String id;
     private String fullname;
+
     private String phone;
     private String email;
     private String address;
@@ -50,7 +51,7 @@ public class Customer {
     public void setFullname(String fullname) {
         this.fullname = fullname;
     }
-
+    
     public String getPhone() {
         return phone;
     }
@@ -111,5 +112,4 @@ public class Customer {
     public String toString() {
         return "Customer{" + "id=" + id + ", fullname=" + fullname + ", phone=" + phone + ", email=" + email + ", address=" + address + ", cccd=" + cccd + ", passportNumber=" + passportNumber + ", user=" + user + ", nationality=" + nationality + '}';
     }
-
 }

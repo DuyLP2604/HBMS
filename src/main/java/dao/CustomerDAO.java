@@ -8,6 +8,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import util.DBContext;
+import java.util.ArrayList;
+import java.util.List;
+import model.Customer;
 
 /**
  *
@@ -92,5 +95,59 @@ public class CustomerDAO extends DBContext {
         }
 
         return false;
+    }
+    
+    // missing UserID
+    public List<Customer> getAllCustomers() {
+        List<Customer> list = new ArrayList<>();
+        String sql = "SELECT * FROM CUSTOMER";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(new Customer(rs.getString("CustomerID"), rs.getString("FullName"),
+                        rs.getString("Phone"), rs.getString("Email"), rs.getString("Address"),
+                        rs.getString("CCCD"), rs.getString("PassportNumber"), rs.getString("NationalityID")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // missing userId
+    public Customer getCustomerById(String id) {
+        String sql = "SELECT * FROM CUSTOMER WHERE CustomerID = ?";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return new Customer(rs.getString("CustomerID"), rs.getString("FullName"),
+                        rs.getString("Phone"), rs.getString("Email"), rs.getString("Address"),
+                        rs.getString("CCCD"), rs.getString("PassportNumber"), rs.getString("NationalityID"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+    
+    public void updateCustomer(Customer c) {
+        String sql = "UPDATE CUSTOMER SET FullName = ?, Phone = ?, Email = ?, Address = ?, CCCD = ?, PassportNumber = ?, NationalityID = ? WHERE CustomerID = ?";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, c.getFullname());
+            ps.setString(2, c.getPhone());
+            ps.setString(3, c.getEmail());
+            ps.setString(4, c.getAddress());
+            ps.setString(5, (c.getCccd() == null || c.getCccd().isEmpty()) ? null : c.getCccd());
+            ps.setString(6, (c.getPassportNumber() == null || c.getPassportNumber().isEmpty()) ? null : c.getPassportNumber());
+            ps.setString(7, c.getNationality().getId());
+            ps.setString(8, c.getId());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
