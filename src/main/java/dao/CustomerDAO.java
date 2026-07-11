@@ -7,13 +7,54 @@ package dao;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import util.DBContext;
+import java.util.ArrayList;
+import java.util.List;
+import model.Customer;
+import model.Nationality;
+import model.User;
 
 /**
  *
  * @author default
  */
 public class CustomerDAO extends DBContext {
+
+    // Câu SELECT dùng chung cho getAllCustomers() và getCustomerById().
+    // Đặt alias rõ ràng để tránh trùng tên cột (CUSTOMER, Nationality, USERS đều có cột ID/Name giống nhau).
+    private static final String SELECT_JOIN_SQL
+            = "SELECT\n"
+            + "    c.CustomerID, c.FullName, c.Phone, c.Email, c.Address, c.CCCD, c.PassportNumber,\n"
+            + "    n.NationalityID AS NatID, n.NationalityName AS NatName,\n"
+            + "    u.UserID AS UID, u.Username, u.Password, u.Role\n"
+            + "FROM CUSTOMER c\n"
+            + "LEFT JOIN Nationality n ON c.NationalityID = n.NationalityID\n"
+            + "LEFT JOIN USERS u ON c.UserID = u.UserID";
+
+    // Map 1 dòng ResultSet -> Customer (kèm Nationality và User lồng bên trong)
+    private Customer mapRow(ResultSet rs) throws SQLException {
+        Nationality nationality = new Nationality(rs.getString("NatID"), rs.getString("NatName"));
+
+        User user = null;
+        // UserID có thể NULL (khách hàng chưa có tài khoản đăng nhập)
+        if (rs.getObject("UID") != null) {
+            user = new User(rs.getInt("UID"), rs.getString("Username"),
+                    rs.getString("Password"), rs.getString("Role"));
+        }
+
+        return new Customer(
+                rs.getString("CustomerID"),
+                rs.getString("FullName"),
+                rs.getString("Phone"),
+                rs.getString("Email"),
+                rs.getString("Address"),
+                rs.getString("CCCD"),
+                rs.getString("PassportNumber"),
+                user,
+                nationality
+        );
+    }
 
     public String generateCustomerID() {
         String sql
@@ -44,7 +85,7 @@ public class CustomerDAO extends DBContext {
             String cccd,
             String passportNumber,
             String nationalityId,
-            int userId) {
+            Integer userId) {
 
         String sql = "INSERT INTO CUSTOMER\n"
                 + "                 (\n"
@@ -71,17 +112,12 @@ public class CustomerDAO extends DBContext {
             ps.setString(6, cccd);
             ps.setString(7, passportNumber);
             ps.setString(8, nationalityId);
-            ps.setInt(9, userId);
+            if (userId == null) {
+                ps.setNull(9, Types.INTEGER);
+            } else {
+                ps.setInt(9, userId);
+            }
 
-            System.out.println("customerId = " + customerId);
-            System.out.println("fullname = " + fullname);
-            System.out.println("phone = " + phone);
-            System.out.println("email = " + email);
-            System.out.println("address = " + address);
-            System.out.println("cccd = " + cccd);
-            System.out.println("passportNumber = " + passportNumber);
-            System.out.println("nationalityId = " + nationalityId);
-            System.out.println("userInsertedID = " + userId);
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
@@ -92,5 +128,52 @@ public class CustomerDAO extends DBContext {
         }
 
         return false;
+    }
+
+    public List<Customer> getAllCustomers() {
+        List<Customer> list = new ArrayList<>();
+        try {
+            PreparedStatement ps = conn.prepareStatement(SELECT_JOIN_SQL);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                list.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public Customer getCustomerById(String id) {
+        String sql = SELECT_JOIN_SQL + " WHERE c.CustomerID = ?";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return mapRow(rs);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public void updateCustomer(Customer c) {
+        String sql = "UPDATE CUSTOMER SET FullName = ?, Phone = ?, Email = ?, Address = ?, CCCD = ?, PassportNumber = ?, NationalityID = ? WHERE CustomerID = ?";
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, c.getFullname());
+            ps.setString(2, c.getPhone());
+            ps.setString(3, c.getEmail());
+            ps.setString(4, c.getAddress());
+            ps.setString(5, (c.getCccd() == null || c.getCccd().isEmpty()) ? null : c.getCccd());
+            ps.setString(6, (c.getPassportNumber() == null || c.getPassportNumber().isEmpty()) ? null : c.getPassportNumber());
+            ps.setString(7, c.getNationality().getId());
+            ps.setString(8, c.getId());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
