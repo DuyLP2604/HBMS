@@ -77,10 +77,6 @@ public class CustomerDAO extends DBContext {
         return "KH01"; // if the table was first create
     }
 
-    /**
-     * Thêm khách hàng mới. userId có thể null nếu khách hàng chưa có tài
-     * khoản đăng nhập.
-     */
     public boolean insertCustomer(String customerId,
             String fullname,
             String phone,
