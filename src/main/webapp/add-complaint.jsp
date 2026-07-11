@@ -44,5 +44,20 @@
                 </div>
             </div>
         </div>
+        <script>
+            function toggleMenu() {
+                document.getElementById("userDropdown")
+                        .classList.toggle("show");
+            }
+
+            document.addEventListener("click", function (event) {
+                const dropdown = document.querySelector(".dropdown");
+                const menu = document.getElementById("userDropdown");
+
+                if (!dropdown.contains(event.target)) {
+                    menu.classList.remove("show");
+                }
+            });
+        </script>
     </body>
 </html>
