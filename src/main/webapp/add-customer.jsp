@@ -19,11 +19,7 @@
                         <div class="card-body p-4">
                             <form action="customer?action=add" method="post">
                                 <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-semibold">Mã khách hàng (ID) *</label>
-                                        <input type="text" name="id" class="form-control" placeholder="VD: KH01" required>
-                                    </div>
-                                    <div class="col-md-6">
+                                    <div class="col-12">
                                         <label class="form-label fw-semibold">Họ và tên *</label>
                                         <input type="text" name="name" class="form-control" placeholder="Nhập họ tên..." required>
                                     </div>
@@ -58,7 +54,38 @@
                                             </c:forEach>
                                         </select>
                                     </div>
+                                    <!-- Create account for customer section -->
+                                    <div class="col-12">
+                                        <div class="form-check">
+                                            <input class="form-check-input"
+                                                   type="checkbox"
+                                                   id="createAccount"
+                                                   name="createAccount">
+
+                                            <label class="form-check-label" for="createAccount">
+                                                Create account for user
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div id="accountFields" style="display:none;">
+                                        <div class="row g-3 mt-2">
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Username</label>
+                                                <input type="text"
+                                                       name="username"
+                                                       class="form-control">
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold">Password</label>
+                                                <input type="password"
+                                                       name="password"
+                                                       class="form-control">
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
+                                <jsp:include page = "components/errorMessage.jsp" />
                                 <div class="d-flex justify-content-end gap-2 mt-4">
                                     <a href="customer?action=list" class="btn btn-secondary">Hủy bỏ</a>
                                     <button type="submit" class="btn btn-primary px-4">Lưu hồ sơ</button>
@@ -69,5 +96,16 @@
                 </div>
             </div>
         </div>
+        <script>
+            document.getElementById("createAccount")
+                    .addEventListener("change", function () {
+
+                        const accountFields =
+                                document.getElementById("accountFields");
+
+                        accountFields.style.display =
+                                this.checked ? "block" : "none";
+                    });
+        </script>
     </body>
 </html>

@@ -176,4 +176,47 @@ public class CustomerDAO extends DBContext {
             e.printStackTrace();
         }
     }
+
+    public Customer getCustomerByUserId(int userId) {
+        String sql = "SELECT c.*,\n"
+                + "       n.NationalityID,\n"
+                + "       n.NationalityName\n"
+                + "FROM Customer c\n"
+                + "LEFT JOIN Nationality n\n"
+                + "    ON c.NationalityID = n.NationalityID\n"
+                + "WHERE c.UserID = ?";
+
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setInt(1, userId);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+
+                Nationality nationality = new Nationality(
+                        rs.getString("NationalityID"),
+                        rs.getString("NationalityName")
+                );
+
+                Customer c = new Customer();
+
+                c.setId(rs.getString("CustomerID"));
+                c.setFullname(rs.getString("FullName"));
+                c.setPhone(rs.getString("Phone"));
+                c.setEmail(rs.getString("Email"));
+                c.setAddress(rs.getString("Address"));
+                c.setCccd(rs.getString("CCCD"));
+                c.setPassportNumber(rs.getString("PassportNumber"));
+                c.setNationality(nationality);
+
+                return c;
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 }

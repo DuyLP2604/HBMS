@@ -52,10 +52,14 @@ public class RegisterServlet extends HttpServlet {
      */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
+        throws ServletException, IOException {
+
         request.setCharacterEncoding("UTF-8");
+
         UserDAO udao = new UserDAO();
         CustomerDAO cdao = new CustomerDAO();
+        NationalityDAO ndao = new NationalityDAO();
+
         String username = request.getParameter("username");
         String password = request.getParameter("password");
 
@@ -68,14 +72,27 @@ public class RegisterServlet extends HttpServlet {
         String passportNumber = request.getParameter("passportNumber");
         String nationalityId = request.getParameter("nationalityID");
 
+        // get the information if error occur to avoid typing again
+        request.setAttribute("username", username);
+        request.setAttribute("fullname", fullname);
+        request.setAttribute("phone", phone);
+        request.setAttribute("email", email);
+        request.setAttribute("address", address);
+        request.setAttribute("cccd", cccd);
+        request.setAttribute("passportNumber", passportNumber);
+        request.setAttribute("nationalityID", nationalityId);
+
         if (udao.isUsernameExists(username)) {
+
             request.setAttribute("error",
-                    "Username already exists");
+                    "Username already exists"); 
 
-            request.getRequestDispatcher(
-                    "registerCustomer.jsp")
+            //reload nationality lists
+            request.setAttribute("nationalities",
+                    ndao.getAll());
+
+            request.getRequestDispatcher("registerCustomer.jsp")
                     .forward(request, response);
-
             return;
         }
 
@@ -85,28 +102,50 @@ public class RegisterServlet extends HttpServlet {
             request.setAttribute("error",
                     "Please provide either Identity Number or Passport Number.");
 
+            request.setAttribute("nationalities",
+                    ndao.getAll());
+
             request.getRequestDispatcher("registerCustomer.jsp")
                     .forward(request, response);
-
             return;
         }
 
-        int userInsertedID = udao.insertUser(username, password, "Customer");
+        int userInsertedID =
+                udao.insertUser(username, password, "Customer");
+
         if (userInsertedID == -1) {
             response.sendRedirect("error.jsp");
             return;
         }
 
         String customerId = cdao.generateCustomerID();
-        boolean customerInserted = cdao.insertCustomer(customerId, fullname, phone, email, address, cccd, passportNumber, nationalityId, userInsertedID);
+
+        boolean customerInserted =
+                cdao.insertCustomer(
+                        customerId,
+                        fullname,
+                        phone,
+                        email,
+                        address,
+                        cccd,
+                        passportNumber,
+                        nationalityId,
+                        userInsertedID
+                );
+
         if (!customerInserted) {
+
+            // rollback 
+            udao.deleteUser(userInsertedID);
+
             response.sendRedirect("error.jsp");
             return;
         }
-        else{
-            response.sendRedirect("login.jsp");
-        }
+
+        response.sendRedirect("login.jsp");
+
     }
+
 
     /**
      * Returns a short description of the servlet.

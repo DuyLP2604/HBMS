@@ -6,6 +6,7 @@ package controller;
 
 import dao.CustomerDAO;
 import dao.NationalityDAO;
+import dao.UserDAO;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -73,13 +74,54 @@ public class CustomerServlet extends HttpServlet {
         String nationalityId = request.getParameter("nation");
 
         if (action.equalsIgnoreCase("add")) {
-            // TODO: nếu sau này add-customer.jsp có form tạo tài khoản đăng nhập
-            // (username/password) thì gọi UserDAO.insertUser(...) trước để lấy userId,
-            // rồi truyền userId đó vào thay vì null.
-            String newId = daoCus.generateCustomerID();
-            daoCus.insertCustomer(newId, name, phone, email, address, cccd, passport, nationalityId, null);
-            response.sendRedirect("customer?action=list");
 
+            String createAccount = request.getParameter("createAccount");
+
+            Integer userId = null;
+
+            if (createAccount != null) {
+
+                String username = request.getParameter("username");
+                String password = request.getParameter("password");
+
+                UserDAO userDAO = new UserDAO();
+
+                // check if username exist
+                if (userDAO.isUsernameExists(username)) {
+
+                    request.setAttribute("error", "Username đã tồn tại");
+
+                    NationalityDAO daoNat = new NationalityDAO();
+                    request.setAttribute("listNat", daoNat.getAll());
+                    
+                    // display error message but need to load the nationality list again
+                    request.getRequestDispatcher("add-customer.jsp")
+                            .forward(request, response);
+                    return;
+                }
+
+                userId = userDAO.insertUser(
+                        username,
+                        password,
+                        "Customer"
+                );
+            }
+
+            String newId = daoCus.generateCustomerID();
+
+            daoCus.insertCustomer(
+                    newId,
+                    name,
+                    phone,
+                    email,
+                    address,
+                    cccd,
+                    passport,
+                    nationalityId,
+                    userId
+            );
+
+            response.sendRedirect("customer?action=list");
         } else if (action.equalsIgnoreCase("update")) {
             String id = request.getParameter("id");
 

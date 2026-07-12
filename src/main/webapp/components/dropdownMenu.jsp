@@ -28,7 +28,7 @@
                 <div class="dropdown-content" id="userDropdown">
 
                     <c:if test="${sessionScope.user.role eq 'Customer'}">
-                        <a href="customer?action=viewDetail">Profile</a>
+                        <a href="profile?action=view">Profile</a>
                         <a href="my-bookings">My Bookings</a>   <!-- wait for implement -->
                         <a href="add-complaint">Add complaint</a>
                     </c:if>
