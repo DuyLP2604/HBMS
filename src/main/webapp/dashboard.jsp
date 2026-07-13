@@ -1,6 +1,6 @@
 <%-- 
-    Document   : home
-    Created on : Jul 10, 2026, 10:52:30 PM
+    Document   : dashboard
+    Created on : Jul 13, 2026, 4:26:27 PM
     Author     : ADMIN
 --%>
 
@@ -10,7 +10,7 @@
 <html>
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <title>Home</title>
+        <title>Dashboard</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="fontawesome/css/all.min.css">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
@@ -262,7 +262,7 @@
                     <i class="fas fa-chart-line" style="color: #c8a96b; margin-right: 10px;"></i>
                     Dashboard
                 </div>
-                <form class="date-filter" action="home" method="get">
+                <form class="date-filter" action="dashboard" method="get">
                     <i class="fas fa-calendar" style="color:#6b7280;"></i>
 
                     <input type="text"

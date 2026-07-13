@@ -18,7 +18,7 @@ import util.DBContext;
  *
  * @author ADMIN
  */
-public class HomeDAO extends DBContext{
+public class DashboardDAO extends DBContext{
     public long getTodayRevenue() {
         String sql = "SELECT ISNULL(SUM(TotalAmount), 0) AS TodayRevenue\n"
                 + "FROM INVOICE\n"

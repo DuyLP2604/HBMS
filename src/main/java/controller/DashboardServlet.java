@@ -4,8 +4,9 @@
  */
 package controller;
 
-import dao.HomeDAO;
+import dao.DashboardDAO;
 import java.io.IOException;
+import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -20,8 +21,8 @@ import model.RevenueChart;
  *
  * @author ADMIN
  */
-@WebServlet(name = "HomeServlet", urlPatterns = {"/home"})
-public class HomeServlet extends HttpServlet {
+@WebServlet(name = "DashboardServlet", urlPatterns = {"/dashboard"})
+public class DashboardServlet extends HttpServlet {
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
@@ -35,7 +36,7 @@ public class HomeServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        HomeDAO homedao = new HomeDAO();
+        DashboardDAO dashboarddao = new DashboardDAO();
 
         String from = request.getParameter("from");
         String to = request.getParameter("to");
@@ -52,12 +53,12 @@ public class HomeServlet extends HttpServlet {
             endDate = LocalDate.parse(to);
         }
 
-        long revenue = homedao.getRevenueByDateRange(startDate, endDate);
-        int occupied = homedao.getOccupiedRoomsCount(startDate, endDate);
-        int totalRooms = homedao.getTotalRoomsCount();
-        int totalCustomers = homedao.getTotalCustomers();
-        List<RevenueChart> revenueChart = homedao.getRevenueLastTenDays();
-        List<CustomerSource> customerSource = homedao.getCustomerSource();
+        long revenue = dashboarddao.getRevenueByDateRange(startDate, endDate);
+        int occupied = dashboarddao.getOccupiedRoomsCount(startDate, endDate);
+        int totalRooms = dashboarddao.getTotalRoomsCount();
+        int totalCustomers = dashboarddao.getTotalCustomers();
+        List<RevenueChart> revenueChart = dashboarddao.getRevenueLastTenDays();
+        List<CustomerSource> customerSource = dashboarddao.getCustomerSource();
 
         request.setAttribute("todayRevenue", revenue);
         request.setAttribute("occupiedRooms", occupied);
@@ -66,7 +67,8 @@ public class HomeServlet extends HttpServlet {
         request.setAttribute("revenueChart", revenueChart);
         request.setAttribute("customerSource", customerSource);
 
-        request.getRequestDispatcher("home.jsp").forward(request, response);
+        request.getRequestDispatcher("dashboard.jsp").forward(request, response);
+
     }
 
     /**
@@ -80,7 +82,6 @@ public class HomeServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
     }
 
     /**
