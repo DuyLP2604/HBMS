@@ -35,7 +35,6 @@ public class Employee {
     }
 
     
-
     public String getId() {
         return id;
     }
@@ -112,7 +111,5 @@ public class Employee {
     public String toString() {
         return "Employee{" + "id=" + id + ", fullname=" + fullname + ", position=" + position + ", salary=" + salary + ", shift=" + shift + ", address=" + address + ", phone=" + phone + ", hotel=" + hotel + ", user=" + user + '}';
     }
-    
-    
     
 }

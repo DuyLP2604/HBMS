@@ -1,0 +1,73 @@
+/*
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/CascadeStyleSheet.css to edit this template
+*/
+/* 
+    Created on : Jul 11, 2026, 8:06:29 PM
+    Author     : default
+*/
+
+.navbar{
+    height:70px;
+    background:#1f2937;
+    color:white;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    padding:0 40px;
+}
+
+.logo{
+    font-size:24px;
+    font-weight:bold;
+}
+
+.logo i{
+    color:#c8a96b;
+    margin-right:8px;
+}
+
+.nav-links{
+    display:flex;
+    gap:25px;
+    list-style:none;
+}
+
+.nav-links a{
+    color:white;
+    text-decoration:none;
+    transition:0.3s;
+}
+
+.nav-links a:hover{
+    color:#c8a96b;
+}
+
+.user-menu{
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+.logout-btn{
+    background:#c8a96b;
+    color:white;
+    padding:8px 15px;
+    border-radius:6px;
+    text-decoration:none;
+}
+.auth-btn{
+    text-decoration:none;
+    background:#c8a96b;
+    color:white;
+    padding:10px 18px;
+    border-radius:8px;
+    font-weight:600;
+    transition:0.3s;
+}
+
+.auth-btn:hover{
+    background:#b08f4f;
+}

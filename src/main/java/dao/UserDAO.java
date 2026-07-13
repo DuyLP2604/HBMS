@@ -103,4 +103,21 @@ public class UserDAO extends DBContext {
 
         return -1;
     }
+
+ 
+    public boolean deleteUser(int userId) {
+        String sql = "DELETE FROM USERS WHERE UserID = ?";
+
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setInt(1, userId);
+
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
 }
