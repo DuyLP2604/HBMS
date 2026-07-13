@@ -23,11 +23,6 @@
                         <input type="hidden" name="action" value="add">
 
                         <div class="mb-3">
-                            <label class="form-label">Mã khách hàng (tùy chọn)</label>
-                            <input type="text" name="customerId" class="form-control" placeholder="VD: KH0001 (để trống nếu ẩn danh)">
-                        </div>
-
-                        <div class="mb-3">
                             <label class="form-label">Tiêu đề <span class="text-danger">*</span></label>
                             <input type="text" name="title" class="form-control" required>
                         </div>

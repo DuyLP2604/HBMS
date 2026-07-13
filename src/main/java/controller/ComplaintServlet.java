@@ -5,6 +5,7 @@
 package controller;
 
 import dao.ComplaintDAO;
+import dao.CustomerDAO;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -14,6 +15,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
 import model.Complaint;
+import model.Customer;
+import model.User;
 
 /**
  *
@@ -76,11 +79,15 @@ public class ComplaintServlet extends HttpServlet {
         request.setCharacterEncoding("UTF-8");
         String action = request.getParameter("action");
         ComplaintDAO daoCp = new ComplaintDAO();
-
+        HttpSession session = request.getSession();
+        CustomerDAO cdao = new CustomerDAO();
+        
+        User user = (User) session.getAttribute("user");
+        Customer customer = cdao.getCustomerByUserId(user.getId());
         if ("add".equalsIgnoreCase(action)) {
             String title = request.getParameter("title");
             String content = request.getParameter("content");
-            String customerId = request.getParameter("customerId");
+            String customerId = customer.getId();
 
             Complaint cp = new Complaint();
             cp.setTitle(title);
