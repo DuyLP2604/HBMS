@@ -30,7 +30,7 @@
                     <c:if test="${sessionScope.user.role eq 'Customer'}">
                         <a href="profile?action=view">Profile</a>
                         <a href="my-bookings">My Bookings</a>   <!-- wait for implement -->
-                        <a href="add-complaint">Add complaint</a>
+                        <a href="complaint?action=add">Add complaint</a>
                     </c:if>
 
                     <c:if test="${sessionScope.user.role eq 'Staff'}">

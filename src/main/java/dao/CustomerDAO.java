@@ -199,6 +199,9 @@ public class CustomerDAO extends DBContext {
                         rs.getString("NationalityName")
                 );
 
+                User user = new User();
+                user.setId(rs.getInt("UserID"));
+
                 Customer c = new Customer();
 
                 c.setId(rs.getString("CustomerID"));
@@ -209,6 +212,7 @@ public class CustomerDAO extends DBContext {
                 c.setCccd(rs.getString("CCCD"));
                 c.setPassportNumber(rs.getString("PassportNumber"));
                 c.setNationality(nationality);
+                c.setUser(user);
 
                 return c;
             }
