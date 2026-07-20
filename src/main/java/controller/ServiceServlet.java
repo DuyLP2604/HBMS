@@ -4,23 +4,23 @@
  */
 package controller;
 
-import dao.UserDAO;
+import dao.ServiceDAO;
 import java.io.IOException;
-import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import java.util.List;
+import model.Service;
 import model.User;
 
 /**
  *
- * @author default
+ * @author ADMIN
  */
-@WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
-public class LoginServlet extends HttpServlet {
+@WebServlet(name = "ServiceServlet", urlPatterns = {"/service"})
+public class ServiceServlet extends HttpServlet {
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
@@ -34,7 +34,15 @@ public class LoginServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.getRequestDispatcher("login.jsp").forward(request, response);
+        User u = (User) request.getSession().getAttribute("user");
+        if (u == null) {
+            response.sendRedirect("login");
+            return;
+        }
+        ServiceDAO dao = new ServiceDAO();
+        List<Service> list = dao.getAllServices();
+        request.setAttribute("list", list);
+        request.getRequestDispatcher("service.jsp").forward(request, response);
     }
 
     /**
@@ -48,20 +56,23 @@ public class LoginServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        String user = request.getParameter("username");
-        String pass = request.getParameter("password");
-        UserDAO udao = new UserDAO();
+        ServiceDAO dao = new ServiceDAO();
+        User u = (User) request.getSession().getAttribute("user");
+        String bookingID = dao.getBookingIDByUser(u.getId());
+        
+        String serviceName = request.getParameter("serviceName");
+        double price = Double.parseDouble(request.getParameter("price"));
+        
 
-        User u = udao.login(user, pass);
-        if (u.getId() == 0) {
-            request.setAttribute("error", "Username or Password invalid!");
-            request.getRequestDispatcher("login.jsp").forward(request, response);
-        } else {
-            HttpSession session = request.getSession();
-            session.setAttribute("user", u);
-            session.setAttribute("role", u.getRole());
-            response.sendRedirect("index.jsp");
-        }
+        
+        String serviceID = dao.generateServiceID();
+        String roomID = dao.getRoomID(bookingID);
+        String hotelID = dao.getHotelID(roomID);
+        
+        dao.insertService(new Service(serviceID, serviceName, price, hotelID, roomID));
+        dao.insertBookingService(bookingID, serviceID);
+        
+        response.sendRedirect("index.jsp");
     }
 
     /**
@@ -73,5 +84,4 @@ public class LoginServlet extends HttpServlet {
     public String getServletInfo() {
         return "Short description";
     }// </editor-fold>
-
 }
