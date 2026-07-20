@@ -28,18 +28,21 @@
                 <div class="dropdown-content" id="userDropdown">
 
                     <c:if test="${sessionScope.user.role eq 'Customer'}">
+                        <a href ="index.jsp">Home</a>
                         <a href="profile?action=view">Profile</a>
                         <a href="booking">My Bookings</a>   <!-- wait for implement -->
                         <a href="complaint?action=add">Add complaint</a>
                     </c:if>
 
                     <c:if test="${sessionScope.user.role eq 'Staff'}">
+                        <a href ="index.jsp">Home</a>
                         <a href="customer?action=add">Add customer</a>
                         <a href="booking">Manage Bookings</a>  <!-- wait for implement -->
                         <a href="room">Manage Rooms</a>        <!-- wait for implement -->
                     </c:if>
 
                     <c:if test="${sessionScope.user.role eq 'Admin'}">
+                        <a href ="index.jsp">Home</a>
                         <a href="dashboard">Dashboard</a>               <!-- wait for implement -->
                         <a href="employee?action=add">Add employee</a>
                         <a href ="customer?action=list">View customers</a>

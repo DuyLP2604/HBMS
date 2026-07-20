@@ -175,82 +175,9 @@
         </style>
     </head>
     <body>
-        <div class="top-header py-3">
-            <div class="container">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="logo">
-                        Simple Bear Hotel
-                    </div>
-                    <div class="user-menu">
-                        <c:choose>
-                            <c:when test="${not empty sessionScope.user}">
-                                <div class="dropdown position-relative">
-                                    <button type="button"
-                                            class="dropdown-btn"
-                                            onclick="toggleMenu()">
-                                        <i class="bi bi-person-circle me-1"></i>
-                                        Hi, ${sessionScope.user.username}
-                                        <i class="bi bi-caret-down-fill ms-1"></i>
-                                    </button>
-                                    <div class="dropdown-content shadow"
-                                         id="userDropdown">
-                                        <c:if test="${sessionScope.user.role eq 'Customer'}">
-                                            <a href="profile?action=view">
-                                                Profile
-                                            </a>
-                                            <a href="my-bookings">
-                                                My Bookings
-                                            </a>
-                                            <a href="add-complaint">
-                                                Add Complaint
-                                            </a>
-                                        </c:if>
-                                        <c:if test="${sessionScope.user.role eq 'Staff'}">
-                                            <a href="customer?action=add">
-                                                Add Customer
-                                            </a>
-                                            <a href="manage-bookings">
-                                                Manage Bookings
-                                            </a>
-                                            <a href="manage-rooms">
-                                                Manage Rooms
-                                            </a>
-                                        </c:if>
-                                        <c:if test="${sessionScope.user.role eq 'Admin'}">
-                                            <a href="dashboard">
-                                                Dashboard
-                                            </a>
-                                            <a href="employee?action=add">
-                                                Add Employee
-                                            </a>
-                                            <a href="customer?action=list">
-                                                View Customers
-                                            </a>
-                                            <a href="complaint?action=list">
-                                                View Complaints
-                                            </a>
-                                        </c:if>
-                                        <div class="dropdown-divider"></div>
-                                        <a href="logout" class="logout-link">
-                                            <i class="bi bi-box-arrow-right me-2"></i>
-                                            Logout
-                                        </a>
-                                    </div>
-                                </div>
-                            </c:when>
-                            <c:otherwise>
-                                <a href="login"
-                                   class="btn btn-outline-primary rounded-pill px-4">
-                                    Login
-                                </a>
-                            </c:otherwise>
-                        </c:choose>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <jsp:include page="components/navbar.jsp" />
 
-        <nav class="navbar navbar-expand-lg">
+        <nav class="navbar navbar-expand-lg" style = "background-color: white">
             <div class="container">
                 <ul class="navbar-nav mx-auto">
                     <li class="nav-item">
@@ -271,11 +198,7 @@
                             Service
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="rate">
-                            Reviews
-                        </a>
-                    </li>
+                   
                 </ul>
             </div>
         </nav>
