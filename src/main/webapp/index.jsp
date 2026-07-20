@@ -273,7 +273,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="rate">
-                            Rate
+                            Reviews
                         </a>
                     </li>
                 </ul>
