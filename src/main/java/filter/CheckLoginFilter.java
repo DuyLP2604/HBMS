@@ -24,7 +24,7 @@ import model.User;
  *
  * @author default
  */
-@WebFilter(filterName = "CheckLoginFilter", urlPatterns = {"/customer", "/complaint", "/employee", "/profile"})
+@WebFilter(filterName = "CheckLoginFilter", urlPatterns = {"/customer", "/complaint", "/employee", "/profile", "/booking"})
 public class CheckLoginFilter implements Filter {
     
     private static final boolean debug = true;

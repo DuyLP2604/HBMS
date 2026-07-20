@@ -29,14 +29,14 @@
 
                     <c:if test="${sessionScope.user.role eq 'Customer'}">
                         <a href="profile?action=view">Profile</a>
-                        <a href="my-bookings">My Bookings</a>   <!-- wait for implement -->
+                        <a href="booking">My Bookings</a>   <!-- wait for implement -->
                         <a href="complaint?action=add">Add complaint</a>
                     </c:if>
 
                     <c:if test="${sessionScope.user.role eq 'Staff'}">
                         <a href="customer?action=add">Add customer</a>
-                        <a href="manage-bookings">Manage Bookings</a>  <!-- wait for implement -->
-                        <a href="manage-rooms">Manage Rooms</a>        <!-- wait for implement -->
+                        <a href="booking">Manage Bookings</a>  <!-- wait for implement -->
+                        <a href="room">Manage Rooms</a>        <!-- wait for implement -->
                     </c:if>
 
                     <c:if test="${sessionScope.user.role eq 'Admin'}">

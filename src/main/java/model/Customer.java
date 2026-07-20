@@ -23,7 +23,13 @@ public class Customer {
 
     public Customer() {
     }
-
+    
+    public Customer(String fullname, String phone) {
+        this.fullname = fullname;
+        this.phone = phone;
+    }
+    
+    
     public Customer(String id, String fullname, String phone, String email, String address,
             String cccd, String passportNumber, User user, Nationality nationality) {
         this.id = id;
