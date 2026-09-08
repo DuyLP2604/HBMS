@@ -46,7 +46,7 @@ public class ServiceDAO extends DBContext {
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 String id = rs.getString("ServiceID");
-                int number = Integer.parseInt(id.substring(2));
+                int number = Integer.parseInt(id.substring(1));
                 return String.format("S%02d", number + 1);
             }
         } catch (Exception e) {

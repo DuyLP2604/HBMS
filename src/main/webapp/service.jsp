@@ -307,13 +307,8 @@
                                 <c:forEach items="${list}" var="s">
                                     <tr>
                                         <td class="text-center">
-                                            <input
-                                                class="form-check-input"
-                                                type="checkbox"
-                                                name="serviceID"
-                                                value="${s.serviceID}">
+                                            <input class="form-check-input" type="radio" name="selectedService" value="${s.serviceName}|${s.unitPrice}">
                                         </td>
-
                                         <td>
                                             ${s.serviceName}
                                         </td>
