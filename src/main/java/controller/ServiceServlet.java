@@ -56,23 +56,34 @@ public class ServiceServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        ServiceDAO dao = new ServiceDAO();
         User u = (User) request.getSession().getAttribute("user");
-        String bookingID = dao.getBookingIDByUser(u.getId());
         
-        String serviceName = request.getParameter("serviceName");
-        double price = Double.parseDouble(request.getParameter("price"));
+        ServiceDAO dao = new ServiceDAO();
+        String selectedService = request.getParameter("selectedService");
         
+        if (selectedService != null && !selectedService.isEmpty()) {
+        try {
+            String[] parts = selectedService.split("\\|");
+            String serviceName = parts[0];
+            double price = Double.parseDouble(parts[1]);
 
+            String bookingID = dao.getBookingIDByUser(u.getId());
+
+            if (bookingID != null) {
+                String serviceID = dao.generateServiceID();
+                String roomID = dao.getRoomID(bookingID);
+                String hotelID = dao.getHotelID(roomID);
+
+                Service newService = new Service(serviceID, serviceName, price, hotelID, roomID);
+                dao.insertService(newService);
+
+                dao.insertBookingService(bookingID, serviceID);
+            }
+        } catch (Exception e) {
+        }
+    }
         
-        String serviceID = dao.generateServiceID();
-        String roomID = dao.getRoomID(bookingID);
-        String hotelID = dao.getHotelID(roomID);
-        
-        dao.insertService(new Service(serviceID, serviceName, price, hotelID, roomID));
-        dao.insertBookingService(bookingID, serviceID);
-        
-        response.sendRedirect("index.jsp");
+        response.sendRedirect("service");
     }
 
     /**
