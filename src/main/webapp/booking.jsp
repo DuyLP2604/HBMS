@@ -18,22 +18,22 @@
         <jsp:include page="components/navbar.jsp" />
         <c:if test="${sessionScope.user.role eq 'Staff'}">
             <div class="container my-5">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
-                    <h2 class="h4 mb-0">Reservation list</h2>
-                    <a href="booking?add" class="btn btn-success btn-sm">+ Add new reservation</a>
-                </div>
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+                        <h2 class="h4 mb-0">Reservation list</h2>
+                        <a href="booking?action=add" class="btn btn-success btn-sm">+ Add new reservation</a>
+                    </div>
                 <div class="card-body">
                     <div class="row mb-4">
                         <div class="col-md-6">
-                            <form action="customer" method="get" class="d-flex gap-2">
+                            <form action="booking" method="get" class="d-flex gap-2">
                                 <input type="hidden" name="action" value="list">
                                 <div class="input-group">
                                     <span class="input-group-text bg-white">ID</span>
                                     <input type="text" name="searchId" class="form-control" value="${param.searchId}" placeholder="Enter ID to search...">
                                     <button type="submit" class="btn btn-primary">Search</button>
                                     <c:if test="${not empty param.searchId}">
-                                        <a href="customer?action=list" class="btn btn-secondary">Hủy lọc</a>
+                                        <a href="booking?action=list" class="btn btn-secondary">Hủy lọc</a>
                                     </c:if>
                                 </div>
                             </form>
@@ -74,7 +74,7 @@
                                             </td>
                                             <td>${b.room.price} VND</td>
                                             <td class="text-center">
-                                                <a href="booking?detail&id=${b.bookingId}" class="btn btn-outline-info btn-sm me-1">View</a>
+                                                <a href="booking?action=detail&id=${b.bookingId}" class="btn btn-outline-info btn-sm me-1">View</a>
                                             </td>
                                         </tr>
                                     </c:if>
@@ -84,26 +84,25 @@
                     </div>
                 </div>
             </div>
-        </div>
         </c:if>
         <c:if test="${sessionScope.user.role eq 'Customer'}">
             <div class="container my-5">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
-                    <h2 class="h4 mb-0">Reservation list</h2>
-                    <a href="booking?add" class="btn btn-success btn-sm">+ Add new reservation</a>
-                </div>
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+                        <h2 class="h4 mb-0">Reservation list</h2>
+                        <a href="booking?action=add" class="btn btn-success btn-sm">+ Add new reservation</a>
+                    </div>
                 <div class="card-body">
                     <div class="row mb-4">
                         <div class="col-md-6">
-                            <form action="customer" method="get" class="d-flex gap-2">
+                            <form action="booking" method="get" class="d-flex gap-2">
                                 <input type="hidden" name="action" value="list">
                                 <div class="input-group">
                                     <span class="input-group-text bg-white">ID</span>
                                     <input type="text" name="searchId" class="form-control" value="${param.searchId}" placeholder="Enter ID to search...">
                                     <button type="submit" class="btn btn-primary">Search</button>
                                     <c:if test="${not empty param.searchId}">
-                                        <a href="customer?action=list" class="btn btn-secondary">Hủy lọc</a>
+                                        <a href="booking?action=list" class="btn btn-secondary">Hủy lọc</a>
                                     </c:if>
                                 </div>
                             </form>
@@ -137,7 +136,7 @@
                                             </td>
                                             <td>${b.room.price} VND</td>
                                             <td class="text-center">
-                                                <a href="booking?detail&id=${b.bookingId}" class="btn btn-outline-info btn-sm me-1">View</a>
+                                                <a href="booking?action=detail&id=${b.bookingId}" class="btn btn-outline-info btn-sm me-1">View</a>
                                             </td>
                                         </tr>
                                     </c:if>
@@ -147,7 +146,6 @@
                     </div>
                 </div>
             </div>
-        </div>
         </c:if>
     </body>
 </html>

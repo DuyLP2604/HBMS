@@ -55,7 +55,7 @@
                         </tr>
 
                         <tr>
-                            <td>CCCD</td>
+                            <td>Identify Number</td>
                             <td>
                                 <input type="text"
                                        name="cccd"

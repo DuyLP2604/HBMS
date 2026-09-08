@@ -67,6 +67,7 @@ public class BookingServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        String action = request.getParameter("action");
         HttpSession session = request.getSession(false);
         String role = (String) session.getAttribute("role");
         BookingDAO bDao = new BookingDAO();
@@ -74,12 +75,12 @@ public class BookingServlet extends HttpServlet {
         CustomerDAO cDao = new CustomerDAO();
         if (role.equalsIgnoreCase("Staff")) {
             
-            if (request.getParameter("detail") != null) {
+            if (action.equalsIgnoreCase("detail")) {
                 String id = request.getParameter("id");
                 Booking b = bDao.getById(id);
                 request.setAttribute("booking", b);
                 request.getRequestDispatcher("bookingDetail.jsp").forward(request, response);
-            } else if (request.getParameter("add") != null) {
+            } else if (action.equalsIgnoreCase("add")) {
                 RoomDAO rDao = new RoomDAO();
                 List<Hotel> hList = hDao.getAllHotels();
                 List<Room> rList = rDao.getAll();
@@ -95,7 +96,7 @@ public class BookingServlet extends HttpServlet {
         } else if (role.equalsIgnoreCase("Customer")) {
             int id = (int) session.getAttribute("userId");
             Customer c = cDao.getCustomerByUserId(id);
-            if (request.getParameter("detail") != null) {
+            if (action.equalsIgnoreCase("detail")) {
                 String userId = request.getParameter("id");
                 Booking b = bDao.getById(userId);
                 request.setAttribute("booking", b);

@@ -30,14 +30,14 @@
                     <c:if test="${sessionScope.user.role eq 'Customer'}">
                         <a href ="index.jsp">Home</a>
                         <a href="profile?action=view">Profile</a>
-                        <a href="booking">My Bookings</a>   <!-- wait for implement -->
+                        <a href="booking?action=list">My Bookings</a>   <!-- wait for implement -->
                         <a href="complaint?action=add">Add complaint</a>
                     </c:if>
 
                     <c:if test="${sessionScope.user.role eq 'Staff'}">
                         <a href ="index.jsp">Home</a>
                         <a href="customer?action=add">Add customer</a>
-                        <a href="booking">Manage Bookings</a>  <!-- wait for implement -->
+                        <a href="booking?action=list">Manage Bookings</a>  <!-- wait for implement -->
                         <a href="room">Manage Rooms</a>        <!-- wait for implement -->
                         <a href="invoice">Invoice</a>
                     </c:if>

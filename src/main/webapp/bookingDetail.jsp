@@ -117,7 +117,7 @@
                                 <div class="alert alert-info">Status: <strong>${booking.bookingStatus}</strong></div>
                             </c:if>
 
-                            <a href="booking" class="btn btn-secondary mt-2">Back</a>
+                            <a href="booking?action=list" class="btn btn-secondary mt-2">Back</a>
                         </div>
 
                     </div>

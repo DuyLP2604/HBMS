@@ -66,7 +66,7 @@
 
                         <div class="d-flex justify-content-end gap-2">
                             <button type="submit" class="btn btn-success">Add</button>
-                            <a href="booking" class="btn btn-primary">Back</a>
+                            <a href="booking?action=list" class="btn btn-primary">Back</a>
                         </div>
                     </form>
                 </div>
