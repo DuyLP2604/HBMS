@@ -17,6 +17,7 @@ import java.util.List;
 import model.Complaint;
 import model.Customer;
 import model.User;
+import util.flash.Flash;
 
 /**
  *
@@ -36,32 +37,58 @@ public class ComplaintServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
         String action = request.getParameter("action");
+
         if (action == null) {
             action = "list";
         }
+
         ComplaintDAO daoCp = new ComplaintDAO();
 
         if (action.equalsIgnoreCase("list")) {
-            // Chỉ Admin/Staff mới được xem danh sách khiếu nại
+
+            // Only Admin and Staff can view the complaint list
             HttpSession session = request.getSession();
             String role = (String) session.getAttribute("role");
-            if (role == null || (!role.equalsIgnoreCase("Admin") && !role.equalsIgnoreCase("Staff"))) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Bạn không có quyền truy cập!");
+
+            if (role == null
+                    || (!role.equalsIgnoreCase("Admin")
+                    && !role.equalsIgnoreCase("Staff"))) {
+
+                response.sendError(
+                        HttpServletResponse.SC_FORBIDDEN,
+                        "You do not have permission to access this page!"
+                );
+
                 return;
             }
+
             List<Complaint> list = daoCp.getAllComplaints();
+
             request.setAttribute("complaints", list);
-            request.getRequestDispatcher("complaints.jsp").forward(request, response);
+
+            request.getRequestDispatcher("/WEB-INF/views/complaints.jsp")
+                    .forward(request, response);
 
         } else if (action.equalsIgnoreCase("add")) {
-            request.getRequestDispatcher("add-complaint.jsp").forward(request, response);
+
+            request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp")
+                    .forward(request, response);
 
         } else if (action.equalsIgnoreCase("viewDetail")) {
+
             String id = request.getParameter("id");
-            Complaint cp = daoCp.getComplaintById(Integer.parseInt(id));
+
+            Complaint cp =
+                    daoCp.getComplaintById(
+                            Integer.parseInt(id)
+                    );
+
             request.setAttribute("complaint", cp);
-            request.getRequestDispatcher("complaint-detail.jsp").forward(request, response);
+
+            request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp")
+                    .forward(request, response);
         }
     }
 
@@ -76,36 +103,85 @@ public class ComplaintServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.setCharacterEncoding("UTF-8");
-        String action = request.getParameter("action");
-        ComplaintDAO daoCp = new ComplaintDAO();
-        HttpSession session = request.getSession();
-        CustomerDAO cdao = new CustomerDAO();
-        
-        User user = (User) session.getAttribute("user");
-        Customer customer = cdao.getCustomerByUserId(user.getId());
-        if ("add".equalsIgnoreCase(action)) {
-            String title = request.getParameter("title");
-            String content = request.getParameter("content");
-            String customerId = customer.getId();
 
-            Complaint cp = new Complaint();
+        request.setCharacterEncoding("UTF-8");
+
+        String action = request.getParameter("action");
+
+        ComplaintDAO daoCp = new ComplaintDAO();
+
+        HttpSession session = request.getSession();
+
+        CustomerDAO cdao = new CustomerDAO();
+
+        User user =
+                (User) session.getAttribute("user");
+
+        Customer customer =
+                cdao.getCustomerByUserId(
+                        user.getId()
+                );
+
+        if ("add".equalsIgnoreCase(action)) {
+
+            String title =
+                    request.getParameter("title");
+
+            String content =
+                    request.getParameter("content");
+
+            String customerId =
+                    customer.getId();
+
+            Complaint cp =
+                    new Complaint();
+
             cp.setTitle(title);
             cp.setContent(content);
 
-            daoCp.insertComplaint(cp, customerId);
-            response.sendRedirect("complaint?action=add&success=1");
+            daoCp.insertComplaint(
+                    cp,
+                    customerId
+            );
+
+            Flash.success(
+                    request,
+                    "Complaint submitted successfully."
+            );
+
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/complaint?action=add"
+            );
 
         } else if ("updateStatus".equalsIgnoreCase(action)) {
-            String id = request.getParameter("id");
-            String status = request.getParameter("status");
-            daoCp.updateStatus(Integer.parseInt(id), status);
-            response.sendRedirect("complaint?action=viewDetail&id=" + id);
+
+            String id =
+                    request.getParameter("id");
+
+            String status =
+                    request.getParameter("status");
+
+            daoCp.updateStatus(
+                    Integer.parseInt(id),
+                    status
+            );
+
+            Flash.success(
+                    request,
+                    "Complaint status updated successfully."
+            );
+
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/complaint?action=viewDetail&id="
+                    + id
+            );
         }
     }
 
     @Override
     public String getServletInfo() {
-        return "Short description";
+        return "Handles complaint management.";
     }
 }

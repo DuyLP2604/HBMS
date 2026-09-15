@@ -1,0 +1,11 @@
+.complaint-container {
+    max-width: 600px;
+}
+
+.complaint-detail-container {
+    max-width: 700px;
+}
+
+.complaint-content {
+    white-space: pre-wrap;
+}

@@ -24,7 +24,7 @@ import model.User;
  *
  * @author default
  */
-@WebFilter(filterName = "CheckLoginFilter", urlPatterns = {"/customer", "/complaint", "/employee", "/profile", "/booking"})
+@WebFilter(filterName = "CheckLoginFilter", urlPatterns = {"/customer", "/complaint", "/employee", "/profile", "/booking", "/dashboard", "/invoice", "/profile", "/room", "/service"})
 public class CheckLoginFilter implements Filter {
     
     private static final boolean debug = true;
@@ -109,7 +109,7 @@ public class CheckLoginFilter implements Filter {
         
         User u = (User) session.getAttribute("user");
         if(u == null){
-            res.sendRedirect("login.jsp");
+            res.sendRedirect(req.getContextPath() + "/login");
         } else {
             chain.doFilter(request, response);
         }

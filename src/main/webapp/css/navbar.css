@@ -71,3 +71,9 @@ Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/CascadeStyleSheet.css
 .auth-btn:hover{
     background:#b08f4f;
 }
+
+.logo {
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+}

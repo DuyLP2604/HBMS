@@ -155,3 +155,11 @@ body{
 .logout-link{
     color:#dc3545 !important;
 }
+
+.service-select-column {
+    width: 10%;
+}
+
+.service-price-column {
+    width: 20%;
+}

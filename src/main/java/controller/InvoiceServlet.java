@@ -67,7 +67,7 @@ public class InvoiceServlet extends HttpServlet {
         HttpSession session = request.getSession();
         User u = (User) session.getAttribute("user");
         if (u == null || "Customer".equals(u.getRole())) {
-            response.sendRedirect("index.jsp");
+            response.sendRedirect("/WEB-INF/views/index.jsp");
             return;
         }
         InvoiceDAO dao = new InvoiceDAO();
@@ -137,7 +137,7 @@ public class InvoiceServlet extends HttpServlet {
             }
 
             request.getRequestDispatcher(
-                    "invoice.jsp")
+                    "/WEB-INF/views/invoice.jsp")
                     .forward(request,
                             response);
 
@@ -198,7 +198,7 @@ public class InvoiceServlet extends HttpServlet {
         }
 
         request.getRequestDispatcher(
-                "checkout.jsp")
+                "/WEB-INF/views/checkout.jsp")
                 .forward(request,
                         response);
     }

@@ -42,7 +42,7 @@ public class ServiceServlet extends HttpServlet {
         ServiceDAO dao = new ServiceDAO();
         List<Service> list = dao.getAllServices();
         request.setAttribute("list", list);
-        request.getRequestDispatcher("service.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/service.jsp").forward(request, response);
     }
 
     /**
