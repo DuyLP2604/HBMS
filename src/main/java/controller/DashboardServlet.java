@@ -5,8 +5,10 @@
 package controller;
 
 import dao.DashboardDAO;
+import entity.CustomerSource;
+import entity.RevenueChart;
 import java.io.IOException;
-import java.io.PrintWriter;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -14,8 +16,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
 import java.util.List;
-import model.CustomerSource;
-import model.RevenueChart;
 
 /**
  *

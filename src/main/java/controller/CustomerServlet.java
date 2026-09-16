@@ -7,6 +7,8 @@ package controller;
 import dao.CustomerDAO;
 import dao.NationalityDAO;
 import dao.UserDAO;
+import entity.Customer;
+import entity.Nationality;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -14,76 +16,59 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
-import model.Customer;
-import model.Nationality;
 import util.flash.Flash;
 
+/**
+ *
+ * @author TAN LOI
+ */
 @WebServlet(name = "CustomerServlet", urlPatterns = {"/customer"})
 public class CustomerServlet extends HttpServlet {
 
+    /**
+     * Handles the HTTP <code>GET</code> method.
+     */
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String action = request.getParameter("action");
-
         CustomerDAO daoCus = new CustomerDAO();
         NationalityDAO daoNat = new NationalityDAO();
-
         if (action.equalsIgnoreCase("list")) {
-
             List<Customer> list = daoCus.getAllCustomers();
-
             request.setAttribute("customers", list);
-
-            request.getRequestDispatcher("/WEB-INF/views/customers.jsp")
-                    .forward(request, response);
-
+            request.getRequestDispatcher("/WEB-INF/views/customers.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("add")) {
-
             List<Nationality> listNat = daoNat.getAll();
-
             request.setAttribute("listNat", listNat);
-
-            request.getRequestDispatcher("/WEB-INF/views/add-customer.jsp")
-                    .forward(request, response);
-
+            request.getRequestDispatcher("/WEB-INF/views/add-customer.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("update")) {
-
             String id = request.getParameter("id");
-
             Customer cus = daoCus.getCustomerById(id);
-
             request.setAttribute("customer", cus);
-
             List<Nationality> listNat = daoNat.getAll();
-
             request.setAttribute("listNat", listNat);
-
-            request.getRequestDispatcher("/WEB-INF/views/update-customer-info.jsp")
-                    .forward(request, response);
-
+            request.getRequestDispatcher("/WEB-INF/views/update-customer-info.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("viewDetail")) {
-
             String id = request.getParameter("id");
-
             Customer cus = daoCus.getCustomerById(id);
-
             request.setAttribute("customer", cus);
-
-            request.getRequestDispatcher("/WEB-INF/views/customer-detail.jsp")
-                    .forward(request, response);
+            request.getRequestDispatcher("customer-detail.jsp").forward(request, response);
         }
     }
 
+    /**
+     * Handles the HTTP <code>POST</code> method.
+     *
+     * @param request
+     * @param response
+     * @throws jakarta.servlet.ServletException
+     * @throws java.io.IOException
+     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
         request.setCharacterEncoding("UTF-8");
-
         String action = request.getParameter("action");
-
         CustomerDAO daoCus = new CustomerDAO();
 
         String name = request.getParameter("name");
@@ -96,109 +81,62 @@ public class CustomerServlet extends HttpServlet {
 
         if (action.equalsIgnoreCase("add")) {
 
-            String createAccount =
-                    request.getParameter("createAccount");
+            String createAccount = request.getParameter("createAccount");
 
             Integer userId = null;
 
             if (createAccount != null) {
-
-                String username =
-                        request.getParameter("username");
-
-                String password =
-                        request.getParameter("password");
-
-                UserDAO userDAO =
-                        new UserDAO();
-
-                // Check if username already exists
+                String username = request.getParameter("username");
+                String password = request.getParameter("password");
+                UserDAO userDAO = new UserDAO();
+                // check if username exist
                 if (userDAO.isUsernameExists(username)) {
+                    Flash.error(request, "Username already exists.");
 
-                    Flash.error(
-                            request,
-                            "Username already exists."
-                    );
-
-                    response.sendRedirect(
-                            request.getContextPath()
-                            + "/customer?action=add"
-                    );
-
-                    return;
+                    response.sendRedirect(request.getContextPath() + "/customer?action=add");
                 }
-
-                userId = userDAO.insertUser(
-                        username,
-                        password,
-                        "Customer"
-                );
+                userId = userDAO.insertUser(username, password, "Customer");
             }
 
-            String newId =
-                    daoCus.generateCustomerID();
+            String newId = daoCus.generateCustomerID();
 
-            daoCus.insertCustomer(
-                    newId,
-                    name,
-                    phone,
-                    email,
-                    address,
-                    cccd,
-                    passport,
-                    nationalityId,
-                    userId
-            );
-
-            Flash.success(
-                    request,
-                    "Customer added successfully."
-            );
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/customer?action=list"
-            );
-
-        } else if (action.equalsIgnoreCase("update")) {
-
-            String id =
-                    request.getParameter("id");
-
-            Customer c =
-                    new Customer();
-
-            c.setId(id);
-            c.setFullname(name);
+            Customer c = new Customer();
+            c.setCustomerID(daoCus.generateCustomerID());
+            c.setFullName(name);
             c.setPhone(phone);
             c.setEmail(email);
             c.setAddress(address);
             c.setCccd(cccd);
             c.setPassportNumber(passport);
 
-            c.setNationality(
-                    new Nationality(
-                            nationalityId,
-                            null
-                    )
-            );
+            daoCus.insertCustomer(c);
+
+            Flash.success(request, "Customer added successfully.");
+            response.sendRedirect("customer?action=list");
+
+        } else if (action.equalsIgnoreCase("update")) {
+            String id = request.getParameter("id");
+            Customer c = new Customer();
+            c.setCustomerID(daoCus.generateCustomerID());
+            c.setFullName(name);
+            c.setPhone(phone);
+            c.setEmail(email);
+            c.setAddress(address);
+            c.setCccd(cccd);
+            c.setPassportNumber(passport);
+            c.setNationalityID(new Nationality(nationalityId, null));
 
             daoCus.updateCustomer(c);
-
-            Flash.success(
-                    request,
-                    "Customer information updated successfully."
-            );
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/customer?action=list"
-            );
+            Flash.success(request, "Customer information updated successfully.");
+            response.sendRedirect("/customer?action=list");
         }
     }
 
+    /**
+     * Returns a short description of the servlet.
+     */
     @Override
     public String getServletInfo() {
-        return "Handles customer management.";
+        return "Short description";
     }
 }

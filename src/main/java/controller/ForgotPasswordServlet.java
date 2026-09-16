@@ -11,13 +11,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-import model.Customer;
+import entity.Customer;
 
 import service.EmailService;
 
 import util.flash.Flash;
 import util.security.OtpGenerator;
-
 
 @WebServlet(
         name = "ForgotPasswordServlet",
@@ -28,31 +27,30 @@ public class ForgotPasswordServlet extends HttpServlet {
     /*
      * OTP is valid for 5 minutes
      */
-    private static final long OTP_EXPIRY =
-            5 * 60 * 1000L;
+    private static final long OTP_EXPIRY
+            = 5 * 60 * 1000L;
 
 
     /*
      * Minimum time between two OTP emails
      */
-    private static final long SEND_COOLDOWN =
-            60 * 1000L;
+    private static final long SEND_COOLDOWN
+            = 60 * 1000L;
 
 
     /*
      * Maximum number of OTP emails
      * during one rate-limit window
      */
-    private static final int MAX_OTP_REQUESTS =
-            5;
+    private static final int MAX_OTP_REQUESTS
+            = 5;
 
 
     /*
      * Rate-limit window: 15 minutes
      */
-    private static final long RATE_LIMIT_WINDOW =
-            15 * 60 * 1000L;
-
+    private static final long RATE_LIMIT_WINDOW
+            = 15 * 60 * 1000L;
 
     @Override
     protected void doGet(
@@ -66,7 +64,6 @@ public class ForgotPasswordServlet extends HttpServlet {
                 )
                 .forward(request, response);
     }
-
 
     @Override
     protected void doPost(
@@ -82,10 +79,8 @@ public class ForgotPasswordServlet extends HttpServlet {
          * VALIDATE INPUT
          * =========================
          */
-
-        String identifier =
-                request.getParameter("identifier");
-
+        String identifier
+                = request.getParameter("identifier");
 
         if (identifier == null
                 || identifier.trim().isEmpty()) {
@@ -103,9 +98,8 @@ public class ForgotPasswordServlet extends HttpServlet {
             return;
         }
 
-
-        identifier =
-                identifier.trim();
+        identifier
+                = identifier.trim();
 
 
         /*
@@ -113,13 +107,11 @@ public class ForgotPasswordServlet extends HttpServlet {
          * FIND CUSTOMER
          * =========================
          */
+        CustomerDAO customerDAO
+                = new CustomerDAO();
 
-        CustomerDAO customerDAO =
-                new CustomerDAO();
-
-
-        Customer customer =
-                customerDAO
+        Customer customer
+                = customerDAO
                         .getCustomerByEmailOrPhone(
                                 identifier
                         );
@@ -130,18 +122,15 @@ public class ForgotPasswordServlet extends HttpServlet {
          * an account exists.
          */
         if (customer == null
-                || customer.getUser() == null
+                || customer.getUserID() == null
                 || customer.getEmail() == null
-                || customer.getEmail()
-                        .trim()
-                        .isEmpty()) {
+                || customer.getEmail().trim().isEmpty()) {
 
             Flash.info(
                     request,
                     "If an account matches the information provided, "
                     + "a verification code will be sent."
             );
-
 
             response.sendRedirect(
                     request.getContextPath()
@@ -151,9 +140,8 @@ public class ForgotPasswordServlet extends HttpServlet {
             return;
         }
 
-
-        String email =
-                customer
+        String email
+                = customer
                         .getEmail()
                         .trim();
 
@@ -163,9 +151,8 @@ public class ForgotPasswordServlet extends HttpServlet {
          * GET SESSION
          * =========================
          */
-
-        HttpSession session =
-                request.getSession();
+        HttpSession session
+                = request.getSession();
 
 
         /*
@@ -175,8 +162,8 @@ public class ForgotPasswordServlet extends HttpServlet {
          */
         synchronized (session) {
 
-            long now =
-                    System.currentTimeMillis();
+            long now
+                    = System.currentTimeMillis();
 
 
             /*
@@ -184,26 +171,22 @@ public class ForgotPasswordServlet extends HttpServlet {
              * 60 SECOND COOLDOWN
              * =========================
              */
-
-            Long lastSent =
-                    (Long) session.getAttribute(
+            Long lastSent
+                    = (Long) session.getAttribute(
                             "resetOtpLastSent"
                     );
 
-
             if (lastSent != null) {
 
-                long elapsed =
-                        now - lastSent;
-
+                long elapsed
+                        = now - lastSent;
 
                 if (elapsed < SEND_COOLDOWN) {
 
-                    long remainingSeconds =
-                            (SEND_COOLDOWN
+                    long remainingSeconds
+                            = (SEND_COOLDOWN
                             - elapsed
                             + 999) / 1000;
-
 
                     Flash.warning(
                             request,
@@ -211,7 +194,6 @@ public class ForgotPasswordServlet extends HttpServlet {
                             + remainingSeconds
                             + " seconds before requesting another code."
                     );
-
 
                     response.sendRedirect(
                             request.getContextPath()
@@ -229,15 +211,13 @@ public class ForgotPasswordServlet extends HttpServlet {
              * 5 OTP EMAILS / 15 MINUTES
              * =========================
              */
-
-            Long windowStart =
-                    (Long) session.getAttribute(
+            Long windowStart
+                    = (Long) session.getAttribute(
                             "resetOtpRateWindowStart"
                     );
 
-
-            Integer requestCount =
-                    (Integer) session.getAttribute(
+            Integer requestCount
+                    = (Integer) session.getAttribute(
                             "resetOtpRateCount"
                     );
 
@@ -252,19 +232,16 @@ public class ForgotPasswordServlet extends HttpServlet {
                 windowStart = now;
                 requestCount = 0;
 
-
                 session.setAttribute(
                         "resetOtpRateWindowStart",
                         windowStart
                 );
-
 
                 session.setAttribute(
                         "resetOtpRateCount",
                         requestCount
                 );
             }
-
 
             if (requestCount == null) {
                 requestCount = 0;
@@ -276,18 +253,16 @@ public class ForgotPasswordServlet extends HttpServlet {
              */
             if (requestCount >= MAX_OTP_REQUESTS) {
 
-                long remainingMilliseconds =
-                        RATE_LIMIT_WINDOW
+                long remainingMilliseconds
+                        = RATE_LIMIT_WINDOW
                         - (now - windowStart);
 
-
-                long remainingMinutes =
-                        Math.max(
+                long remainingMinutes
+                        = Math.max(
                                 1,
                                 (remainingMilliseconds
                                 + 59_999) / 60_000
                         );
-
 
                 Flash.error(
                         request,
@@ -296,7 +271,6 @@ public class ForgotPasswordServlet extends HttpServlet {
                         + remainingMinutes
                         + " minute(s)."
                 );
-
 
                 response.sendRedirect(
                         request.getContextPath()
@@ -312,13 +286,11 @@ public class ForgotPasswordServlet extends HttpServlet {
              * GENERATE OTP
              * =========================
              */
+            String otp
+                    = OtpGenerator.generate();
 
-            String otp =
-                    OtpGenerator.generate();
-
-
-            EmailService emailService =
-                    new EmailService();
+            EmailService emailService
+                    = new EmailService();
 
 
             /*
@@ -326,9 +298,8 @@ public class ForgotPasswordServlet extends HttpServlet {
              * SEND EMAIL
              * =========================
              */
-
-            boolean sent =
-                    emailService
+            boolean sent
+                    = emailService
                             .sendPasswordResetOtp(
                                     email,
                                     otp
@@ -348,7 +319,6 @@ public class ForgotPasswordServlet extends HttpServlet {
                         + "Please try again later."
                 );
 
-
                 response.sendRedirect(
                         request.getContextPath()
                         + "/forgot-password"
@@ -363,18 +333,15 @@ public class ForgotPasswordServlet extends HttpServlet {
              * EMAIL SENT SUCCESSFULLY
              * =========================
              */
-
-
-            /*
+ /*
              * Account being reset
              */
             session.setAttribute(
                     "resetUserId",
                     customer
-                            .getUser()
-                            .getId()
+                            .getUserID()
+                            .getUserID()
             );
-
 
             session.setAttribute(
                     "resetEmail",
@@ -426,7 +393,6 @@ public class ForgotPasswordServlet extends HttpServlet {
                     requestCount + 1
             );
 
-
             session.setAttribute(
                     "resetOtpRateWindowStart",
                     windowStart
@@ -441,7 +407,6 @@ public class ForgotPasswordServlet extends HttpServlet {
                     "resetOtpVerified"
             );
 
-
             session.removeAttribute(
                     "resetVerifiedExpiry"
             );
@@ -455,7 +420,6 @@ public class ForgotPasswordServlet extends HttpServlet {
                     0
             );
 
-
             session.setAttribute(
                     "resetOtpResendWindowStart",
                     now
@@ -468,13 +432,11 @@ public class ForgotPasswordServlet extends HttpServlet {
          * GO TO OTP PAGE
          * =========================
          */
-
         response.sendRedirect(
                 request.getContextPath()
                 + "/verify-otp"
         );
     }
-
 
     @Override
     public String getServletInfo() {

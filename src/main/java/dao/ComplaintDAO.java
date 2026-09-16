@@ -3,66 +3,75 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package dao;
-import util.DBContext;
-import java.sql.*;
-import java.util.ArrayList;
+
+import entity.Complaint;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import model.Complaint;
 
 /**
  *
  * @author TAN LOI
  */
-public class ComplaintDAO extends DBContext {
+public class ComplaintDAO {
+
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
 
     public List<Complaint> getAllComplaints() {
-        List<Complaint> list = new ArrayList<>();
-        String sql = "SELECT c.*, cust.FullName FROM COMPLAINT c LEFT JOIN CUSTOMER cust ON c.CustomerID = cust.CustomerID ORDER BY c.CreatedAt DESC";
+        EntityManager em = emf.createEntityManager();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                list.add(new Complaint(rs.getInt("ComplaintID"), rs.getString("Title"),
-                    rs.getString("Content"), rs.getTimestamp("CreatedAt"),
-                    rs.getString("Status"), rs.getString("FullName")));
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
-        return list;
-    }
-
-    public Complaint getComplaintById(int id) {
-        String sql = "SELECT c.*, cust.FullName FROM COMPLAINT c LEFT JOIN CUSTOMER cust ON c.CustomerID = cust.CustomerID WHERE c.ComplaintID = ?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return new Complaint(rs.getInt("ComplaintID"), rs.getString("Title"),
-                    rs.getString("Content"), rs.getTimestamp("CreatedAt"),
-                    rs.getString("Status"), rs.getString("FullName"));
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
+            String spql = "SLECT cp FROM COMPLAINT cp";
+            TypedQuery<Complaint> query = em.createQuery(spql, Complaint.class);
+            return query.getResultList();
+        } catch (Exception e) {
+        }
         return null;
     }
 
-    public void insertComplaint(Complaint cp, String customerId) {
-        String sql = "INSERT INTO COMPLAINT (Title, Content, CustomerID) VALUES (?, ?, ?)";
+    public Complaint getComplaintById(int id) {
+        EntityManager em = emf.createEntityManager();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, cp.getTitle());
-            ps.setString(2, cp.getContent());
-            ps.setString(3, (customerId == null || customerId.isEmpty()) ? null : customerId);
-            ps.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+            return em.find(Complaint.class, id);
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
+    public void insertComplaint(Complaint cp) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            em.persist(cp);
+            em.getTransaction().commit();
+        } catch (Exception ex) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
     }
 
     public void updateStatus(int id, String status) {
-        String sql = "UPDATE COMPLAINT SET Status = ? WHERE ComplaintID = ?";
+        EntityManager em = emf.createEntityManager();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, status);
-            ps.setInt(2, id);
-            ps.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+            em.getTransaction().begin();
+            Complaint cp = em.find(Complaint.class, id);
+            cp.setStatus(status);
+            em.merge(cp);
+            em.getTransaction().commit();
+        } catch (Exception ex) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
+        }
     }
 }

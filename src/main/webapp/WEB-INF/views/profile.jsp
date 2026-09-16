@@ -29,7 +29,7 @@
                             <div class="profile-info">
 
                                 <h2>
-                                    <c:out value="${customer.fullname}" />
+                                    <c:out value="${customer.fullName}" />
                                 </h2>
 
                                 <p>

@@ -6,6 +6,9 @@ package controller;
 
 import dao.ComplaintDAO;
 import dao.CustomerDAO;
+import entity.Complaint;
+import entity.Customer;
+import entity.Users;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -14,9 +17,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
-import model.Complaint;
-import model.Customer;
-import model.User;
 import util.flash.Flash;
 
 /**
@@ -39,56 +39,30 @@ public class ComplaintServlet extends HttpServlet {
             throws ServletException, IOException {
 
         String action = request.getParameter("action");
-
         if (action == null) {
             action = "list";
         }
-
         ComplaintDAO daoCp = new ComplaintDAO();
 
         if (action.equalsIgnoreCase("list")) {
-
-            // Only Admin and Staff can view the complaint list
+            // Chỉ Admin/Staff mới được xem danh sách khiếu nại
             HttpSession session = request.getSession();
             String role = (String) session.getAttribute("role");
-
-            if (role == null
-                    || (!role.equalsIgnoreCase("Admin")
-                    && !role.equalsIgnoreCase("Staff"))) {
-
-                response.sendError(
-                        HttpServletResponse.SC_FORBIDDEN,
-                        "You do not have permission to access this page!"
-                );
-
-                return;
+            if (role == null || (!role.equalsIgnoreCase("Admin") && !role.equalsIgnoreCase("Staff"))) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page!");
             }
-
             List<Complaint> list = daoCp.getAllComplaints();
-
             request.setAttribute("complaints", list);
-
-            request.getRequestDispatcher("/WEB-INF/views/complaints.jsp")
-                    .forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/complaints.jsp").forward(request, response);
 
         } else if (action.equalsIgnoreCase("add")) {
-
-            request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp")
-                    .forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp").forward(request, response);
 
         } else if (action.equalsIgnoreCase("viewDetail")) {
-
             String id = request.getParameter("id");
-
-            Complaint cp =
-                    daoCp.getComplaintById(
-                            Integer.parseInt(id)
-                    );
-
+            Complaint cp = daoCp.getComplaintById(Integer.parseInt(id));
             request.setAttribute("complaint", cp);
-
-            request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp")
-                    .forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp").forward(request, response);
         }
     }
 
@@ -103,85 +77,40 @@ public class ComplaintServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
         request.setCharacterEncoding("UTF-8");
-
         String action = request.getParameter("action");
-
         ComplaintDAO daoCp = new ComplaintDAO();
-
         HttpSession session = request.getSession();
-
         CustomerDAO cdao = new CustomerDAO();
 
-        User user =
-                (User) session.getAttribute("user");
-
-        Customer customer =
-                cdao.getCustomerByUserId(
-                        user.getId()
-                );
-
+        Users user = (Users) session.getAttribute("user");
+        Customer customer = cdao.getCustomerByUserId(user.getUserID());
         if ("add".equalsIgnoreCase(action)) {
+            String title = request.getParameter("title");
+            String content = request.getParameter("content");
 
-            String title =
-                    request.getParameter("title");
-
-            String content =
-                    request.getParameter("content");
-
-            String customerId =
-                    customer.getId();
-
-            Complaint cp =
-                    new Complaint();
-
+            Complaint cp = new Complaint();
             cp.setTitle(title);
             cp.setContent(content);
+            cp.setCustomerID(customer);
 
-            daoCp.insertComplaint(
-                    cp,
-                    customerId
-            );
-
-            Flash.success(
-                    request,
-                    "Complaint submitted successfully."
-            );
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/complaint?action=add"
-            );
+            daoCp.insertComplaint(cp);
+            response.sendRedirect("complaint?action=add&success=1");
 
         } else if ("updateStatus".equalsIgnoreCase(action)) {
-
-            String id =
-                    request.getParameter("id");
-
-            String status =
-                    request.getParameter("status");
-
-            daoCp.updateStatus(
-                    Integer.parseInt(id),
-                    status
-            );
-
+            String id = request.getParameter("id");
+            String status = request.getParameter("status");
+            daoCp.updateStatus(Integer.parseInt(id), status);
             Flash.success(
                     request,
                     "Complaint status updated successfully."
             );
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/complaint?action=viewDetail&id="
-                    + id
-            );
+            response.sendRedirect("/complaint?action=viewDetail&id=" + id);
         }
     }
 
     @Override
     public String getServletInfo() {
-        return "Handles complaint management.";
+        return "Short description";
     }
 }

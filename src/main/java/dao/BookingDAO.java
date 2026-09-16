@@ -4,116 +4,65 @@
  */
 package dao;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.ArrayList;
+import entity.Booking;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import model.Booking;
-import model.Customer;
-import model.Room;
-import util.DBContext;
 
 /**
  *
  * @author Lenovo
  */
-public class BookingDAO extends DBContext {
+public class BookingDAO {
+
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
 
     public List<Booking> getAll() {
-        List<Booking> list = new ArrayList<>();
-        CustomerDAO cusDao = new CustomerDAO();
-        RoomDAO roomDao = new RoomDAO();
-        String sql = "select * from BOOKING";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String bookingId = rs.getString("BookingID");
-                String bookingDate = rs.getString("BookingDate").replace("-", "/");
-                String checkInDate = rs.getString("CheckInDate").replace("-", "/");
-                String checkOutDate = rs.getString("CheckOutDate").replace("-", "/");
-                String bookingStatus = rs.getString("BookingStatus");
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT b FROM BOOKING b";
+            TypedQuery<Booking> query = em.createQuery(jpql, Booking.class);
 
-                String roomId = rs.getString("RoomID");
-                Room room = roomDao.getById(roomId);
-
-                String customerId = rs.getString("CustomerID");
-                Customer customer = cusDao.getCustomerById(customerId);
-                list.add(new Booking(bookingId, bookingDate, checkInDate, checkOutDate, bookingStatus, room, customer));
-            }
+            return query.getResultList();
         } catch (Exception e) {
-
         }
-        return list;
+        return null;
     }
 
     public Booking getById(String id) {
-        String sql = "select * from BOOKING where BookingID = ?";
-
-        RoomDAO rDao = new RoomDAO();
-        CustomerDAO cDao = new CustomerDAO();
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                String bookingDate = rs.getString("BookingDate");
-                String checkInDate = rs.getString("CheckInDate");
-                String checkOutDate = rs.getString("CheckOutDate");
-                String status = rs.getString("BookingStatus");
-
-                String roomId = rs.getString("RoomID");
-                Room room = rDao.getById(roomId);
-
-                String cusId = rs.getString("CustomerID");
-                Customer customer = cDao.getCustomerById(cusId);
-
-                return new Booking(id, bookingDate, checkInDate, checkOutDate, status, room, customer);
-            }
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.find(Booking.class, id);
         } catch (Exception e) {
+        }
+        return null;
+    }
+
+    public List<Booking> getByUserId(String customerId) {
+        EntityManager em = emf.createEntityManager();
+        // Entity: Booking
+        // b.customerID: point toCustomer Object
+        // b.customerID.customerID: point to CustomerID
+        String jpql = "SELECT b FROM Booking b WHERE b.customerID.customerID = :customerId";
+        try {
+            TypedQuery<Booking> query = em.createQuery(jpql, Booking.class);
+            query.setParameter("customerId", customerId);
+            return query.getResultList();
+        } catch (Exception e) {
+        } finally {
+            em.close();
         }
         return null;
     }
 
     public static void main(String[] args) {
         BookingDAO dao = new BookingDAO();
-//        for (Booking b : dao.getAll()) {
-//            System.out.println(b);
-//        }
-
-//        System.out.println(dao.getById("B01"));
-
-          for (Booking b: dao.getByUserId("KH01")){
-              System.out.println(b);
-          }
-    }
-
-    public List<Booking> getByUserId(String userId) {
-        List<Booking> list = new ArrayList<>();
-        String sql = "select * from BOOKING where CustomerID = ?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            RoomDAO rDao = new RoomDAO();
-            CustomerDAO cDao = new CustomerDAO();
-            ps.setString(1, userId);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String bookingId = rs.getString("BookingID");
-                String bookingDate = rs.getString("BookingDate");
-                String checkInDate = rs.getString("CheckInDate");
-                String checkOutDate = rs.getString("CheckOutDate");
-                String bookingStatus = rs.getString("BookingStatus");
-
-                String roomId = rs.getString("RoomID");
-                Room room = rDao.getById(roomId);
-                
-                String cusId = rs.getString("CustomerID");
-                Customer customer = cDao.getCustomerById(cusId);
-                
-                list.add(new Booking(bookingId, bookingDate, checkInDate, checkOutDate, bookingStatus, room, customer));
-            }
-        } catch (Exception e) {
+        for (Booking b : dao.getAll()) {
+            System.out.println(b);
         }
-        return list;
+        System.out.println(dao.getById("B01"));
+        for (Booking b : dao.getByUserId("KH01")) {
+            System.out.println(b);
+        }
     }
 }

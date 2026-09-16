@@ -18,7 +18,7 @@ import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import model.User;
+import entity.Users;
 
 /**
  *
@@ -107,7 +107,7 @@ public class CheckLoginFilter implements Filter {
         HttpServletResponse res = (HttpServletResponse) response;
         HttpSession session = req.getSession();
         
-        User u = (User) session.getAttribute("user");
+        Users u = (Users) session.getAttribute("user");
         if(u == null){
             res.sendRedirect(req.getContextPath() + "/login");
         } else {
