@@ -4,16 +4,21 @@
  */
 package controller;
 
+import dao.HotelDAO;
+import dao.RoomDAO;
 import dao.ServiceDAO;
+import entity.Hotel;
+import entity.Room;
+import entity.Service;
+import entity.Users;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.math.BigDecimal;
 import java.util.List;
-import model.Service;
-import model.User;
 
 /**
  *
@@ -34,7 +39,7 @@ public class ServiceServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        User u = (User) request.getSession().getAttribute("user");
+        Users u = (Users) request.getSession().getAttribute("user");
         if (u == null) {
             response.sendRedirect("login");
             return;
@@ -42,7 +47,7 @@ public class ServiceServlet extends HttpServlet {
         ServiceDAO dao = new ServiceDAO();
         List<Service> list = dao.getAllServices();
         request.setAttribute("list", list);
-        request.getRequestDispatcher("/WEB-INF/views/service.jsp").forward(request, response);
+        request.getRequestDispatcher("service.jsp").forward(request, response);
     }
 
     /**
@@ -56,33 +61,37 @@ public class ServiceServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        User u = (User) request.getSession().getAttribute("user");
-        
+        Users u = (Users) request.getSession().getAttribute("user");
+
         ServiceDAO dao = new ServiceDAO();
         String selectedService = request.getParameter("selectedService");
-        
+
         if (selectedService != null && !selectedService.isEmpty()) {
-        try {
-            String[] parts = selectedService.split("\\|");
-            String serviceName = parts[0];
-            double price = Double.parseDouble(parts[1]);
+            try {
+                String[] parts = selectedService.split("\\|");
+                String serviceName = parts[0];
+                BigDecimal price = BigDecimal.valueOf(Double.parseDouble(parts[1]));
 
-            String bookingID = dao.getBookingIDByUser(u.getId());
+                String bookingID = dao.getBookingIDByUser(u.getUserID());
 
-            if (bookingID != null) {
-                String serviceID = dao.generateServiceID();
-                String roomID = dao.getRoomID(bookingID);
-                String hotelID = dao.getHotelID(roomID);
+                if (bookingID != null) {
+                    String serviceID = dao.generateServiceID();
+                    RoomDAO rDao = new RoomDAO();
+                    HotelDAO hDao = new HotelDAO();
 
-                Service newService = new Service(serviceID, serviceName, price, hotelID, roomID);
-                dao.insertService(newService);
+                    Service newService = new Service(serviceID, serviceName, price);
+                    String roomId = dao.getRoomID(bookingID);
+                    String hotelId = dao.getHotelID(roomId);
+                    newService.setHotelID(hDao.getHotelById(hotelId));
+                    newService.setRoomID(rDao.getById(roomId));
+                    dao.insertService(newService);
 
-                dao.insertBookingService(bookingID, serviceID);
+                    dao.insertBookingService(bookingID, serviceID);
+                }
+            } catch (Exception e) {
             }
-        } catch (Exception e) {
         }
-    }
-        
+
         response.sendRedirect("service");
     }
 
