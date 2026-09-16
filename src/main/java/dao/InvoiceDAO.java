@@ -4,279 +4,222 @@
  */
 package dao;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import entity.Booking;
+import entity.Customer;
+import entity.Employee;
+import entity.Hotel;
+import entity.Invoice;
+import entity.Room;
+import entity.Service;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
+import java.math.BigDecimal;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import util.DBContext;
 
 /**
  *
  * @author Admin
  */
-public class InvoiceDAO extends DBContext {
+public class InvoiceDAO {
+
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
 
     public List<Map<String, String>> getOccupiedRooms() {
         List<Map<String, String>> list = new ArrayList<>();
-        // Đã xóa INNER JOIN SERVICE và cột SERVICE.ServiceName để tránh lặp dữ liệu
-        String sql = "SELECT BOOKING.BookingID, CUSTOMER.FullName, HOTEL.HotelName, ROOM.RoomID, ROOM.RoomNumber, "
-                   + "Nationality.NationalityName, ROOM.Price, BOOKING.CheckInDate, BOOKING.CheckOutDate "
-                   + "FROM BOOKING "
-                   + "INNER JOIN CUSTOMER ON BOOKING.CustomerID = CUSTOMER.CustomerID "
-                   + "INNER JOIN Nationality ON CUSTOMER.NationalityID = Nationality.NationalityID "
-                   + "INNER JOIN ROOM ON BOOKING.RoomID = ROOM.RoomID "
-                   + "INNER JOIN HOTEL ON ROOM.HotelID = HOTEL.HotelID "
-                   + "WHERE ROOM.Status = N'Occupied' AND BOOKING.BookingStatus != N'Completed'";
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT b FROM Booking b WHERE b.roomID.status = 'Occupied' AND b.bookingStatus != 'Completed'";
+            TypedQuery<Booking> query = em.createQuery(jpql, Booking.class);
+            List<Booking> bookings = query.getResultList();
 
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
+            for (Booking b : bookings) {
                 Map<String, String> room = new HashMap<>();
-                
-                room.put("bookingId", rs.getString("BookingID"));
-                room.put("customerName", rs.getString("FullName"));
-                room.put("hotelName", rs.getString("HotelName"));
-                room.put("roomId", rs.getString("RoomID"));
-                room.put("roomNumber", rs.getString("RoomNumber"));
-                room.put("nationality", rs.getString("NationalityName"));
-                room.put("price", rs.getString("Price"));
-                room.put("checkInDate", rs.getString("CheckInDate"));
-                room.put("checkOutDate", rs.getString("CheckOutDate"));
-                
+                room.put("bookingId", b.getBookingID());
+                room.put("customerName", b.getCustomerID().getFullName());
+                room.put("hotelName", b.getRoomID().getHotelID().getHotelName());
+                room.put("roomId", b.getRoomID().getRoomID());
+                room.put("roomNumber", b.getRoomID().getRoomNumber());
+                room.put("nationality", b.getCustomerID().getNationalityID().getNationalityName());
+                room.put("price", b.getRoomID().getPrice().toString());
+                room.put("checkInDate", b.getCheckInDate().toString());
+                room.put("checkOutDate", b.getCheckOutDate().toString());
                 list.add(room);
             }
-            rs.close();
-            ps.close();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         return list;
     }
 
     public List<Map<String, String>> getPaidInvoices() {
         List<Map<String, String>> list = new ArrayList<>();
-        
-        String sql = "SELECT TOP 10 i.InvoiceID, b.BookingID, c.FullName, h.HotelName, r.RoomNumber, i.TotalAmount, i.InvoiceDate "
-                   + "FROM INVOICE i "
-                   + "INNER JOIN BOOKING b ON i.BookingID = b.BookingID "
-                   + "INNER JOIN CUSTOMER c ON i.CustomerID = c.CustomerID "
-                   + "INNER JOIN ROOM r ON b.RoomID = r.RoomID "
-                   + "INNER JOIN HOTEL h ON r.HotelID = h.HotelID "
-                   + "ORDER BY i.InvoiceDate DESC";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT i FROM Invoice i ORDER BY i.invoiceDate DESC";
+            TypedQuery<Invoice> query = em.createQuery(jpql, Invoice.class);
+            query.setMaxResults(10);
+            List<Invoice> invoices = query.getResultList();
+
+            for (Invoice i : invoices) {
                 Map<String, String> invoice = new HashMap<>();
-                invoice.put("invoiceId", rs.getString("InvoiceID"));
-                invoice.put("bookingId", rs.getString("BookingID"));
-                invoice.put("customerName", rs.getString("FullName"));
-                invoice.put("hotelName", rs.getString("HotelName"));
-                invoice.put("roomNumber", rs.getString("RoomNumber"));
-                invoice.put("totalAmount", rs.getString("TotalAmount"));
-                invoice.put("invoiceDate", rs.getString("InvoiceDate"));
+                invoice.put("invoiceId", i.getInvoiceID());
+                invoice.put("bookingId", i.getBookingID().getBookingID());
+                invoice.put("customerName", i.getCustomerID().getFullName());
+                invoice.put("hotelName", i.getHotelID().getHotelName());
+                invoice.put("roomNumber", i.getBookingID().getRoomID().getRoomNumber());
+                invoice.put("totalAmount", i.getTotalAmount().toString());
+                invoice.put("invoiceDate", i.getInvoiceDate().toString());
                 list.add(invoice);
             }
-            rs.close();
-            ps.close();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         return list;
     }
 
     public boolean isBookingPaid(String bookingId) {
-        String sql = "SELECT 1 FROM INVOICE WHERE BookingID = ?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, bookingId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return true; // Nếu có kết quả, nghĩa là đã có hóa đơn cho booking này
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT COUNT(i) FROM Invoice i WHERE i.bookingID.bookingID = :bookingId";
+            TypedQuery<Long> query = em.createQuery(jpql, Long.class);
+            query.setParameter("bookingId", bookingId);
+            return query.getSingleResult() > 0;
         }
-        return false; // Mặc định trả về false nếu có lỗi hoặc không tìm thấy
     }
-
 
     public List<Map<String, String>> getServicesByBooking(String bookingId) {
         List<Map<String, String>> list = new ArrayList<>();
-        String sql = "SELECT s.ServiceID, s.ServiceName, s.UnitPrice "
-                + "FROM BOOKING_SERVICE bs "
-                + "JOIN SERVICE s ON bs.ServiceID = s.ServiceID "
-                + "WHERE bs.BookingID = ?";
-
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, bookingId);
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                Map<String, String> service = new HashMap<>();
-                service.put("serviceId", rs.getString("ServiceID"));
-                service.put("serviceName", rs.getString("ServiceName"));
-                service.put("unitPrice", rs.getString("UnitPrice"));
-                list.add(service);
+        try (EntityManager em = emf.createEntityManager()) {
+            Booking b = em.find(Booking.class, bookingId);
+            if (b != null && b.getServiceCollection() != null) {
+                for (Service s : b.getServiceCollection()) {
+                    Map<String, String> serviceMap = new HashMap<>();
+                    serviceMap.put("serviceId", s.getServiceID());
+                    serviceMap.put("serviceName", s.getServiceName());
+                    serviceMap.put("unitPrice", s.getUnitPrice().toString());
+                    list.add(serviceMap);
+                }
             }
-            rs.close();
-            ps.close();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
         return list;
     }
 
     public Map<String, String> getRoomDetailByBooking(String bookingId) {
-        Map<String, String> room = null;
-        // SQL dùng DATEDIFF để tính số ngày ở (Nếu CheckIn và CheckOut cùng ngày thì tính là 1 ngày)
-        // Dùng Subquery để tính tổng tiền dịch vụ (Service Unit Price) đã có sẵn của Booking
-        String sql = "SELECT b.BookingID, c.FullName, r.RoomNumber, r.Price, b.CheckInDate, b.CheckOutDate, "
-                   + "       CASE "
-                   + "           WHEN DATEDIFF(day, b.CheckInDate, b.CheckOutDate) = 0 THEN 1 "
-                   + "           ELSE DATEDIFF(day, b.CheckInDate, b.CheckOutDate) "
-                   + "       END AS TotalDays, "
-                   + "       ISNULL((SELECT SUM(s.UnitPrice) "
-                   + "               FROM BOOKING_SERVICE bs "
-                   + "               JOIN SERVICE s ON bs.ServiceID = s.ServiceID "
-                   + "               WHERE bs.BookingID = b.BookingID), 0) AS ServiceTotal "
-                   + "FROM BOOKING b "
-                   + "JOIN CUSTOMER c ON b.CustomerID = c.CustomerID "
-                   + "JOIN ROOM r ON b.RoomID = r.RoomID "
-                   + "WHERE b.BookingID = ?";
+        try (EntityManager em = emf.createEntityManager()) {
+            Booking b = em.find(Booking.class, bookingId);
+            if (b != null) {
+                Map<String, String> room = new HashMap<>();
+                room.put("bookingId", b.getBookingID());
+                room.put("customerName", b.getCustomerID().getFullName());
+                room.put("roomNumber", b.getRoomID().getRoomNumber());
 
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, bookingId);
-            ResultSet rs = ps.executeQuery();
+                double price = b.getRoomID().getPrice().doubleValue();
 
-            if (rs.next()) {
-                room = new HashMap<>();
-                room.put("bookingId", rs.getString("BookingID"));
-                room.put("customerName", rs.getString("FullName"));
-                room.put("roomNumber", rs.getString("RoomNumber"));
-                
-                // Lấy các giá trị ra để tính toán
-                double price = rs.getDouble("Price");
-                int totalDays = rs.getInt("TotalDays");
-                double serviceTotal = rs.getDouble("ServiceTotal");
-                
+                // Tính số ngày sử dụng ChronoUnit thay cho DATEDIFF của SQL
+                long totalDays = ChronoUnit.DAYS.between(
+                        b.getCheckInDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate(),
+                        b.getCheckOutDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+                );
+                if (totalDays == 0) {
+                    totalDays = 1;
+                }
+
+                double serviceTotal = 0;
+                if (b.getServiceCollection() != null) {
+                    for (Service s : b.getServiceCollection()) {
+                        serviceTotal += s.getUnitPrice().doubleValue();
+                    }
+                }
+
                 double roomTotal = price * totalDays;
-                
+                double baseTotal = roomTotal + serviceTotal;
+
                 room.put("price", String.valueOf(price));
-                room.put("checkInDate", rs.getString("CheckInDate"));
-                room.put("checkOutDate", rs.getString("CheckOutDate"));
+                room.put("checkInDate", b.getCheckInDate().toString());
+                room.put("checkOutDate", b.getCheckOutDate().toString());
                 room.put("totalDays", String.valueOf(totalDays));
                 room.put("roomTotal", String.valueOf(roomTotal));
                 room.put("serviceTotal", String.valueOf(serviceTotal));
-                
-                // Tính Base Total: (Giá phòng * Số ngày) + Dịch vụ đã đặt
-                double baseTotal = roomTotal + serviceTotal;
-                room.put("baseTotal", String.valueOf(baseTotal)); 
+                room.put("baseTotal", String.valueOf(baseTotal));
+
+                return room;
             }
-            rs.close();
-            ps.close();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
-        return room;
+        return null;
     }
 
     public String getEmployeeById(int userId) {
-        String employeeId = null;
-        String sql = "SELECT EmployeeID FROM EMPLOYEE WHERE UserID = ?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, userId);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                employeeId = rs.getString("EmployeeID");
-            }
-            rs.close();
-            ps.close();
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT e.employeeID FROM Employee e WHERE e.userID.userID = :userId";
+            TypedQuery<String> query = em.createQuery(jpql, String.class);
+            query.setParameter("userId", userId);
+            List<String> results = query.getResultList();
+            return results.get(0);
         } catch (Exception e) {
-            e.printStackTrace();
         }
-        return employeeId;
+        return null;
     }
 
     public boolean processCheckout(String bookingId, double totalAmount, String employeeId) {
+        EntityManager em = emf.createEntityManager();
         try {
-            conn.setAutoCommit(false); 
+            //open transaction
+            em.getTransaction().begin();
+            //find booking being to process
+            Booking booking = em.find(Booking.class, bookingId);
+            if (booking == null) {
+                return false;
+            }
+            //get employee for process
+            Employee employee = em.find(Employee.class, employeeId);
 
-            String getInfoSql = "SELECT HotelID, CustomerID, RoomID FROM BOOKING b JOIN ROOM r ON b.RoomID = r.RoomID WHERE BookingID = ?";
-            String hotelId, customerId, roomId;
-            try (PreparedStatement psInfo = conn.prepareStatement(getInfoSql)) {
-                psInfo.setString(1, bookingId);
-                try (ResultSet rsInfo = psInfo.executeQuery()) {
-                    if (!rsInfo.next()) {
-                        return false;
-                    }
-                    hotelId = rsInfo.getString("HotelID");
-                    customerId = rsInfo.getString("CustomerID");
-                    roomId = rsInfo.getString("RoomID");
-                }
+            Hotel hotel = booking.getRoomID().getHotelID();
+            Customer customer = booking.getCustomerID();
+            Room room = booking.getRoomID();
+
+            //Create new invoice id
+            String jpql = "SELECT MAX(CAST(SUBSTRING(i.invoiceID, 3, LENGTH(i.invoiceID)) AS Integer)) FROM Invoice i";
+            TypedQuery<Integer> query = em.createQuery(jpql, Integer.class);
+            Integer maxId = query.getSingleResult();
+
+            String newInvoiceId = "HD01";
+            if (maxId != null) {
+                newInvoiceId = String.format("HD%02d", maxId + 1);
             }
 
-            String getNewInvoiceIdSql = "SELECT 'HD' + RIGHT('00' + CAST(ISNULL(MAX(CAST(SUBSTRING(InvoiceID, 3, LEN(InvoiceID)) AS INT)), 0) + 1 AS VARCHAR), 2) AS NewID FROM INVOICE";
-            String newInvoiceId;
-            try (PreparedStatement psNewId = conn.prepareStatement(getNewInvoiceIdSql);
-                 ResultSet rsNewId = psNewId.executeQuery()) {
-                rsNewId.next();
-                newInvoiceId = rsNewId.getString("NewID");
-            }
+            Invoice invoice = new Invoice();
 
-            
-            String insertInvoiceSql = "INSERT INTO INVOICE (InvoiceID, InvoiceDate, TotalAmount, HotelID, CustomerID, EmployeeID, BookingID) "
-                    + "VALUES (?, GETDATE(), ?, ?, ?, ?, ?)";
-            try (PreparedStatement psInvoice = conn.prepareStatement(insertInvoiceSql)) {
-                psInvoice.setString(1, newInvoiceId);
-                psInvoice.setDouble(2, totalAmount);
-                psInvoice.setString(3, hotelId);
-                psInvoice.setString(4, customerId);
-                psInvoice.setString(5, employeeId);
-                psInvoice.setString(6, bookingId);
-                psInvoice.executeUpdate();
-            }
+            invoice.setInvoiceID(newInvoiceId);
+            invoice.setInvoiceType("Checkout");
+            invoice.setInvoiceDate(new java.util.Date());
+            invoice.setTotalAmount(BigDecimal.valueOf(totalAmount));
+            invoice.setHotelID(hotel);
+            invoice.setCustomerID(customer);
+            invoice.setEmployeeID(employee);
+            invoice.setBookingID(booking);
 
-            // 4. Cập nhật Booking (Hoàn thành & Cập nhật ngày CheckOut thực tế)
-            String updateBookingSql = "UPDATE BOOKING SET BookingStatus = N'Completed', CheckOutDate = GETDATE() WHERE BookingID = ?";
-            try (PreparedStatement psBooking = conn.prepareStatement(updateBookingSql)) {
-                psBooking.setString(1, bookingId);
-                psBooking.executeUpdate();
-            }
+            em.persist(invoice);
 
-            // 5. Cập nhật trạng thái Phòng (Trống)
-            String updateRoomSql = "UPDATE ROOM SET Status = N'Available' WHERE RoomID = ?";
-            try (PreparedStatement psRoom = conn.prepareStatement(updateRoomSql)) {
-                psRoom.setString(1, roomId);
-                psRoom.executeUpdate();
-            }
+            // Update booking status completed
+            booking.setBookingStatus("Completed");
+            booking.setCheckOutDate(new java.util.Date());
+            //update in db
+            em.merge(booking);
 
-            // Xác nhận lưu toàn bộ thay đổi
-            conn.commit(); 
+            // 5. Update room status
+            room.setStatus("Available");
+            //update in db
+            em.merge(room);
+
+            //comfirm all updated
+            em.getTransaction().commit();
             return true;
 
         } catch (Exception e) {
-            try {
-                conn.rollback(); // Hoàn tác nếu có bất kỳ lỗi nào
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-            }
-            e.printStackTrace();
-            return false;
+            em.getTransaction().rollback();
         } finally {
-            try {
-                conn.setAutoCommit(true); // Trả lại trạng thái auto-commit mặc định
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+            em.close();
         }
+        return false;
     }
 }

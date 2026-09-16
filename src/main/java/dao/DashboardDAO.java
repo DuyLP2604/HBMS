@@ -4,30 +4,34 @@
  */
 package dao;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import entity.RevenueChart;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import model.CustomerSource;
-import model.RevenueChart;
-import util.DBContext;
+import entity.CustomerSource;
+import java.math.BigDecimal;
 
 /**
  *
  * @author ADMIN
  */
-public class DashboardDAO extends DBContext{
+public class DashboardDAO {
+
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
+
     public long getTodayRevenue() {
-        String sql = "SELECT ISNULL(SUM(TotalAmount), 0) AS TodayRevenue\n"
-                + "FROM INVOICE\n"
-                + "WHERE CAST(InvoiceDate AS DATE) = CAST(GETDATE() AS DATE);";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getLong("TodayRevenue");
+        try (EntityManager em = emf.createEntityManager()) {
+            //coalesce = isnull
+            String jpql = "SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.invoiceDate = CURRENT_DATE";
+            TypedQuery<BigDecimal> query = em.createQuery(jpql, BigDecimal.class);
+            BigDecimal result = query.getSingleResult();
+            if (result != null) {
+                return result.longValue();
             }
         } catch (Exception e) {
         }
@@ -35,38 +39,30 @@ public class DashboardDAO extends DBContext{
     }
 
     public long getRevenueByDateRange(LocalDate startDate, LocalDate endDate) {
-        String sql = "SELECT ISNULL(SUM(TotalAmount), 0) AS Revenue "
-                + "FROM INVOICE "
-                + "WHERE InvoiceDate BETWEEN ? AND ?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT COALESCE(SUM(i.totalAmount), 0) FROM Invoice i WHERE i.invoiceDate BETWEEN :startDate AND :endDate";
+            TypedQuery<BigDecimal> query = em.createQuery(jpql, BigDecimal.class);
 
-            ps.setDate(1, java.sql.Date.valueOf(startDate));
-            ps.setDate(2, java.sql.Date.valueOf(endDate));
+            query.setParameter("startDate", java.sql.Date.valueOf(startDate));
+            query.setParameter("endDate", java.sql.Date.valueOf(endDate));
 
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getLong("Revenue");
-            }
+            BigDecimal result = query.getSingleResult();
+            return result != null ? result.longValue() : 0;
         } catch (Exception e) {
         }
         return 0;
     }
 
     public int getOccupiedRoomsCount(LocalDate startDate, LocalDate endDate) {
-        String sql = "SELECT COUNT(DISTINCT RoomID) AS OccupiedRooms\n"
-                + "FROM BOOKING\n"
-                + "WHERE CheckInDate <= ?"
-                + "AND CheckOutDate >= ?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT COUNT(DISTINCT b.roomID) FROM Booking b WHERE b.checkInDate <= :endDate AND b.checkOutDate >= :startDate";
+            TypedQuery<Long> query = em.createQuery(jpql, Long.class);
+            query.setParameter("endDate", java.sql.Date.valueOf(endDate));
+            query.setParameter("startDate", java.sql.Date.valueOf(startDate));
 
-            ps.setDate(1, java.sql.Date.valueOf(endDate));
-            ps.setDate(2, java.sql.Date.valueOf(startDate));
-
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("OccupiedRooms");
+            Long count = query.getSingleResult();
+            if (count != null) {
+                return count.intValue();
             }
         } catch (Exception e) {
         }
@@ -74,80 +70,69 @@ public class DashboardDAO extends DBContext{
     }
 
     public int getTotalRoomsCount() {
-        String sql = "SELECT COUNT(*) as count FROM ROOM";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getInt("count");
-            }
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT COUNT(r) FROM Room r";
+            TypedQuery<Long> query = em.createQuery(jpql, Long.class);
+            Long count = query.getSingleResult();
+            return count != null ? count.intValue() : 0;
         } catch (Exception e) {
         }
         return 0;
     }
 
     public int getTotalCustomers() {
-        String sql = "SELECT COUNT(*) AS TotalCustomers FROM CUSTOMER";
-
-        try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
-
-            if (rs.next()) {
-                return rs.getInt("TotalCustomers");
-            }
-
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT COUNT(c) FROM Customer c";
+            TypedQuery<Long> query = em.createQuery(jpql, Long.class);
+            Long count = query.getSingleResult();
+            return count != null ? count.intValue() : 0;
         } catch (Exception e) {
         }
-
         return 0;
     }
 
     public List<RevenueChart> getRevenueLastTenDays() {
         List<RevenueChart> list = new ArrayList<>();
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT i.invoiceDate, SUM(i.totalAmount) FROM Invoice i GROUP BY i.invoiceDate ORDER BY i.invoiceDate DESC";
+            TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
+            query.setMaxResults(10);
 
-        String sql = "Select convert(varchar,InvoiceDate,103) Day, SUM(TotalAmount) Revenue\n"
-                + "From INVOICE\n"
-                + "Group by InvoiceDate\n"
-                + "Order by InvoiceDate DESC";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                list.add(
-                        new RevenueChart(
-                                rs.getString("Day"),
-                                rs.getLong("Revenue")
-                        )
-                );
+            List<Object[]> results = query.getResultList();
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy");
+
+            for (Object[] row : results) {
+                java.util.Date date = (java.util.Date) row[0];
+                BigDecimal revenue = (BigDecimal) row[1];
+                list.add(new RevenueChart(sdf.format(date), revenue.longValue()));
             }
         } catch (Exception e) {
         }
+
         Collections.reverse(list);
         return list;
     }
 
     public List<CustomerSource> getCustomerSource() {
         List<CustomerSource> list = new ArrayList<>();
-        String sql
-                = "SELECT "
-                + "n.NationalityName,"
-                + "COUNT(*) Total "
-                + "FROM CUSTOMER c "
-                + "JOIN Nationality n "
-                + "ON c.NationalityID=n.NationalityID "
-                + "GROUP BY n.NationalityName";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
+        EntityManager em = emf.createEntityManager();
+        String jpql = "SELECT c.nationalityID.nationalityName, COUNT(c) "
+                + "FROM Customer c "
+                + "GROUP BY c.nationalityID.nationalityName";
 
-            while (rs.next()) {
-                list.add(
-                        new CustomerSource(
-                                rs.getString("NationalityName"),
-                                rs.getInt("Total")
-                        )
-                );
+        try {
+            TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
+            List<Object[]> results = query.getResultList();
+            for (Object[] row : results) {
+                String nationalityName = (String) row[0];
+                int total = ((Number) row[1]).intValue();
+                list.add(new CustomerSource(nationalityName, total));
             }
         } catch (Exception e) {
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
         return list;
     }

@@ -4,48 +4,42 @@
  */
 package dao;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.ArrayList;
+import entity.Booking;
+import entity.Room;
+import entity.Service;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import model.Service;
-import util.DBContext;
 
 /**
  *
  * @author ADMIN
  */
-public class ServiceDAO extends DBContext {
+public class ServiceDAO {
+
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
 
     public List<Service> getAllServices() {
-        List<Service> list = new ArrayList<>();
-        String sql = "SELECT\n"
-                + "    MIN(ServiceID) AS ServiceID,\n"
-                + "    ServiceName,\n"
-                + "    UnitPrice\n"
-                + "FROM SERVICE\n"
-                + "GROUP BY ServiceName, UnitPrice";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String serviceId = rs.getString("ServiceID");
-                String serviceName = rs.getString("ServiceName");
-                Double unitPrice = rs.getDouble("UnitPrice");
-                list.add(new Service(serviceId, serviceName, unitPrice, null, null));
-            }
-        } catch (Exception e) {
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT new entity.Service(MIN(s.serviceID), s.serviceName, s.unitPrice) "
+                    + "FROM Service s "
+                    + "GROUP BY s.serviceName, s.unitPrice";
+            TypedQuery<Service> query = em.createQuery(jpql, Service.class);
+            return query.getResultList();
         }
-        return list;
     }
 
     public String generateServiceID() {
-        String sql = "SELECT TOP 1 ServiceID FROM SERVICE ORDER BY ServiceID DESC";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                String id = rs.getString("ServiceID");
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT s.serviceID FROM Service s ORDER BY s.serviceID DESC";
+            TypedQuery<String> query = em.createQuery(jpql, String.class);
+            query.setMaxResults(1);
+
+            List<String> results = query.getResultList();
+            if (!results.isEmpty()) {
+                String id = results.get(0);
                 int number = Integer.parseInt(id.substring(1));
                 return String.format("S%02d", number + 1);
             }
@@ -53,81 +47,84 @@ public class ServiceDAO extends DBContext {
         }
         return "S01";
     }
+//why room search with bookingid?
 
     public String getRoomID(String bookingID) {
-        String sql = "SELECT RoomID FROM BOOKING WHERE BookingID=?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, bookingID);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getString("RoomID");
+        try (EntityManager em = emf.createEntityManager()) {
+            Booking b = em.find(Booking.class, bookingID);
+            if (b != null && b.getRoomID() != null) {
+                return b.getRoomID().getRoomID();
             }
-        } catch (Exception e) {
         }
         return null;
     }
+//why hotel search with roomid??
 
     public String getHotelID(String roomID) {
-        String sql = "SELECT HotelID FROM ROOM WHERE RoomID=?";
-
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, roomID);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getString("HotelID");
+        try (EntityManager em = emf.createEntityManager()) {
+            Room r = em.find(Room.class, roomID);
+            if (r != null && r.getHotelID() != null) {
+                return r.getHotelID().getHotelID();
             }
-        } catch (Exception e) {
         }
-
         return null;
     }
 
     public void insertService(Service s) {
-        String sql = "INSERT INTO SERVICE VALUES(?,?,?,?,?)";
+        EntityManager em = emf.createEntityManager();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-
-            ps.setString(1, s.getServiceID());
-            ps.setString(2, s.getServiceName());
-            ps.setDouble(3, s.getUnitPrice());
-            ps.setString(4, s.getHotelID());
-            ps.setString(5, s.getRoomID());
-            ps.executeUpdate();
+            em.getTransaction().begin();
+            em.persist(s);
+            em.getTransaction().commit();
         } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
     }
 
     public void insertBookingService(String bookingID, String serviceID) {
-        String sql = "INSERT INTO BOOKING_SERVICE VALUES(?,?)";
+        EntityManager em = emf.createEntityManager();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
+            em.getTransaction().begin();
 
-            ps.setString(1, bookingID);
-            ps.setString(2, serviceID);
-            ps.executeUpdate();
+            Booking b = em.find(Booking.class, bookingID);
+            Service s = em.find(Service.class, serviceID);
 
+            if (b != null && s != null) {
+                b.getServiceCollection().add(s);
+                em.merge(b);
+            }
+            em.getTransaction().commit();
         } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
     }
 
     public String getBookingIDByUser(int userID) {
-        String sql = "SELECT TOP 1 b.BookingID "
-                + "FROM BOOKING b "
-                + "JOIN CUSTOMER c ON b.CustomerID = c.CustomerID "
-                + "WHERE c.UserID = ? "
-                + "ORDER BY b.BookingDate DESC";
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT b.bookingID FROM Booking b "
+                    + "WHERE b.customerID.userID.userID = :userID "
+                    + "ORDER BY b.bookingDate DESC";
 
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, userID);
-            ResultSet rs = ps.executeQuery();
+            TypedQuery<String> query = em.createQuery(jpql, String.class);
+            query.setParameter("userID", userID);
+            query.setMaxResults(1);
 
-            if (rs.next()) {
-                return rs.getString("BookingID");
+            List<String> results = query.getResultList();
+            if (!results.isEmpty()) {
+                return results.get(0);
             }
-        } catch (Exception e) {
         }
         return null;
     }

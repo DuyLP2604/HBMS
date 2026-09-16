@@ -4,81 +4,70 @@
  */
 package dao;
 
-import util.DBContext;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
+import entity.Hotel;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import model.Hotel;
 
 /**
  *
  * @author TAN LOI
  */
-public class HotelDAO extends DBContext {
+public class HotelDAO {
+
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
 
     public List<Hotel> getAllHotels() {
-        List<Hotel> list = new ArrayList<>();
-        String sql = "SELECT * FROM HOTEL";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Hotel h = new Hotel();
-                h.setId(rs.getString("HotelID"));
-                h.setName(rs.getString("HotelName"));
-                h.setAddress(rs.getString("Address"));
-                list.add(h);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT h FROM HOTEL h";
+            TypedQuery<Hotel> query = em.createQuery(jpql, Hotel.class);
+            return query.getResultList();
+        } catch (Exception e) {
         }
-        return list;
+        return null;
     }
 
     public Hotel getHotelById(String id) {
-        String sql = "SELECT * FROM HOTEL WHERE HotelID = ?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                Hotel h = new Hotel();
-                h.setId(rs.getString("HotelID"));
-                h.setName(rs.getString("HotelName"));
-                h.setAddress(rs.getString("Address"));
-                return h;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.find(Hotel.class, id);
+        } catch (Exception e) {
         }
         return null;
     }
 
     public void insertHotel(Hotel h) {
-        String sql = "INSERT INTO HOTEL (HotelID, HotelName, Address) VALUES (?, ?, ?)";
+        EntityManager em = emf.createEntityManager();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, h.getId());
-            ps.setString(2, h.getName());
-            ps.setString(3, h.getAddress());
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+            em.getTransaction().begin();
+            em.persist(h);
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
     }
 
     public void updateHotel(Hotel h) {
-        String sql = "UPDATE HOTEL SET HotelName = ?, Address = ? WHERE HotelID = ?";
+        EntityManager em = emf.createEntityManager();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, h.getName());
-            ps.setString(2, h.getAddress());
-            ps.setString(3, h.getId());
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+            em.getTransaction().begin();
+            em.merge(h);
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
     }
 }
