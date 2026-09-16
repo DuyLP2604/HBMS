@@ -40,10 +40,10 @@ public class InvoiceDAO {
 
             for (Booking b : bookings) {
                 Map<String, String> room = new HashMap<>();
-                room.put("bookingId", b.getBookingID());
+                room.put("bookingID", b.getBookingID());
                 room.put("customerName", b.getCustomerID().getFullName());
                 room.put("hotelName", b.getRoomID().getHotelID().getHotelName());
-                room.put("roomId", b.getRoomID().getRoomID());
+                room.put("roomID", b.getRoomID().getRoomID());
                 room.put("roomNumber", b.getRoomID().getRoomNumber());
                 room.put("nationality", b.getCustomerID().getNationalityID().getNationalityName());
                 room.put("price", b.getRoomID().getPrice().toString());
@@ -65,8 +65,8 @@ public class InvoiceDAO {
 
             for (Invoice i : invoices) {
                 Map<String, String> invoice = new HashMap<>();
-                invoice.put("invoiceId", i.getInvoiceID());
-                invoice.put("bookingId", i.getBookingID().getBookingID());
+                invoice.put("invoiceID", i.getInvoiceID());
+                invoice.put("bookingID", i.getBookingID().getBookingID());
                 invoice.put("customerName", i.getCustomerID().getFullName());
                 invoice.put("hotelName", i.getHotelID().getHotelName());
                 invoice.put("roomNumber", i.getBookingID().getRoomID().getRoomNumber());
@@ -78,23 +78,23 @@ public class InvoiceDAO {
         return list;
     }
 
-    public boolean isBookingPaid(String bookingId) {
+    public boolean isBookingPaid(String bookingID) {
         try (EntityManager em = emf.createEntityManager()) {
             String jpql = "SELECT COUNT(i) FROM Invoice i WHERE i.bookingID.bookingID = :bookingId";
             TypedQuery<Long> query = em.createQuery(jpql, Long.class);
-            query.setParameter("bookingId", bookingId);
+            query.setParameter("bookingID", bookingID);
             return query.getSingleResult() > 0;
         }
     }
 
-    public List<Map<String, String>> getServicesByBooking(String bookingId) {
+    public List<Map<String, String>> getServicesByBooking(String bookingID) {
         List<Map<String, String>> list = new ArrayList<>();
         try (EntityManager em = emf.createEntityManager()) {
-            Booking b = em.find(Booking.class, bookingId);
+            Booking b = em.find(Booking.class, bookingID);
             if (b != null && b.getServiceCollection() != null) {
                 for (Service s : b.getServiceCollection()) {
                     Map<String, String> serviceMap = new HashMap<>();
-                    serviceMap.put("serviceId", s.getServiceID());
+                    serviceMap.put("serviceID", s.getServiceID());
                     serviceMap.put("serviceName", s.getServiceName());
                     serviceMap.put("unitPrice", s.getUnitPrice().toString());
                     list.add(serviceMap);
@@ -104,12 +104,12 @@ public class InvoiceDAO {
         return list;
     }
 
-    public Map<String, String> getRoomDetailByBooking(String bookingId) {
+    public Map<String, String> getRoomDetailByBooking(String bookingID) {
         try (EntityManager em = emf.createEntityManager()) {
-            Booking b = em.find(Booking.class, bookingId);
+            Booking b = em.find(Booking.class, bookingID);
             if (b != null) {
                 Map<String, String> room = new HashMap<>();
-                room.put("bookingId", b.getBookingID());
+                room.put("bookingID", b.getBookingID());
                 room.put("customerName", b.getCustomerID().getFullName());
                 room.put("roomNumber", b.getRoomID().getRoomNumber());
 
@@ -144,18 +144,6 @@ public class InvoiceDAO {
 
                 return room;
             }
-        }
-        return null;
-    }
-
-    public String getEmployeeById(int userId) {
-        try (EntityManager em = emf.createEntityManager()) {
-            String jpql = "SELECT e.employeeID FROM Employee e WHERE e.userID.userID = :userId";
-            TypedQuery<String> query = em.createQuery(jpql, String.class);
-            query.setParameter("userId", userId);
-            List<String> results = query.getResultList();
-            return results.get(0);
-        } catch (Exception e) {
         }
         return null;
     }

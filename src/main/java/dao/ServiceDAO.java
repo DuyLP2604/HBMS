@@ -47,28 +47,6 @@ public class ServiceDAO {
         }
         return "S01";
     }
-//why room search with bookingid?
-
-    public String getRoomID(String bookingID) {
-        try (EntityManager em = emf.createEntityManager()) {
-            Booking b = em.find(Booking.class, bookingID);
-            if (b != null && b.getRoomID() != null) {
-                return b.getRoomID().getRoomID();
-            }
-        }
-        return null;
-    }
-//why hotel search with roomid??
-
-    public String getHotelID(String roomID) {
-        try (EntityManager em = emf.createEntityManager()) {
-            Room r = em.find(Room.class, roomID);
-            if (r != null && r.getHotelID() != null) {
-                return r.getHotelID().getHotelID();
-            }
-        }
-        return null;
-    }
 
     public void insertService(Service s) {
         EntityManager em = emf.createEntityManager();
@@ -109,23 +87,5 @@ public class ServiceDAO {
                 em.close();
             }
         }
-    }
-
-    public String getBookingIDByUser(int userID) {
-        try (EntityManager em = emf.createEntityManager()) {
-            String jpql = "SELECT b.bookingID FROM Booking b "
-                    + "WHERE b.customerID.userID.userID = :userID "
-                    + "ORDER BY b.bookingDate DESC";
-
-            TypedQuery<String> query = em.createQuery(jpql, String.class);
-            query.setParameter("userID", userID);
-            query.setMaxResults(1);
-
-            List<String> results = query.getResultList();
-            if (!results.isEmpty()) {
-                return results.get(0);
-            }
-        }
-        return null;
     }
 }
