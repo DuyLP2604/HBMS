@@ -5,6 +5,7 @@
 package controller;
 
 import dao.RoomDAO;
+import entity.Room;
 import java.io.IOException;
 import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
@@ -13,7 +14,6 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
-import model.Room;
 
 /**
  *
@@ -37,7 +37,7 @@ public class RoomServlet extends HttpServlet {
         RoomDAO dao = new RoomDAO();
         List<Room> list = dao.getAll();
         request.setAttribute("roomList", list);
-        request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response);
+        request.getRequestDispatcher("room.jsp").forward(request, response);
     }
 
     /**
@@ -51,7 +51,6 @@ public class RoomServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
     }
 
     /**

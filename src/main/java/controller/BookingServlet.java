@@ -8,6 +8,8 @@ import dao.BookingDAO;
 import dao.CustomerDAO;
 import dao.HotelDAO;
 import dao.RoomDAO;
+import entity.Booking;
+import entity.Customer;
 import java.io.IOException;
 import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
@@ -17,10 +19,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
-import model.Booking;
-import model.Customer;
-import model.Hotel;
-import model.Room;
 
 /**
  *
@@ -48,24 +46,19 @@ public class BookingServlet extends HttpServlet {
         HotelDAO hDao = new HotelDAO();
         CustomerDAO cDao = new CustomerDAO();
         if (role.equalsIgnoreCase("Staff")) {
-            
+
             if (action.equalsIgnoreCase("detail")) {
                 String id = request.getParameter("id");
-                Booking b = bDao.getById(id);
-                request.setAttribute("booking", b);
-                request.getRequestDispatcher("/WEB-INF/views/bookingDetail.jsp").forward(request, response);
+                request.setAttribute("booking", bDao.getById(id));
+                request.getRequestDispatcher("bookingDetail.jsp").forward(request, response);
             } else if (action.equalsIgnoreCase("add")) {
                 RoomDAO rDao = new RoomDAO();
-                List<Hotel> hList = hDao.getAllHotels();
-                List<Room> rList = rDao.getAll();
-                request.setAttribute("hotelList", hList);
-                request.setAttribute("roomList", rList);
-                request.getRequestDispatcher("/WEB-INF/views/addBooking.jsp").forward(request, response);
-            } else if(action.equalsIgnoreCase("list")) {
-                List<Booking> bookingList = bDao.getAll();
-                request.setAttribute("bookingList", bookingList);
-
-                request.getRequestDispatcher("/WEB-INF/views/booking.jsp").forward(request, response);
+                request.setAttribute("hotelList", hDao.getAllHotels());
+                request.setAttribute("roomList", rDao.getAll());
+                request.getRequestDispatcher("addBooking.jsp").forward(request, response);
+            } else {
+                request.setAttribute("bookingList", bDao.getAll());
+                request.getRequestDispatcher("booking.jsp").forward(request, response);
             }
         } else if (role.equalsIgnoreCase("Customer")) {
             int id = (int) session.getAttribute("userId");
@@ -74,11 +67,11 @@ public class BookingServlet extends HttpServlet {
                 String userId = request.getParameter("id");
                 Booking b = bDao.getById(userId);
                 request.setAttribute("booking", b);
-                request.getRequestDispatcher("/WEB-INF/views/bookingDetail.jsp").forward(request, response);
+                request.getRequestDispatcher("bookingDetail.jsp").forward(request, response);
             }
-            List<Booking> bList = bDao.getByUserId(c.getId().toUpperCase());
+            List<Booking> bList = bDao.getByUserId(c.getCustomerID().toUpperCase());
             request.setAttribute("bookingList", bList);
-            request.getRequestDispatcher("/WEB-INF/views/booking.jsp").forward(request, response);
+            request.getRequestDispatcher("booking.jsp").forward(request, response);
         }
 
     }
@@ -94,11 +87,9 @@ public class BookingServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        String action = request.getParameter("action");
-        if ("add".equalsIgnoreCase(action)) {
+        if (request.getParameter("add") != null) {
             String cusName = request.getParameter("customer");
             String phone = request.getParameter("phone");
-
         }
     }
 
