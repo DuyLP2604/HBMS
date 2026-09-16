@@ -104,13 +104,45 @@ public class UserDAO extends DBContext {
         return -1;
     }
 
- 
     public boolean deleteUser(int userId) {
         String sql = "DELETE FROM USERS WHERE UserID = ?";
 
         try {
             PreparedStatement ps = conn.prepareStatement(sql);
             ps.setInt(1, userId);
+
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    public boolean updatePassword(
+            int userId,
+            String newPassword
+    ) {
+
+        String sql
+                = "UPDATE USERS "
+                + "SET Password = ? "
+                + "WHERE UserID = ?";
+
+        try {
+            PreparedStatement ps
+                    = conn.prepareStatement(sql);
+
+            ps.setString(
+                    1,
+                    hashMD5(newPassword)
+            );
+
+            ps.setInt(
+                    2,
+                    userId
+            );
 
             return ps.executeUpdate() > 0;
 

@@ -223,4 +223,39 @@ public class CustomerDAO extends DBContext {
 
         return null;
     }
+    
+    /**
+     * Get customer by email or phone number
+     * @param identifier user's input email or phone number
+     * @return customer by their email or phone number
+     */
+    public Customer getCustomerByEmailOrPhone(String identifier) {
+
+        if (identifier == null || identifier.trim().isEmpty()) {
+            return null;
+        }
+
+        String sql = SELECT_JOIN_SQL
+                + " WHERE LOWER(c.Email) = LOWER(?) OR c.Phone = ?";
+
+        try {
+            PreparedStatement ps = conn.prepareStatement(sql);
+
+            String value = identifier.trim();
+
+            ps.setString(1, value);
+            ps.setString(2, value);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                return mapRow(rs);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
 }

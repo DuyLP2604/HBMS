@@ -6,8 +6,10 @@
     title="Hotel Management - Login"
     pageCss="login.css"
     pageJs="togglePassword.js"
+    bodyClass="login-page"
     showNavbar="false"
-    >
+    showFooter="false"
+>
 
     <div class="login-container">
 
@@ -15,11 +17,11 @@
             <i class="fa-solid fa-hotel"></i>
         </div>
 
-        <h2>
+        <h2 class="login-title">
             Hotel Management System
         </h2>
 
-        <p class="subtitle">
+        <p class="login-subtitle">
             Welcome Back
         </p>
 
@@ -27,7 +29,8 @@
         <form
             action="${pageContext.request.contextPath}/login"
             method="post"
-            >
+            class="login-form"
+        >
 
             <div class="form-group">
 
@@ -40,8 +43,9 @@
                     type="text"
                     id="username"
                     name="username"
+                    autocomplete="username"
                     required
-                    >
+                >
 
             </div>
 
@@ -59,25 +63,28 @@
                         type="password"
                         id="password"
                         name="password"
+                        autocomplete="current-password"
                         required
-                        >
+                    >
 
                     <i
                         class="fa-solid fa-eye toggle-password"
                         id="togglePassword"
-                        ></i>
+                    ></i>
 
                 </div>
 
             </div>
 
 
-            <div class="register-link">
+            <!-- Forgot Password -->
+            <div class="forgot-password-wrapper">
 
-                Don't have an account?
-
-                <a href="${pageContext.request.contextPath}/register">
-                    Register
+                <a
+                    href="${pageContext.request.contextPath}/forgot-password"
+                    class="forgot-password-link"
+                >
+                    Forgot Password?
                 </a>
 
             </div>
@@ -86,11 +93,25 @@
             <button
                 type="submit"
                 class="login-btn"
-                >
+            >
                 Sign In
             </button>
+
+
+            <div class="register-link">
+
+                <span>
+                    Don't have an account?
+                </span>
+
+                <a href="${pageContext.request.contextPath}/register">
+                    Register
+                </a>
+
+            </div>
 
         </form>
 
     </div>
+
 </layout:layout>
