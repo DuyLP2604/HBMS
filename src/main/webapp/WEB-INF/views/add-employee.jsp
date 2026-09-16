@@ -203,9 +203,9 @@
                                             items="${listHotel}"
                                             >
 
-                                            <option value="${h.id}">
-                                                <c:out value="${h.name}" />
-                                                (<c:out value="${h.id}" />)
+                                            <option value="${h.hotelID}">
+                                                <c:out value="${h.hotelName}" />
+                                                (<c:out value="${h.hotelID}" />)
                                             </option>
 
                                         </c:forEach>

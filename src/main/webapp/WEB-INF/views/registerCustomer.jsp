@@ -169,8 +169,8 @@
                         items="${nationalities}"
                         >
 
-                        <option value="${n.id}">
-                            <c:out value="${n.name}" />
+                        <option value="${n.nationalityID}">
+                            <c:out value="${n.nationalityName}" />
                         </option>
 
                     </c:forEach>

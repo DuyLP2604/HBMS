@@ -56,7 +56,7 @@
                                 <tr>
 
                                     <td class="fw-bold text-secondary">
-                                        <c:out value="${cp.id}" />
+                                        <c:out value="${cp.customerID.fullName}" />
                                     </td>
 
 
@@ -69,12 +69,12 @@
 
                                         <c:choose>
 
-                                            <c:when test="${empty cp.customerName}">
+                                            <c:when test="${empty cp.customerID}">
                                                 Anonymous
                                             </c:when>
 
                                             <c:otherwise>
-                                                <c:out value="${cp.customerName}" />
+                                                <c:out value="${cp.customerID}" />
                                             </c:otherwise>
 
                                         </c:choose>
@@ -130,7 +130,7 @@
                                     <td class="text-center">
 
                                         <a
-                                            href="${pageContext.request.contextPath}/complaint?action=viewDetail&id=${cp.id}"
+                                            href="${pageContext.request.contextPath}/complaint?action=viewDetail&id=${cp.complaintID}"
                                             class="btn btn-outline-info btn-sm"
                                             >
                                             View Details

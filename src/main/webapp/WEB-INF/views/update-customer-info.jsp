@@ -46,7 +46,7 @@
                                         type="text"
                                         name="id"
                                         class="form-control bg-light"
-                                        value="<c:out value='${customer.id}' />"
+                                        value="<c:out value='${customer.customerID}' />"
                                         readonly
                                         >
 
@@ -63,7 +63,7 @@
                                         type="text"
                                         name="name"
                                         class="form-control"
-                                        value="<c:out value='${customer.fullname}' />"
+                                        value="<c:out value='${customer.fullName}' />"
                                         required
                                         >
 
@@ -172,10 +172,10 @@
                                             >
 
                                             <option
-                                                value="${nat.id}"
-                                                ${nat.id eq customer.nationality.id ? 'selected' : ''}
+                                                value="${nat.nationalityID}"
+                                                ${nat.nationalityID eq customer.nationalityID.nationalityID ? 'selected' : ''}
                                                 >
-                                                <c:out value="${nat.name}" />
+                                                <c:out value="${nat.nationalityName}" />
                                             </option>
 
                                         </c:forEach>

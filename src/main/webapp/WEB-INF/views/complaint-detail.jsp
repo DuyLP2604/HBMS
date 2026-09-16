@@ -19,7 +19,7 @@
 
                 <h2 class="h4 mb-0">
                     Complaint Details #
-                    <c:out value="${complaint.id}" />
+                    <c:out value="${complaint.complaintID}" />
                 </h2>
 
                 <a
@@ -53,12 +53,12 @@
 
                         <c:choose>
 
-                            <c:when test="${empty complaint.customerName}">
+                            <c:when test="${empty complaint.customerID.fullName}">
                                 Anonymous
                             </c:when>
 
                             <c:otherwise>
-                                <c:out value="${complaint.customerName}" />
+                                <c:out value="${complaint.customerID.fullName}" />
                             </c:otherwise>
 
                         </c:choose>
@@ -138,7 +138,7 @@
                     <input
                         type="hidden"
                         name="id"
-                        value="${complaint.id}"
+                        value="${complaint.complaintID}"
                         >
 
 

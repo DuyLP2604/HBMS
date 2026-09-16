@@ -25,7 +25,7 @@
 
                         <span class="badge bg-secondary p-2">
                             ID:
-                            <c:out value="${customer.id}" />
+                            <c:out value="${customer.customerID}" />
                         </span>
 
                     </div>
@@ -40,7 +40,7 @@
                             </div>
 
                             <div class="col-sm-8 fw-bold">
-                                <c:out value="${customer.fullname}" />
+                                <c:out value="${customer.fullName}" />
                             </div>
 
                         </div>
@@ -144,7 +144,7 @@
                             <div class="col-sm-8 fw-bold">
 
                                 <span class="badge bg-info text-dark">
-                                    <c:out value="${customer.nationality.name}" />
+                                    <c:out value="${customer.nationalityID.nationalityName}" />
                                 </span>
 
                             </div>
