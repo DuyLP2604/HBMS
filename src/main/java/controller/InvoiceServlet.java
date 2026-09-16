@@ -4,6 +4,7 @@
  */
 package controller;
 
+import dao.EmployeeDAO;
 import dao.InvoiceDAO;
 import entity.Users;
 import jakarta.servlet.ServletException;
@@ -43,6 +44,7 @@ public class InvoiceServlet extends HttpServlet {
             return;
         }
         InvoiceDAO dao = new InvoiceDAO();
+        EmployeeDAO eDao = new EmployeeDAO();
         String bookingId = request.getParameter("bookingId");
         String action = request.getParameter("action");
         request.setAttribute("occupiedRooms", dao.getOccupiedRooms());
@@ -59,9 +61,9 @@ public class InvoiceServlet extends HttpServlet {
                 double subTotal = roomTotal + serviceTotal;
                 double vat = subTotal * 0.08;
                 double grandTotal = subTotal + vat;
-                String employeeId = dao.getEmployeeById(u.getUserID());
+                String employeeID = eDao.getEmployeeById(u.getUserID().toString()).getEmployeeID();
                 if (!dao.isBookingPaid(bookingId)) {
-                    dao.processCheckout(bookingId, grandTotal, employeeId);
+                    dao.processCheckout(bookingId, grandTotal, employeeID);
                 }
                 request.setAttribute("selectedRoom", room);
                 request.setAttribute("bookingServices", services);

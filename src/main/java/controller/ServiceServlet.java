@@ -4,9 +4,11 @@
  */
 package controller;
 
+import dao.BookingDAO;
 import dao.HotelDAO;
 import dao.RoomDAO;
 import dao.ServiceDAO;
+import entity.Booking;
 import entity.Hotel;
 import entity.Room;
 import entity.Service;
@@ -64,6 +66,7 @@ public class ServiceServlet extends HttpServlet {
         Users u = (Users) request.getSession().getAttribute("user");
 
         ServiceDAO dao = new ServiceDAO();
+        BookingDAO bDao = new BookingDAO();
         String selectedService = request.getParameter("selectedService");
 
         if (selectedService != null && !selectedService.isEmpty()) {
@@ -71,22 +74,17 @@ public class ServiceServlet extends HttpServlet {
                 String[] parts = selectedService.split("\\|");
                 String serviceName = parts[0];
                 BigDecimal price = BigDecimal.valueOf(Double.parseDouble(parts[1]));
+                Booking latestBooking = bDao.getLatestBookingByUserId(u.getUserID());
 
-                String bookingID = dao.getBookingIDByUser(u.getUserID());
-
-                if (bookingID != null) {
+                if (latestBooking != null) {
                     String serviceID = dao.generateServiceID();
-                    RoomDAO rDao = new RoomDAO();
-                    HotelDAO hDao = new HotelDAO();
 
                     Service newService = new Service(serviceID, serviceName, price);
-                    String roomId = dao.getRoomID(bookingID);
-                    String hotelId = dao.getHotelID(roomId);
-                    newService.setHotelID(hDao.getHotelById(hotelId));
-                    newService.setRoomID(rDao.getById(roomId));
+                    newService.setRoomID(latestBooking.getRoomID());
+                    newService.setHotelID(latestBooking.getRoomID().getHotelID());
                     dao.insertService(newService);
 
-                    dao.insertBookingService(bookingID, serviceID);
+                    dao.insertBookingService(latestBooking.getBookingID(), serviceID);
                 }
             } catch (Exception e) {
             }
