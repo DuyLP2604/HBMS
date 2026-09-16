@@ -92,7 +92,7 @@
                                 var="h"
                                 >
 
-                                <option value="${h.id}">
+                                <option value="${h.hotelID}">
                                     <c:out value="${h.address}" />
                                 </option>
 
@@ -104,35 +104,20 @@
 
 
                     <div class="mb-3">
-
                         <label class="form-label">
                             Room
                             <span class="text-danger">*</span>
                         </label>
-
-                        <select
-                            class="form-select"
-                            name="roomId"
-                            required
-                            >
-
+                        <select class="form-select" name="roomID" required>
                             <option value="" disabled selected>
                                 -- Choose room --
                             </option>
-
-                            <c:forEach
-                                items="${roomList}"
-                                var="c"
-                                >
-
-                                <option value="${c.roomId}">
+                            <c:forEach items="${roomList}" var="c" >
+                                <option value="${c.roomID}">
                                     <c:out value="${c.roomNumber}" />
                                 </option>
-
                             </c:forEach>
-
                         </select>
-
                     </div>
 
 

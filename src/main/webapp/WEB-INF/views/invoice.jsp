@@ -1,4 +1,4 @@
-<%-- 
+<%--
     Document   : invoice
     Created on : Jul 13, 2026, 7:26:50 PM
     Author     : Admin
@@ -24,9 +24,9 @@
                 <h1 class="text-center text-uppercase fs-4 mb-4 fw-bold">Service Invoice</h1>
 
                 <div class="row border-bottom pb-2 mb-3 fs-6">
-                    <div class="col-sm-4">Invoice ID: <span class="fw-bold">${selectedRoom.bookingId}</span></div>
+                    <div class="col-sm-4">Invoice ID: <span class="fw-bold">${selectedRoom.bookingID}</span></div>
                     <div class="col-sm-4 text-sm-center">Date printed: <span class="fw-bold" id="printDate"></span></div>
-                    <div class="col-sm-4 text-sm-end">Booking ID: <span class="fw-bold">${selectedRoom.bookingId}</span></div>
+                    <div class="col-sm-4 text-sm-end">Booking ID: <span class="fw-bold">${selectedRoom.bookingID}</span></div>
                 </div>
 
                 <div class="row mb-4 fs-6">
@@ -157,7 +157,7 @@
                     <div class="col-6">
                         <p class="fw-bold mb-0">Receptionist</p>
                         <div class="signature-space d-flex align-items-center justify-content-center">
-                            <span class="text-danger fw-bold text-uppercase" 
+                            <span class="text-danger fw-bold text-uppercase"
                                   style="border: 3px dashed #dc3545; padding: 8px 15px; border-radius: 8px; transform: rotate(-10deg); opacity: 0.8;">
                                 Payment has been made.
                             </span>

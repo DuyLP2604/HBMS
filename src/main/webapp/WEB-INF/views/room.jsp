@@ -113,102 +113,62 @@
 
                         <tbody>
 
-                            <c:forEach
-                                items="${roomList}"
-                                var="c"
-                                >
+                            <c:forEach items="${roomList}" var="c">
 
-                                <c:if test="${empty param.searchId
-                                              or c.roomId.trim().equalsIgnoreCase(param.searchId.trim())}">
+                                <c:if test="${empty param.searchId or c.roomID.trim().equalsIgnoreCase(param.searchId.trim())}">
 
-                                      <tr>
+                                    <tr>
+                                        <td class="fw-bold text-secondary">
+                                            <c:out value="${c.roomID}" />
+                                        </td>
+                                        <td>
+                                            <c:out value="${c.roomNumber}" />
+                                        </td>
+                                        <td>
+                                            <img class="room-thumbnail"
+                                                 src="${pageContext.request.contextPath}/assets/images/room/${c.roomImage}"
+                                                 alt="Room ${c.roomNumber}" >
+                                        </td>
+                                        <td>
+                                            <c:out value="${c.price}" />
+                                            VND
+                                        </td>
+                                        <td>
+                                            <c:out value="${c.hotelID.hotelName}" />
+                                        </td>
+                                        <td>
+                                            <c:choose>
+                                                <c:when test="${c.status eq 'Available'}">
+                                                    <span class="badge rounded-pill bg-success">
+                                                        Available
+                                                    </span>
+                                                </c:when>
+                                                <c:when test="${c.status eq 'Occupied'}">
+                                                    <span class="badge rounded-pill bg-warning text-dark">
+                                                        Occupied
+                                                    </span>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <span class="badge rounded-pill bg-danger">
+                                                        <c:out value="${c.status}" />
+                                                    </span>
+                                                </c:otherwise>
+                                            </c:choose>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="${pageContext.request.contextPath}/room?action=viewDetail&id=${c.roomID}"
+                                               class="btn btn-outline-info btn-sm me-1">
+                                                View Details
+                                            </a>
 
-                                          <td class="fw-bold text-secondary">
-                                              <c:out value="${c.roomId}" />
-                                          </td>
+                                            <a href="${pageContext.request.contextPath}/room?action=update&id=${c.roomID}"
+                                               class="btn btn-outline-warning btn-sm" >
+                                                Edit
+                                            </a>
 
+                                        </td>
 
-                                          <td>
-                                              <c:out value="${c.roomNumber}" />
-                                          </td>
-
-
-                                          <td>
-
-                                              <img
-                                                  class="room-thumbnail"
-                                                  src="${pageContext.request.contextPath}/assets/images/room/${c.roomImage}"
-                                                  alt="Room ${c.roomNumber}"
-                                                  >
-
-                                          </td>
-
-
-                                          <td>
-                                              <c:out value="${c.price}" />
-                                              VND
-                                          </td>
-
-
-                                          <td>
-                                              <c:out value="${c.hotel.name}" />
-                                          </td>
-
-
-                                          <td>
-
-                                              <c:choose>
-
-                                                  <c:when test="${c.status eq 'Available'}">
-
-                                                      <span class="badge rounded-pill bg-success">
-                                                          Available
-                                                      </span>
-
-                                                  </c:when>
-
-
-                                                  <c:when test="${c.status eq 'Occupied'}">
-
-                                                      <span class="badge rounded-pill bg-warning text-dark">
-                                                          Occupied
-                                                      </span>
-
-                                                  </c:when>
-
-
-                                                  <c:otherwise>
-
-                                                      <span class="badge rounded-pill bg-danger">
-                                                          <c:out value="${c.status}" />
-                                                      </span>
-
-                                                  </c:otherwise>
-
-                                              </c:choose>
-
-                                          </td>
-
-
-                                          <td class="text-center">
-
-                                              <a
-                                                  href="${pageContext.request.contextPath}/room?action=viewDetail&id=${c.roomId}"
-                                                  class="btn btn-outline-info btn-sm me-1"
-                                                  >
-                                                  View Details
-                                              </a>
-
-                                              <a
-                                                  href="${pageContext.request.contextPath}/room?action=update&id=${c.roomId}"
-                                                  class="btn btn-outline-warning btn-sm"
-                                                  >
-                                                  Edit
-                                              </a>
-
-                                          </td>
-
-                                      </tr>
+                                    </tr>
 
                                 </c:if>
 

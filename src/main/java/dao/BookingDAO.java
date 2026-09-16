@@ -55,14 +55,21 @@ public class BookingDAO {
         return null;
     }
 
-    public static void main(String[] args) {
-        BookingDAO dao = new BookingDAO();
-        for (Booking b : dao.getAll()) {
-            System.out.println(b);
+    public Booking getLatestBookingByUserId(int userID) {
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT b FROM Booking b "
+                    + "WHERE b.customerID.userID.userID = :userID "
+                    + "ORDER BY b.bookingDate DESC";
+            TypedQuery<Booking> query = em.createQuery(jpql, Booking.class);
+            query.setParameter("userID", userID);
+            query.setMaxResults(1);
+
+            List<Booking> results = query.getResultList();
+            if (!results.isEmpty()) {
+                return results.get(0);
+            }
+        } catch (Exception e) {
         }
-        System.out.println(dao.getById("B01"));
-        for (Booking b : dao.getByUserId("KH01")) {
-            System.out.println(b);
-        }
+        return null;
     }
 }

@@ -34,7 +34,7 @@
                             <input
                                 type="text"
                                 name="fullname"
-                                value="<c:out value='${customerUpdate.fullname}' />"
+                                value="<c:out value='${customerUpdate.fullName}' />"
                                 required
                                 >
 
@@ -160,7 +160,7 @@
                                         value="${n.id}"
                                         ${customerUpdate.nationality.id eq n.id ? 'selected' : ''}
                                         >
-                                        <c:out value="${n.name}" />
+                                        <c:out value="${n.nationalityName}" />
                                     </option>
 
                                 </c:forEach>

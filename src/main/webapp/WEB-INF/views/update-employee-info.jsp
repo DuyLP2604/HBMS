@@ -46,7 +46,7 @@
                                         type="text"
                                         name="id"
                                         class="form-control bg-light"
-                                        value="<c:out value='${employee.id}' />"
+                                        value="<c:out value='${employeeID}' />"
                                         readonly
                                         >
 
@@ -63,7 +63,7 @@
                                         type="text"
                                         name="name"
                                         class="form-control"
-                                        value="<c:out value='${employee.fullname}' />"
+                                        value="<c:out value='${employee.fullName}' />"
                                         required
                                         >
 
@@ -173,11 +173,11 @@
                                             >
 
                                             <option
-                                                value="${h.id}"
-                                                ${h.id eq employee.hotel.id ? 'selected' : ''}
+                                                value="${h.hotelID}"
+                                                ${h.hotelID eq employee.hotelID.hotelID ? 'selected' : ''}
                                                 >
-                                                <c:out value="${h.name}" />
-                                                (<c:out value="${h.id}" />)
+                                                <c:out value="${h.hotelName}" />
+                                                (<c:out value="${h.hotelID}" />)
                                             </option>
 
                                         </c:forEach>

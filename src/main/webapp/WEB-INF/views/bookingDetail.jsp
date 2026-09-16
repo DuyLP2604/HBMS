@@ -31,7 +31,7 @@
 
                                 <p>
                                     <strong>Booking ID:</strong>
-                                    <c:out value="${booking.bookingId}" />
+                                    <c:out value="${booking.bookingID}" />
                                 </p>
 
                             </div>
@@ -51,7 +51,7 @@
                             </span>
 
                             <span class="info-value">
-                                <c:out value="${booking.customer.id}" />
+                                <c:out value="${booking.customerID.customerID}" />
                             </span>
 
                         </div>
@@ -64,7 +64,7 @@
                             </span>
 
                             <span class="info-value">
-                                <c:out value="${booking.customer.fullname}" />
+                                <c:out value="${booking.customerID.fullName}" />
                             </span>
 
                         </div>
@@ -77,7 +77,7 @@
                             </span>
 
                             <span class="info-value">
-                                <c:out value="${booking.room.roomId}" />
+                                <c:out value="${booking.roomID.roomID}" />
                             </span>
 
                         </div>
@@ -130,14 +130,14 @@
                         <c:if test="${booking.bookingStatus == 'Pending'}">
 
                             <a
-                                href="${pageContext.request.contextPath}/booking?action=update&status=Confirmed&id=${booking.bookingId}"
+                                href="${pageContext.request.contextPath}/booking?action=update&status=Confirmed&id=${booking.bookingID}"
                                 class="btn btn-success"
                                 >
                                 Confirm Booking
                             </a>
 
                             <a
-                                href="${pageContext.request.contextPath}/booking?action=update&status=Cancelled&id=${booking.bookingId}"
+                                href="${pageContext.request.contextPath}/booking?action=update&status=Cancelled&id=${booking.bookingID}"
                                 class="btn btn-danger"
                                 >
                                 Cancel Booking

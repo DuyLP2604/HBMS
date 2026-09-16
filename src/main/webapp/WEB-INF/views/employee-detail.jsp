@@ -26,7 +26,7 @@
 
                         <span class="badge bg-white text-dark p-2">
                             ID:
-                            <c:out value="${employee.id}" />
+                            <c:out value="${employee.employeeID}" />
                         </span>
 
                     </div>
@@ -41,7 +41,7 @@
                             </div>
 
                             <div class="col-sm-8 fw-bold">
-                                <c:out value="${employee.fullname}" />
+                                <c:out value="${employee.fullName}" />
                             </div>
 
                         </div>
@@ -124,7 +124,7 @@
                             </div>
 
                             <div class="col-sm-8 fw-bold text-primary">
-                                <c:out value="${employee.hotel.id}" />
+                                <c:out value="${employee.hotelID.hotelID}" />
                             </div>
 
                         </div>

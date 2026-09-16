@@ -117,27 +117,27 @@
                                     >
 
                                     <c:if test="${empty param.searchId
-                                                  or b.bookingId.trim().equalsIgnoreCase(param.searchId.trim())}">
+                                                  or b.bookingID.trim().equalsIgnoreCase(param.searchId.trim())}">
 
                                           <tr>
 
                                               <td>
-                                                  <c:out value="${b.bookingId}" />
+                                                  <c:out value="${b.bookingID}" />
                                               </td>
 
                                               <td>
 
-                                                  <c:out value="${b.customer.fullname}" />
+                                                  <c:out value="${b.customerID.fullName}" />
 
                                                   <br>
 
                                                   Phone:
-                                                  <c:out value="${b.customer.phone}" />
+                                                  <c:out value="${b.customerID.phone}" />
 
                                               </td>
 
                                               <td>
-                                                  <c:out value="${b.room.roomNumber}" />
+                                                  <c:out value="${b.roomID.roomNumber}" />
                                               </td>
 
                                               <td>
@@ -162,14 +162,14 @@
                                               </td>
 
                                               <td>
-                                                  <c:out value="${b.room.price}" />
+                                                  <c:out value="${b.roomID.price}" />
                                                   VND
                                               </td>
 
                                               <td>
 
                                                   <a
-                                                      href="${pageContext.request.contextPath}/booking?action=detail&id=${b.bookingId}"
+                                                      href="${pageContext.request.contextPath}/booking?action=detail&id=${b.bookingID}"
                                                       class="btn btn-outline-info btn-sm"
                                                       >
                                                       View
@@ -304,16 +304,16 @@
                                     >
 
                                     <c:if test="${empty param.searchId
-                                                  or b.bookingId.trim().equalsIgnoreCase(param.searchId.trim())}">
+                                                  or b.bookingID.trim().equalsIgnoreCase(param.searchId.trim())}">
 
                                           <tr>
 
                                               <td>
-                                                  <c:out value="${b.bookingId}" />
+                                                  <c:out value="${b.bookingID}" />
                                               </td>
 
                                               <td>
-                                                  <c:out value="${b.room.roomNumber}" />
+                                                  <c:out value="${b.roomID.roomNumber}" />
                                               </td>
 
                                               <td>
@@ -338,14 +338,14 @@
                                               </td>
 
                                               <td>
-                                                  <c:out value="${b.room.price}" />
+                                                  <c:out value="${b.roomID.price}" />
                                                   VND
                                               </td>
 
                                               <td>
 
                                                   <a
-                                                      href="${pageContext.request.contextPath}/booking?action=detail&id=${b.bookingId}"
+                                                      href="${pageContext.request.contextPath}/booking?action=detail&id=${b.bookingID}"
                                                       class="btn btn-outline-info btn-sm"
                                                       >
                                                       View

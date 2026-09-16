@@ -53,7 +53,7 @@
                             </span>
 
                             <span class="info-value">
-                                <c:out value="${customer.id}" />
+                                <c:out value="${customer.customerID}" />
                             </span>
 
                         </div>
@@ -66,7 +66,7 @@
                             </span>
 
                             <span class="info-value">
-                                <c:out value="${customer.fullname}" />
+                                <c:out value="${customer.fullName}" />
                             </span>
 
                         </div>
@@ -204,7 +204,7 @@
                             </span>
 
                             <span class="info-value">
-                                <c:out value="${customer.nationality.name}" />
+                                <c:out value="${customer.nationalityID.nationalityName}" />
                             </span>
 
                         </div>
