@@ -4,55 +4,42 @@
  */
 package dao;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.ArrayList;
+import entity.Nationality;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import model.Nationality;
-import util.DBContext;
 
 /**
  *
  * @author default
  */
-public class NationalityDAO extends DBContext {
+public class NationalityDAO {
+
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
 
     public List<Nationality> getAll() {
-        List<Nationality> list = new ArrayList<>();
-        String sql = "SELECT * FROM Nationality";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String id = rs.getString("NationalityID");
-                String name = rs.getString("NationalityName");
-                list.add(new Nationality(id, name));
-            }
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT n FROM Nationality n";
+            TypedQuery<Nationality> query = em.createQuery(jpql, Nationality.class);
+            return query.getResultList();
         } catch (Exception e) {
+            System.out.println(e.getMessage());
         }
-        return list;
+        return null;
     }
 
     public Nationality getNationalityById(String nationalityId) {
-        String sql = "SELECT * FROM Nationality WHERE NationalityID = ?";
-
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, nationalityId);
-
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-                return new Nationality(
-                        rs.getString("NationalityID"),
-                        rs.getString("NationalityName")
-                );
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.find(Nationality.class, nationalityId);
+        } catch (Exception e) {
         }
-
         return null;
+    }
+
+    public static void main(String[] args) {
+        NationalityDAO dao = new NationalityDAO();
+        System.out.println(dao.getAll());
     }
 }

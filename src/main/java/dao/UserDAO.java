@@ -4,19 +4,23 @@
  */
 package dao;
 
+import entity.Users;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
 import java.security.MessageDigest;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import model.User;
-import util.DBContext;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 /**
  *
  * @author default
  */
-public class UserDAO extends DBContext {
+//Changed to entity manager
+public class UserDAO {
+
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
 
     public String hashMD5(String password) {
         String hash = "";
@@ -26,98 +30,98 @@ public class UserDAO extends DBContext {
             for (byte b : bytes) {
                 hash += String.format("%02x", b);
             }
-        } catch (Exception e) {
+        } catch (NoSuchAlgorithmException e) {
         }
         return hash;
     }
 
-    public User login(String username, String password) {
-        User user = new User();
-        String sql = "SELECT * FROM USERS WHERE username = ? AND password = ?";
+    public Users login(String username, String password) {
+        EntityManager em = emf.createEntityManager();
+        String jpql = "SELECT u FROM Users u WHERE u.username = :username AND u.password = :password";
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, username);
-            ps.setString(2, hashMD5(password));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                user.setId(rs.getInt("UserID"));
-                user.setUsername(rs.getString("Username"));
-                user.setPassword(rs.getString("Password"));
-                user.setRole(rs.getString("Role"));
+            TypedQuery<Users> query = em.createQuery(jpql, Users.class);
+            query.setParameter("username", username);
+            query.setParameter("password", hashMD5(password));
+
+            List<Users> users = query.getResultList();
+            if (!users.isEmpty()) {
+                return users.get(0);
             }
         } catch (Exception e) {
+        } finally {
+            em.close();
         }
-        return user;
+        return null;
     }
 
     public boolean isUsernameExists(String username) {
-        String sql = "SELECT * FROM USERS WHERE Username = ?";
+        EntityManager em = emf.createEntityManager();
+        String jpql = "SELECT u FROM Users u WHERE u.username = :username";
 
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
+            TypedQuery<Long> query = em.createQuery(jpql, Long.class);
+            query.setParameter("username", username);
 
-            ps.setString(1, username);
-
-            ResultSet rs = ps.executeQuery();
-
-            return rs.next();
+            long count = query.getSingleResult();
+            return count > 0;
 
         } catch (Exception e) {
-            e.printStackTrace();
+        } finally {
+            em.close();
         }
 
         return false;
     }
 
-    public int insertUser(String username,
-            String password,
-            String role) {
-
-        String sql = "INSERT INTO USERS\n"
-                + "                 (Username, Password, Role)\n"
-                + "                 VALUES (?, ?, ?)";
+    public int insertUser(String username, String password, String role) {
+        EntityManager em = emf.createEntityManager();
 
         try {
-            PreparedStatement ps = conn.prepareStatement(
-                    sql,
-                    Statement.RETURN_GENERATED_KEYS);
+            Users newUser = new Users();
+            newUser.setUsername(username);
+            newUser.setPassword(hashMD5(password));
+            newUser.setRole(role);
 
-            ps.setString(1, username);
-            ps.setString(2, hashMD5(password));
-            ps.setString(3, role);
+            em.getTransaction().begin();
 
-            int affectedRows = ps.executeUpdate();
+            em.persist(newUser);
+            em.getTransaction().commit();
+            return newUser.getUserID();
 
-            if (affectedRows > 0) {
-
-                ResultSet rs = ps.getGeneratedKeys();
-
-                if (rs.next()) {
-                    return rs.getInt(1); // UserID vừa tạo
-                }
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
             }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
-
         return -1;
     }
 
- 
     public boolean deleteUser(int userId) {
-        String sql = "DELETE FROM USERS WHERE UserID = ?";
-
+        EntityManager em = emf.createEntityManager();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, userId);
-
-            return ps.executeUpdate() > 0;
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+            em.getTransaction().begin();
+            Users u = em.find(Users.class, userId);
+            if (u != null) {
+                em.remove(u);
+                em.getTransaction().commit();
+                return true;
+            } else {
+                em.getTransaction().rollback();
+                return false;
+            }
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        } finally {
+            if (em != null && em.isOpen()) {
+                em.close();
+            }
         }
-
         return false;
     }
 }

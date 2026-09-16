@@ -4,74 +4,41 @@
  */
 package dao;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.ArrayList;
+import entity.Room;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import model.Hotel;
-import model.Room;
-import util.DBContext;
 
 /**
  *
  * @author Lenovo
  */
-public class RoomDAO extends DBContext {
+public class RoomDAO {
 
-    public List<Room> getAll(){
-        List<Room> list = new ArrayList<>();
-        String sql = "select * from ROOM";
-        
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            HotelDAO hotelDao = new HotelDAO();
-            while (rs.next()){
-                String roomId = rs.getString("RoomID");
-                String roomNumber = rs.getString("RoomNumber");
-                String roomImage = rs.getString("RoomImage");
-                double price = rs.getDouble("Price");
-                String status = rs.getString("Status");
-                String hotelId = rs.getString("HotelID");
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
 
-                Hotel hotel = hotelDao.getHotelById(hotelId);
-                
-                list.add(new Room(roomId, roomNumber, roomImage, price, status, hotel));
-            }
-            
-        } catch (Exception e) {
-        }
-        return list;
-    }
-    
-    public Room getById(String id) {
-        String sql = "select * from ROOM where RoomID = ?";
-        HotelDAO hotelDao = new HotelDAO();
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                String roomId = rs.getString("RoomID");
-                String roomNumber = rs.getString("RoomNumber");
-                String roomImage = rs.getString("RoomImage");
-                double price = rs.getDouble("Price");
-                String status = rs.getString("Status");
-                String hotelId = rs.getString("HotelID");
-
-                Hotel hotel = hotelDao.getHotelById(hotelId);
-                
-                return new Room(roomId, roomNumber, roomImage, price, status, hotel);
-            }
+    public List<Room> getAll() {
+        try (EntityManager em = emf.createEntityManager()) {
+            String jpql = "SELECT r FROM ROOM r";
+            TypedQuery<Room> query = em.createQuery(jpql, Room.class);
+            return query.getResultList();
         } catch (Exception e) {
         }
         return null;
     }
-    
+
+    public Room getById(String id) {
+        try (EntityManager em = emf.createEntityManager()) {
+            return em.find(Room.class, id);
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
     public static void main(String[] args) {
         RoomDAO dao = new RoomDAO();
-//        System.out.print(dao.getById("R01"));
-
         for (Room r : dao.getAll()) {
             System.out.println(r);
         }
