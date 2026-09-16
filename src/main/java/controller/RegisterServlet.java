@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
+import util.flash.Flash;
 
 /**
  *
@@ -39,7 +40,7 @@ public class RegisterServlet extends HttpServlet {
         NationalityDAO ndao = new NationalityDAO();
         List<Nationality> list = ndao.getAll();
         request.setAttribute("nationalities", list);
-        request.getRequestDispatcher("registerCustomer.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/registerCustomer.jsp").forward(request, response);
     }
 
     /**
@@ -83,9 +84,8 @@ public class RegisterServlet extends HttpServlet {
         request.setAttribute("nationalityID", nationalityId);
 
         if (udao.isUsernameExists(username)) {
-
-            request.setAttribute("error", "Username already exists");
-
+            Flash.error(request, "Username already exists.");
+            response.sendRedirect(request.getContextPath() + "/register");
             //reload nationality lists
             request.setAttribute("nationalities", ndao.getAll());
 
@@ -94,10 +94,9 @@ public class RegisterServlet extends HttpServlet {
         }
 
         if ((cccd == null || cccd.trim().isEmpty()) && (passportNumber == null || passportNumber.trim().isEmpty())) {
-            request.setAttribute("error", "Please provide either Identity Number or Passport Number.");
-
+            Flash.error(request, "Please provide either an Identity Number or Passport Number.");
+            response.sendRedirect(request.getContextPath() + "/register");
             request.setAttribute("nationalities", ndao.getAll());
-
             request.getRequestDispatcher("registerCustomer.jsp").forward(request, response);
             return;
         }
@@ -105,8 +104,9 @@ public class RegisterServlet extends HttpServlet {
         int userInsertedID = udao.insertUser(username, password, "Customer");
 
         if (userInsertedID == -1) {
-            response.sendRedirect("error.jsp");
-            return;
+            Flash.error(request, "Unable to create your account. Please try again.");
+
+            response.sendRedirect(request.getContextPath() + "/register");
         }
 
         String customerId = cdao.generateCustomerID();
@@ -126,13 +126,14 @@ public class RegisterServlet extends HttpServlet {
         if (!customerInserted) {
 
             // rollback
-            udao.deleteUser(userInsertedID);
+            Flash.error(request, "Unable to complete registration. Please try again.");
 
+            response.sendRedirect(request.getContextPath() + "/register");
             response.sendRedirect("error.jsp");
             return;
         }
-
-        response.sendRedirect("login.jsp");
+        Flash.success(request, "Account created successfully. You can now log in.");
+        response.sendRedirect(request.getContextPath() + "/login");
 
     }
 

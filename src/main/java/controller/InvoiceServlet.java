@@ -39,7 +39,7 @@ public class InvoiceServlet extends HttpServlet {
         HttpSession session = request.getSession();
         Users u = (Users) session.getAttribute("user");
         if (u == null || "Customer".equals(u.getRole())) {
-            response.sendRedirect("index.jsp");
+            response.sendRedirect("/WEB-INF/views/index.jsp");
             return;
         }
         InvoiceDAO dao = new InvoiceDAO();
@@ -69,7 +69,7 @@ public class InvoiceServlet extends HttpServlet {
                 request.setAttribute("vat", vat);
                 request.setAttribute("grandTotal", grandTotal);
             }
-            request.getRequestDispatcher("invoice.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/invoice.jsp").forward(request, response);
 
             return;
         }
@@ -99,7 +99,7 @@ public class InvoiceServlet extends HttpServlet {
             request.setAttribute("grandTotal", grandTotal);
         }
 
-        request.getRequestDispatcher("checkout.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/checkout.jsp").forward(request, response);
     }
 
     /**

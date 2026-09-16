@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.math.BigDecimal;
 import java.util.List;
+import util.flash.Flash;
 
 /**
  *
@@ -44,31 +45,31 @@ public class EmployeeServlet extends HttpServlet {
         String role = (String) session.getAttribute("role");
 
         if (role == null || (!role.equalsIgnoreCase("Admin") && !role.equalsIgnoreCase("Staff"))) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Bạn không có quyền truy cập!");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page!");
             return;
         }
         String action = request.getParameter("action");
         if (action.equalsIgnoreCase("list")) {
             List<Employee> list = daoEmp.getAllEmployees();
             request.setAttribute("employees", list);
-            request.getRequestDispatcher("employees.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/employees.jsp").forward(request, response);
 
         } else if (action.equalsIgnoreCase("add")) {
             List<Hotel> listHotel = daoHotel.getAllHotels();
             request.setAttribute("listHotel", listHotel);
-            request.getRequestDispatcher("add-employee.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/add-employee.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("update")) {
             String id = request.getParameter("id");
             Employee e = daoEmp.getEmployeeById(id);
             request.setAttribute("employee", e);
             List<Hotel> listHotel = daoHotel.getAllHotels();
             request.setAttribute("listHotel", listHotel);
-            request.getRequestDispatcher("update-employee-info.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/update-employee-info.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("viewDetail")) {
             String id = request.getParameter("id");
             Employee e = daoEmp.getEmployeeById(id);
             request.setAttribute("employee", e);
-            request.getRequestDispatcher("employee-detail.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/employee-detail.jsp").forward(request, response);
         }
     }
 
@@ -111,6 +112,10 @@ public class EmployeeServlet extends HttpServlet {
             e.setHotelID(hotel);
 
             daoEmp.updateEmployee(e);
+            Flash.success(
+                    request,
+                    "Employee information updated successfully."
+            );
         } else {
             // Thêm mới: EMPLOYEE bắt buộc có UserID (JOIN USERS là INNER JOIN)
             // -> cần tạo tài khoản đăng nhập trước.
@@ -137,6 +142,10 @@ public class EmployeeServlet extends HttpServlet {
             e.setUserID(user);
             daoEmp.insertEmployee(e);
         }
+        Flash.success(
+                request,
+                "Employee added successfully."
+        );
         response.sendRedirect("employee?action=list");
     }
 

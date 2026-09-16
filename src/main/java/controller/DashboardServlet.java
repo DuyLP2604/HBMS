@@ -67,7 +67,7 @@ public class DashboardServlet extends HttpServlet {
         request.setAttribute("revenueChart", revenueChart);
         request.setAttribute("customerSource", customerSource);
 
-        request.getRequestDispatcher("dashboard.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/dashboard.jsp").forward(request, response);
 
     }
 

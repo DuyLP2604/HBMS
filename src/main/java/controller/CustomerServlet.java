@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
+import util.flash.Flash;
 
 /**
  *
@@ -35,18 +36,18 @@ public class CustomerServlet extends HttpServlet {
         if (action.equalsIgnoreCase("list")) {
             List<Customer> list = daoCus.getAllCustomers();
             request.setAttribute("customers", list);
-            request.getRequestDispatcher("customers.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/customers.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("add")) {
             List<Nationality> listNat = daoNat.getAll();
             request.setAttribute("listNat", listNat);
-            request.getRequestDispatcher("add-customer.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/add-customer.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("update")) {
             String id = request.getParameter("id");
             Customer cus = daoCus.getCustomerById(id);
             request.setAttribute("customer", cus);
             List<Nationality> listNat = daoNat.getAll();
             request.setAttribute("listNat", listNat);
-            request.getRequestDispatcher("update-customer-info.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/update-customer-info.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("viewDetail")) {
             String id = request.getParameter("id");
             Customer cus = daoCus.getCustomerById(id);
@@ -90,12 +91,9 @@ public class CustomerServlet extends HttpServlet {
                 UserDAO userDAO = new UserDAO();
                 // check if username exist
                 if (userDAO.isUsernameExists(username)) {
-                    request.setAttribute("error", "Username đã tồn tại");
-                    NationalityDAO daoNat = new NationalityDAO();
-                    request.setAttribute("listNat", daoNat.getAll());
-                    // display error message but need to load the nationality list again
-                    request.getRequestDispatcher("add-customer.jsp").forward(request, response);
-                    return;
+                    Flash.error(request, "Username already exists.");
+
+                    response.sendRedirect(request.getContextPath() + "/customer?action=add");
                 }
                 userId = userDAO.insertUser(username, password, "Customer");
             }
@@ -113,10 +111,11 @@ public class CustomerServlet extends HttpServlet {
 
             daoCus.insertCustomer(c);
 
+            Flash.success(request, "Customer added successfully.");
             response.sendRedirect("customer?action=list");
+
         } else if (action.equalsIgnoreCase("update")) {
             String id = request.getParameter("id");
-
             Customer c = new Customer();
             c.setCustomerID(daoCus.generateCustomerID());
             c.setFullName(name);
@@ -128,7 +127,8 @@ public class CustomerServlet extends HttpServlet {
             c.setNationalityID(new Nationality(nationalityId, null));
 
             daoCus.updateCustomer(c);
-            response.sendRedirect("customer?action=list");
+            Flash.success(request, "Customer information updated successfully.");
+            response.sendRedirect("/customer?action=list");
         }
     }
 

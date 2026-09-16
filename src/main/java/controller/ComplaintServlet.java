@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
+import util.flash.Flash;
 
 /**
  *
@@ -36,6 +37,7 @@ public class ComplaintServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
         String action = request.getParameter("action");
         if (action == null) {
             action = "list";
@@ -47,21 +49,20 @@ public class ComplaintServlet extends HttpServlet {
             HttpSession session = request.getSession();
             String role = (String) session.getAttribute("role");
             if (role == null || (!role.equalsIgnoreCase("Admin") && !role.equalsIgnoreCase("Staff"))) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Bạn không có quyền truy cập!");
-                return;
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page!");
             }
             List<Complaint> list = daoCp.getAllComplaints();
             request.setAttribute("complaints", list);
-            request.getRequestDispatcher("complaints.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/complaints.jsp").forward(request, response);
 
         } else if (action.equalsIgnoreCase("add")) {
-            request.getRequestDispatcher("add-complaint.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp").forward(request, response);
 
         } else if (action.equalsIgnoreCase("viewDetail")) {
             String id = request.getParameter("id");
             Complaint cp = daoCp.getComplaintById(Integer.parseInt(id));
             request.setAttribute("complaint", cp);
-            request.getRequestDispatcher("complaint-detail.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp").forward(request, response);
         }
     }
 
@@ -100,7 +101,11 @@ public class ComplaintServlet extends HttpServlet {
             String id = request.getParameter("id");
             String status = request.getParameter("status");
             daoCp.updateStatus(Integer.parseInt(id), status);
-            response.sendRedirect("complaint?action=viewDetail&id=" + id);
+            Flash.success(
+                    request,
+                    "Complaint status updated successfully."
+            );
+            response.sendRedirect("/complaint?action=viewDetail&id=" + id);
         }
     }
 

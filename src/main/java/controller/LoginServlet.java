@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import util.flash.Flash;
 
 /**
  *
@@ -33,7 +34,7 @@ public class LoginServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.getRequestDispatcher("login.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(request, response);
     }
 
     /**
@@ -53,14 +54,15 @@ public class LoginServlet extends HttpServlet {
 
         Users u = udao.login(user, pass);
         if (u.getUserID() == 0) {
-            request.setAttribute("error", "Username or Password invalid!");
-            request.getRequestDispatcher("login.jsp").forward(request, response);
+            Flash.error(request, "Invalid username or password.");
+            response.sendRedirect(request.getContextPath() + "/login");
         } else {
             HttpSession session = request.getSession();
             session.setAttribute("user", u);
             session.setAttribute("role", u.getRole());
             session.setAttribute("userId", u.getUserID());
-            response.sendRedirect("index.jsp");
+            Flash.success(request, "Login successful. Welcome back!");
+            response.sendRedirect(request.getContextPath() + "/home");
         }
     }
 
