@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.List;
+import util.flash.Flash;
 
 /**
  *
@@ -48,13 +49,13 @@ public class ProfileServlet extends HttpServlet {
         if (action.equalsIgnoreCase("view")) {
             Customer customer = cdao.getCustomerByUserId(user.getUserID());
             request.setAttribute("customer", customer);
-            request.getRequestDispatcher("profile.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/profile.jsp").forward(request, response);
         } else if (action.equalsIgnoreCase("update")) {
             Customer customer = cdao.getCustomerByUserId(user.getUserID());
             request.setAttribute("customerUpdate", customer);
             List<Nationality> nationalities = ndao.getAll();
             request.setAttribute("nationalityUpdate", nationalities);
-            request.getRequestDispatcher("updateProfile.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/updateProfile.jsp").forward(request, response);
         }
     }
 
@@ -94,7 +95,9 @@ public class ProfileServlet extends HttpServlet {
 
             cdao.updateCustomer(customer);
 
-            response.sendRedirect("profile?action=view");
+            Flash.success(request, "Profile updated successfully.");
+
+            response.sendRedirect(request.getContextPath() + "/profile?action=view");
         }
     }
 
