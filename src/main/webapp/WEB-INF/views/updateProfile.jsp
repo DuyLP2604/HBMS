@@ -157,10 +157,10 @@
                                     >
 
                                     <option
-                                        value="${n.id}"
-                                        ${customerUpdate.nationality.id eq n.id ? 'selected' : ''}
+                                        value="${n.nationalityID}"
+                                        ${customerUpdate.nationalityID.nationalityID eq n.nationalityID ? 'selected' : ''}
                                         >
-                                        <c:out value="${n.nationalityName}" />
+                                        <c:out value="${n.nationalityName}" />  
                                     </option>
 
                                 </c:forEach>

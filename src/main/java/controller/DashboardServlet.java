@@ -1,97 +1,256 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package controller;
 
 import dao.DashboardDAO;
-import entity.CustomerSource;
-import entity.RevenueChart;
-import java.io.IOException;
-
+import dto.CustomerSource;
+import dto.RevenueChart;
+import entity.Users;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
-/**
- *
- * @author ADMIN
- */
-@WebServlet(name = "DashboardServlet", urlPatterns = {"/dashboard"})
+@WebServlet(
+        name = "DashboardServlet",
+        urlPatterns = {"/dashboard"}
+)
 public class DashboardServlet extends HttpServlet {
 
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
-    /**
-     * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+    protected void doGet(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
-        DashboardDAO dashboarddao = new DashboardDAO();
 
-        String from = request.getParameter("from");
-        String to = request.getParameter("to");
-
-        LocalDate startDate;
-        LocalDate endDate;
-
-        if (from == null || from.isEmpty()
-                || to == null || to.isEmpty()) {
-            startDate = LocalDate.now();
-            endDate = LocalDate.now();
-        } else {
-            startDate = LocalDate.parse(from);
-            endDate = LocalDate.parse(to);
+        if (!hasPermission(request.getSession())) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "You do not have permission "
+                    + "to access the dashboard."
+            );
+            return;
         }
 
-        long revenue = dashboarddao.getRevenueByDateRange(startDate, endDate);
-        int occupied = dashboarddao.getOccupiedRoomsCount(startDate, endDate);
-        int totalRooms = dashboarddao.getTotalRoomsCount();
-        int totalCustomers = dashboarddao.getTotalCustomers();
-        List<RevenueChart> revenueChart = dashboarddao.getRevenueLastTenDays();
-        List<CustomerSource> customerSource = dashboarddao.getCustomerSource();
+        try {
+            LocalDate[] dateRange
+                    = parseDateRange(request);
 
-        request.setAttribute("todayRevenue", revenue);
-        request.setAttribute("occupiedRooms", occupied);
-        request.setAttribute("totalRooms", totalRooms);
-        request.setAttribute("totalCustomers", totalCustomers);
-        request.setAttribute("revenueChart", revenueChart);
-        request.setAttribute("customerSource", customerSource);
+            LocalDate startDate = dateRange[0];
+            LocalDate endDate = dateRange[1];
 
-        request.getRequestDispatcher("/WEB-INF/views/dashboard.jsp").forward(request, response);
+            DashboardDAO dashboardDAO
+                    = new DashboardDAO();
 
+            long revenue
+                    = dashboardDAO.getRevenueByDateRange(
+                            startDate,
+                            endDate
+                    );
+
+            int occupiedRooms
+                    = dashboardDAO.getOccupiedRoomsCount(
+                            startDate,
+                            endDate
+                    );
+
+            int totalRooms
+                    = dashboardDAO.getTotalRoomsCount();
+
+            int totalCustomers
+                    = dashboardDAO.getTotalCustomers();
+
+            List<RevenueChart> revenueChart
+                    = dashboardDAO
+                            .getRevenueLastTenDays();
+
+            List<CustomerSource> customerSource
+                    = dashboardDAO.getCustomerSource();
+
+            request.setAttribute(
+                    "todayRevenue",
+                    revenue
+            );
+
+            /*
+             * Use selectedRevenue in new JSP code.
+             * todayRevenue is temporarily retained so
+             * existing JSP code does not break.
+             */
+            request.setAttribute(
+                    "selectedRevenue",
+                    revenue
+            );
+
+            request.setAttribute(
+                    "occupiedRooms",
+                    occupiedRooms
+            );
+
+            request.setAttribute(
+                    "totalRooms",
+                    totalRooms
+            );
+
+            request.setAttribute(
+                    "totalCustomers",
+                    totalCustomers
+            );
+
+            request.setAttribute(
+                    "revenueChart",
+                    revenueChart
+            );
+
+            request.setAttribute(
+                    "customerSource",
+                    customerSource
+            );
+
+            request.setAttribute(
+                    "from",
+                    startDate.toString()
+            );
+
+            request.setAttribute(
+                    "to",
+                    endDate.toString()
+            );
+
+            request.setAttribute(
+                    "revenueLabel",
+                    createRevenueLabel(
+                            startDate,
+                            endDate
+                    )
+            );
+
+            request.getRequestDispatcher(
+                    "/WEB-INF/views/dashboard.jsp"
+            ).forward(request, response);
+        } catch (IllegalArgumentException exception) {
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    exception.getMessage()
+            );
+        } catch (Exception exception) {
+            throw new ServletException(
+                    "Unable to load dashboard data.",
+                    exception
+            );
+        }
     }
 
-    /**
-     * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
+    /*
+     * Dashboard filtering should normally use GET.
+     * This keeps an existing POST form working if present.
      */
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
+
+        doGet(request, response);
     }
 
-    /**
-     * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
-     */
+    private LocalDate[] parseDateRange(
+            HttpServletRequest request) {
+
+        String fromValue
+                = request.getParameter("from");
+
+        String toValue
+                = request.getParameter("to");
+
+        boolean fromEmpty = fromValue == null
+                || fromValue.trim().isEmpty();
+
+        boolean toEmpty = toValue == null
+                || toValue.trim().isEmpty();
+
+        if (fromEmpty && toEmpty) {
+            LocalDate today = LocalDate.now();
+
+            return new LocalDate[]{
+                today,
+                today
+            };
+        }
+
+        if (fromEmpty || toEmpty) {
+            throw new IllegalArgumentException(
+                    "Both start date and end date are required."
+            );
+        }
+
+        try {
+            LocalDate startDate = LocalDate.parse(
+                    fromValue.trim()
+            );
+
+            LocalDate endDate = LocalDate.parse(
+                    toValue.trim()
+            );
+
+            if (endDate.isBefore(startDate)) {
+                throw new IllegalArgumentException(
+                        "End date must not be before start date."
+                );
+            }
+
+            return new LocalDate[]{
+                startDate,
+                endDate
+            };
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(
+                    "Invalid date format. "
+                    + "Please use YYYY-MM-DD."
+            );
+        }
+    }
+
+    private String createRevenueLabel(
+            LocalDate startDate,
+            LocalDate endDate) {
+
+        if (startDate.equals(endDate)) {
+            return "Revenue for "
+                    + startDate;
+        }
+
+        return "Revenue from "
+                + startDate
+                + " to "
+                + endDate;
+    }
+
+    private boolean hasPermission(HttpSession session) {
+        String role = (String) session.getAttribute(
+                "role"
+        );
+
+        if (role == null) {
+            Users user = (Users) session.getAttribute(
+                    "user"
+            );
+
+            if (user != null) {
+                role = user.getRole();
+            }
+        }
+
+        return "Admin".equalsIgnoreCase(role)
+                || "Staff".equalsIgnoreCase(role);
+    }
+
     @Override
     public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
-
+        return "Displays hotel dashboard statistics.";
+    }
 }

@@ -1,161 +1,396 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package controller;
 
-import dao.HotelDAO;
 import dao.EmployeeDAO;
 import dao.UserDAO;
 import entity.Employee;
-import entity.Hotel;
 import entity.Users;
-import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.List;
 import util.flash.Flash;
 
-/**
- *
- * @author TAN LOI
- */
-@WebServlet(name = "EmployeeServlet", urlPatterns = {"/employee"})
+@WebServlet(
+        name = "EmployeeServlet",
+        urlPatterns = {"/employee"}
+)
 public class EmployeeServlet extends HttpServlet {
 
-    /**
-     * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request
-     * @param response
-     * @throws jakarta.servlet.ServletException
-     * @throws java.io.IOException
-     */
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+    protected void doGet(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
-        EmployeeDAO daoEmp = new EmployeeDAO();
-        HotelDAO daoHotel = new HotelDAO();
-        HttpSession session = request.getSession();
-        String role = (String) session.getAttribute("role");
 
-        if (role == null || (!role.equalsIgnoreCase("Admin") && !role.equalsIgnoreCase("Staff"))) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page!");
+        if (!hasPermission(request.getSession())) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "You do not have permission "
+                    + "to access this page."
+            );
             return;
         }
-        String action = request.getParameter("action");
-        if (action.equalsIgnoreCase("list")) {
-            List<Employee> list = daoEmp.getAllEmployees();
-            request.setAttribute("employees", list);
-            request.getRequestDispatcher("/WEB-INF/views/employees.jsp").forward(request, response);
 
-        } else if (action.equalsIgnoreCase("add")) {
-            List<Hotel> listHotel = daoHotel.getAllHotels();
-            request.setAttribute("listHotel", listHotel);
-            request.getRequestDispatcher("/WEB-INF/views/add-employee.jsp").forward(request, response);
-        } else if (action.equalsIgnoreCase("update")) {
-            String id = request.getParameter("id");
-            Employee e = daoEmp.getEmployeeById(id);
-            request.setAttribute("employee", e);
-            List<Hotel> listHotel = daoHotel.getAllHotels();
-            request.setAttribute("listHotel", listHotel);
-            request.getRequestDispatcher("/WEB-INF/views/update-employee-info.jsp").forward(request, response);
-        } else if (action.equalsIgnoreCase("viewDetail")) {
-            String id = request.getParameter("id");
-            Employee e = daoEmp.getEmployeeById(id);
-            request.setAttribute("employee", e);
-            request.getRequestDispatcher("/WEB-INF/views/employee-detail.jsp").forward(request, response);
+        EmployeeDAO employeeDAO = new EmployeeDAO();
+
+        String action = request.getParameter("action");
+
+        if (action == null || action.trim().isEmpty()) {
+            action = "list";
+        }
+
+        switch (action) {
+            case "list":
+                request.setAttribute(
+                        "employees",
+                        employeeDAO.getAllEmployees()
+                );
+
+                request.getRequestDispatcher(
+                        "/WEB-INF/views/employees.jsp"
+                ).forward(request, response);
+                break;
+
+            case "add":
+                request.getRequestDispatcher(
+                        "/WEB-INF/views/add-employee.jsp"
+                ).forward(request, response);
+                break;
+
+            case "update":
+                showUpdatePage(
+                        request,
+                        response,
+                        employeeDAO
+                );
+                break;
+
+            case "viewDetail":
+                showEmployeeDetail(
+                        request,
+                        response,
+                        employeeDAO
+                );
+                break;
+
+            default:
+                response.sendError(
+                        HttpServletResponse.SC_BAD_REQUEST,
+                        "Invalid employee action."
+                );
+                break;
         }
     }
 
-    /**
-     * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request
-     * @param response
-     * @throws jakarta.servlet.ServletException
-     * @throws java.io.IOException
-     */
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
         request.setCharacterEncoding("UTF-8");
-        String action = request.getParameter("action");
-        EmployeeDAO daoEmp = new EmployeeDAO();
 
-        String id = request.getParameter("id");
-        String name = request.getParameter("name");
-        String position = request.getParameter("position");
-        BigDecimal salary = BigDecimal.valueOf(Double.parseDouble(request.getParameter("salary")));
-        String shift = request.getParameter("shift");
-        String address = request.getParameter("address");
-        String phone = request.getParameter("phone");
-        String hotelId = request.getParameter("hotelId");
-
-        Hotel hotel = new Hotel();
-        hotel.setHotelID(hotelId);
-
-        if ("update".equals(action)) {
-            // Không đổi tài khoản đăng nhập khi cập nhật -> chỉ cần Hotel để lấy HotelID
-            Employee e = new Employee();
-            e.setEmployeeID(id);
-            e.setFullName(name);
-            e.setPosition(position);
-            e.setSalary(salary);
-            e.setShift(shift);
-            e.setAddress(address);
-            e.setPhone(phone);
-            e.setHotelID(hotel);
-
-            daoEmp.updateEmployee(e);
-            Flash.success(
-                    request,
-                    "Employee information updated successfully."
+        if (!hasPermission(request.getSession())) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "You do not have permission "
+                    + "to perform this action."
             );
-        } else {
-            // Thêm mới: EMPLOYEE bắt buộc có UserID (JOIN USERS là INNER JOIN)
-            // -> cần tạo tài khoản đăng nhập trước.
-            // TODO: add-employee.jsp cần có input "username" và "password".
-            String username = request.getParameter("username");
-            String password = request.getParameter("password");
-
-            UserDAO daoUser = new UserDAO();
-            int userId = daoUser.insertUser(username, password, "Staff");
-
-            Users user = new Users();
-            user.setUserID(userId);
-
-            Employee e = new Employee();
-            // id, name, position, salary, shift, address, phone, hotel, user
-            e.setEmployeeID(id);
-            e.setFullName(name);
-            e.setPosition(position);
-            e.setSalary(salary);
-            e.setShift(shift);
-            e.setAddress(address);
-            e.setPhone(phone);
-            e.setHotelID(hotel);
-            e.setUserID(user);
-            daoEmp.insertEmployee(e);
+            return;
         }
+
+        String action = request.getParameter("action");
+
+        if (action == null || action.trim().isEmpty()) {
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    "Employee action is required."
+            );
+            return;
+        }
+
+        try {
+            if ("update".equalsIgnoreCase(action)) {
+                updateEmployee(request);
+            } else if ("add".equalsIgnoreCase(action)) {
+                addEmployee(request);
+            } else {
+                response.sendError(
+                        HttpServletResponse.SC_BAD_REQUEST,
+                        "Invalid employee action."
+                );
+                return;
+            }
+
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/employee?action=list"
+            );
+        } catch (IllegalArgumentException exception) {
+            response.sendError(
+                    HttpServletResponse.SC_BAD_REQUEST,
+                    exception.getMessage()
+            );
+        } catch (Exception exception) {
+            throw new ServletException(
+                    "Unable to process employee information.",
+                    exception
+            );
+        }
+    }
+
+    private void showUpdatePage(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            EmployeeDAO employeeDAO)
+            throws ServletException, IOException {
+
+        String employeeID = requireParameter(
+                request,
+                "id",
+                "Employee ID is required."
+        );
+
+        Employee employee
+                = employeeDAO.getEmployeeById(employeeID);
+
+        if (employee == null) {
+            response.sendError(
+                    HttpServletResponse.SC_NOT_FOUND,
+                    "Employee not found."
+            );
+            return;
+        }
+
+        request.setAttribute("employee", employee);
+
+        request.getRequestDispatcher(
+                "/WEB-INF/views/update-employee-info.jsp"
+        ).forward(request, response);
+    }
+
+    private void showEmployeeDetail(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            EmployeeDAO employeeDAO)
+            throws ServletException, IOException {
+
+        String employeeID = requireParameter(
+                request,
+                "id",
+                "Employee ID is required."
+        );
+
+        Employee employee
+                = employeeDAO.getEmployeeById(employeeID);
+
+        if (employee == null) {
+            response.sendError(
+                    HttpServletResponse.SC_NOT_FOUND,
+                    "Employee not found."
+            );
+            return;
+        }
+
+        request.setAttribute("employee", employee);
+
+        request.getRequestDispatcher(
+                "/WEB-INF/views/employee-detail.jsp"
+        ).forward(request, response);
+    }
+
+    private void updateEmployee(
+            HttpServletRequest request) {
+
+        EmployeeDAO employeeDAO = new EmployeeDAO();
+
+        String employeeID = requireParameter(
+                request,
+                "id",
+                "Employee ID is required."
+        );
+
+        Employee employee
+                = employeeDAO.getEmployeeById(employeeID);
+
+        if (employee == null) {
+            throw new IllegalArgumentException(
+                    "Employee not found."
+            );
+        }
+
+        /*
+         * Update the existing employee instead of creating
+         * a new object. This preserves the linked UserID.
+         */
+        fillEmployeeInformation(request, employee);
+
+        employeeDAO.updateEmployee(employee);
+
+        Flash.success(
+                request,
+                "Employee information updated successfully."
+        );
+    }
+
+    private void addEmployee(
+            HttpServletRequest request) {
+
+        String employeeID = requireParameter(
+                request,
+                "id",
+                "Employee ID is required."
+        );
+
+        String username = requireParameter(
+                request,
+                "username",
+                "Username is required."
+        );
+
+        String password = requireParameter(
+                request,
+                "password",
+                "Password is required."
+        );
+
+        EmployeeDAO employeeDAO = new EmployeeDAO();
+
+        if (employeeDAO.getEmployeeById(employeeID) != null) {
+            throw new IllegalArgumentException(
+                    "Employee ID already exists."
+            );
+        }
+
+        Users user = new Users();
+        user.setUsername(username);
+
+        user.setPassword(password);
+        user.setRole("Staff");
+
+        Employee employee = new Employee();
+        employee.setEmployeeID(employeeID);
+
+        fillEmployeeInformation(
+                request,
+                employee
+        );
+
+        employeeDAO.insertEmployeeWithUser(
+                employee,
+                user
+        );
+
         Flash.success(
                 request,
                 "Employee added successfully."
         );
-        response.sendRedirect("employee?action=list");
     }
 
-    /**
-     * Returns a short description of the servlet.
-     *
-     * @return
-     */
+    private void fillEmployeeInformation(
+            HttpServletRequest request,
+            Employee employee) {
+
+        String fullName = requireParameter(
+                request,
+                "name",
+                "Employee name is required."
+        );
+
+        String position = requireParameter(
+                request,
+                "position",
+                "Employee position is required."
+        );
+
+        BigDecimal salary = parseSalary(
+                request.getParameter("salary")
+        );
+
+        String shift = normalizeOptional(
+                request.getParameter("shift")
+        );
+
+        String address = normalizeOptional(
+                request.getParameter("address")
+        );
+
+        String phone = normalizeOptional(
+                request.getParameter("phone")
+        );
+
+        employee.setFullName(fullName);
+        employee.setPosition(position);
+        employee.setSalary(salary);
+        employee.setShift(shift);
+        employee.setAddress(address);
+        employee.setPhone(phone);
+    }
+
+    private BigDecimal parseSalary(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            BigDecimal salary = new BigDecimal(
+                    value.trim()
+            );
+
+            if (salary.compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException(
+                        "Salary must not be negative."
+                );
+            }
+
+            return salary;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(
+                    "Salary must be a valid number."
+            );
+        }
+    }
+
+    private String requireParameter(
+            HttpServletRequest request,
+            String parameterName,
+            String errorMessage) {
+
+        String value = request.getParameter(
+                parameterName
+        );
+
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException(
+                    errorMessage
+            );
+        }
+
+        return value.trim();
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        return value.trim();
+    }
+
+    private boolean hasPermission(HttpSession session) {
+        String role = (String) session.getAttribute("role");
+
+        return role != null
+                && ("Admin".equalsIgnoreCase(role)
+                || "Staff".equalsIgnoreCase(role));
+    }
+
     @Override
     public String getServletInfo() {
-        return "Short description";
+        return "Handles employee management.";
     }
 }

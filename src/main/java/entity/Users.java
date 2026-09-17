@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package entity;
 
 import jakarta.persistence.Basic;
@@ -12,55 +8,94 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
-import jakarta.xml.bind.annotation.XmlTransient;
 import java.io.Serializable;
-import java.util.Collection;
 
-/**
- *
- * @author Asus
- */
 @Entity
 @Table(name = "USERS")
 @XmlRootElement
 @NamedQueries({
-    @NamedQuery(name = "Users.findAll", query = "SELECT u FROM Users u"),
-    @NamedQuery(name = "Users.findByUserID", query = "SELECT u FROM Users u WHERE u.userID = :userID"),
-    @NamedQuery(name = "Users.findByUsername", query = "SELECT u FROM Users u WHERE u.username = :username"),
-    @NamedQuery(name = "Users.findByPassword", query = "SELECT u FROM Users u WHERE u.password = :password"),
-    @NamedQuery(name = "Users.findByRole", query = "SELECT u FROM Users u WHERE u.role = :role")})
+    @NamedQuery(
+        name = "Users.findAll",
+        query = "SELECT u FROM Users u"
+    ),
+    @NamedQuery(
+        name = "Users.findByUserID",
+        query = "SELECT u FROM Users u "
+              + "WHERE u.userID = :userID"
+    ),
+    @NamedQuery(
+        name = "Users.findByUsername",
+        query = "SELECT u FROM Users u "
+              + "WHERE u.username = :username"
+    ),
+    @NamedQuery(
+        name = "Users.findByRole",
+        query = "SELECT u FROM Users u "
+              + "WHERE u.role = :role"
+    )
+})
 public class Users implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Basic(optional = false)
-    @Column(name = "UserID")
+    @Column(
+        name = "UserID",
+        nullable = false
+    )
     private Integer userID;
+
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 50)
-    @Column(name = "Username")
+    @Column(
+        name = "Username",
+        nullable = false,
+        unique = true,
+        length = 50
+    )
     private String username;
+
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 255)
-    @Column(name = "Password")
+    @Column(
+        name = "Password",
+        nullable = false,
+        length = 255
+    )
     private String password;
+
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 20)
-    @Column(name = "Role")
+    @Column(
+        name = "Role",
+        nullable = false,
+        length = 20
+    )
     private String role;
-    @OneToMany(mappedBy = "userID")
-    private Collection<Employee> employeeCollection;
-    @OneToMany(mappedBy = "userID")
-    private Collection<Customer> customerCollection;
+
+    /*
+     * mappedBy trỏ tới thuộc tính userID
+     * trong Employee.java.
+     */
+    @OneToOne(mappedBy = "userID")
+    private Employee employee;
+
+    /*
+     * mappedBy trỏ tới thuộc tính userID
+     * trong Customer.java.
+     */
+    @OneToOne(mappedBy = "userID")
+    private Customer customer;
 
     public Users() {
     }
@@ -69,7 +104,22 @@ public class Users implements Serializable {
         this.userID = userID;
     }
 
-    public Users(Integer userID, String username, String password, String role) {
+    public Users(
+            String username,
+            String password,
+            String role) {
+
+        this.username = username;
+        this.password = password;
+        this.role = role;
+    }
+
+    public Users(
+            Integer userID,
+            String username,
+            String password,
+            String role) {
+
         this.userID = userID;
         this.username = username;
         this.password = password;
@@ -108,47 +158,46 @@ public class Users implements Serializable {
         this.role = role;
     }
 
-    @XmlTransient
-    public Collection<Employee> getEmployeeCollection() {
-        return employeeCollection;
+    public Employee getEmployee() {
+        return employee;
     }
 
-    public void setEmployeeCollection(Collection<Employee> employeeCollection) {
-        this.employeeCollection = employeeCollection;
+    public void setEmployee(Employee employee) {
+        this.employee = employee;
     }
 
-    @XmlTransient
-    public Collection<Customer> getCustomerCollection() {
-        return customerCollection;
+    public Customer getCustomer() {
+        return customer;
     }
 
-    public void setCustomerCollection(Collection<Customer> customerCollection) {
-        this.customerCollection = customerCollection;
+    public void setCustomer(Customer customer) {
+        this.customer = customer;
     }
 
     @Override
     public int hashCode() {
-        int hash = 0;
-        hash += (userID != null ? userID.hashCode() : 0);
-        return hash;
+        return userID != null ? userID.hashCode() : 0;
     }
 
     @Override
     public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Users)) {
             return false;
         }
+
         Users other = (Users) object;
-        if ((this.userID == null && other.userID != null) || (this.userID != null && !this.userID.equals(other.userID))) {
+
+        if (userID == null && other.userID != null) {
             return false;
         }
-        return true;
+
+        return userID == null
+                || userID.equals(other.userID);
     }
 
     @Override
     public String toString() {
-        return "entity.Users[ userID=" + userID + " ]";
+        return "entity.Users[userID="
+                + userID + "]";
     }
-
 }

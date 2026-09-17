@@ -3,8 +3,6 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Filter.java to edit this template
  */
 package filter;
-
-import entity.Users;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -26,7 +24,40 @@ import entity.Users;
  *
  * @author default
  */
-@WebFilter(filterName = "CheckLoginFilter", urlPatterns = {"/customer", "/complaint", "/employee", "/profile", "/booking", "/dashboard", "/invoice", "/profile", "/room", "/service"})
+@WebFilter(
+        filterName = "CheckLoginFilter",
+        urlPatterns = {
+            /*
+             * Customer booking actions.
+             * /room-types is intentionally NOT included
+             * because guests may search and view room types.
+             */
+            "/booking-cart",
+            "/booking-cart/*",
+            "/checkout",
+            "/payment",
+            "/my-bookings",
+            "/my-bookings/*",
+
+            /*
+             * Existing protected pages.
+             */
+            "/customer",
+            "/complaint",
+            "/employee",
+            "/profile",
+            "/booking",
+            "/dashboard",
+            "/invoice",
+            "/room",
+            "/service",
+
+            /*
+             * Staff pages.
+             */
+            "/staff/*"
+        }
+)
 public class CheckLoginFilter implements Filter {
 
     private static final boolean debug = true;
@@ -101,19 +132,37 @@ public class CheckLoginFilter implements Filter {
      * @exception IOException if an input/output error occurs
      * @exception ServletException if a servlet error occurs
      */
-    public void doFilter(ServletRequest request, ServletResponse response,
+    public void doFilter(
+            ServletRequest servletRequest,
+            ServletResponse servletResponse,
             FilterChain chain)
             throws IOException, ServletException {
 
-        HttpServletRequest req = (HttpServletRequest) request;
-        HttpServletResponse res = (HttpServletResponse) response;
-        HttpSession session = req.getSession();
-        Users u = (Users) session.getAttribute("user");
-        if (u == null) {
-            res.sendRedirect(req.getContextPath() + "/login");
-        } else {
-            chain.doFilter(request, response);
+        HttpServletRequest request
+                = (HttpServletRequest) servletRequest;
+
+        HttpServletResponse response
+                = (HttpServletResponse) servletResponse;
+
+        HttpSession session
+                = request.getSession(false);
+
+        Users user = session == null
+                ? null
+                : (Users) session.getAttribute("user");
+
+        if (user == null) {
+            response.sendRedirect(
+                    request.getContextPath() + "/login"
+            );
+
+            return;
         }
+
+        chain.doFilter(
+                servletRequest,
+                servletResponse
+        );
     }
 
     /**

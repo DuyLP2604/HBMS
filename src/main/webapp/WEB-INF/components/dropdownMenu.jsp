@@ -33,7 +33,7 @@
                             Profile
                         </a>
 
-                        <a href="${pageContext.request.contextPath}/booking?action=list">
+                        <a href="${pageContext.request.contextPath}/my-bookings">                   
                             My Bookings
                         </a>
 
@@ -52,6 +52,14 @@
 
                         <a href="${pageContext.request.contextPath}/customer?action=add">
                             Add customer
+                        </a>
+
+                        <a href="${pageContext.request.contextPath}/staff/bookings" >
+                            Room Assignment
+                        </a>
+
+                        <a href="${pageContext.request.contextPath}/staff/stays" >
+                            Guest Stays
                         </a>
 
                         <a href="${pageContext.request.contextPath}/booking?action=list">
