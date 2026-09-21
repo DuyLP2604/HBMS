@@ -43,40 +43,6 @@
 
                     </c:if>
 
-
-                    <c:if test="${sessionScope.user.role eq 'Staff'}">
-
-                        <a href="${pageContext.request.contextPath}/home">
-                            Home
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/customer?action=add">
-                            Add customer
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/staff/bookings" >
-                            Room Assignment
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/staff/stays" >
-                            Guest Stays
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/booking?action=list">
-                            Manage Bookings
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/room">
-                            Manage Rooms
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/invoice">
-                            Invoice
-                        </a>
-
-                    </c:if>
-
-
                     <c:if test="${sessionScope.user.role eq 'Admin'}">
 
                         <a href="${pageContext.request.contextPath}/home">

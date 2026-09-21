@@ -14,6 +14,7 @@ public class RoomTypeAvailability implements Serializable {
     private long totalActiveRooms;
     private long reservedRooms;
     private long availableRooms;
+    private String roomTypeImage;
 
     public RoomTypeAvailability() {
     }
@@ -23,6 +24,7 @@ public class RoomTypeAvailability implements Serializable {
             String typeName,
             int capacity,
             BigDecimal price,
+            String roomTypeImage,
             long totalActiveRooms,
             long reservedRooms,
             long availableRooms) {
@@ -31,6 +33,7 @@ public class RoomTypeAvailability implements Serializable {
         this.typeName = typeName;
         this.capacity = capacity;
         this.price = price;
+        this.roomTypeImage = roomTypeImage;
         this.totalActiveRooms = totalActiveRooms;
         this.reservedRooms = reservedRooms;
         this.availableRooms = availableRooms;
@@ -96,13 +99,22 @@ public class RoomTypeAvailability implements Serializable {
         return availableRooms > 0;
     }
 
+    public String getRoomTypeImage() {
+        return roomTypeImage;
+    }
+
+    public void setRoomTypeImage(String roomTypeImage) {
+        this.roomTypeImage = roomTypeImage;
+    }
+
     @Override
     public String toString() {
         return "RoomTypeAvailability{"
-                + "roomTypeID=" + roomTypeID
-                + ", typeName=" + typeName
+                + "roomTypeID='" + roomTypeID + '\''
+                + ", typeName='" + typeName + '\''
                 + ", capacity=" + capacity
                 + ", price=" + price
+                + ", roomTypeImage='" + roomTypeImage + '\''
                 + ", totalActiveRooms=" + totalActiveRooms
                 + ", reservedRooms=" + reservedRooms
                 + ", availableRooms=" + availableRooms

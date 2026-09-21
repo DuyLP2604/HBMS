@@ -87,37 +87,41 @@
 
         </div>
 
-
         <!-- Step 2 -->
-        <div
-            id="step2"
-            class="register-step-hidden"
-            >
+        <div id="step2" class="register-step-hidden">
 
             <div class="step-indicator">
-
-                <span class="done">
-                    ✓
-                </span>
-
-                <span class="active">
-                    2
-                </span>
-
+                <span class="done">✓</span>
+                <span class="active">2</span>
             </div>
 
+            <h3>Personal Information</h3>
 
-            <h3>
-                Personal Information
-            </h3>
+            <!-- Select nationality first -->
+            <label for="nationalityID">Nationality</label>
 
+            <select
+                id="nationalityID"
+                name="nationalityID"
+                onchange="handleNationalityChange()"
+                required
+                >
+                <option value="">-- Select Nationality --</option>
+
+                <c:forEach var="n" items="${nationalities}">
+                    <option
+                        value="${n.nationalityID}"
+                        data-nationality-name="${n.nationalityName}"
+                        ${nationalityID == n.nationalityID ? 'selected' : ''}
+                        >
+                        <c:out value="${n.nationalityName}" />
+                    </option>
+                </c:forEach>
+            </select>
 
             <div class="form-grid">
 
-                <label for="fullname">
-                    Full Name
-                </label>
-
+                <label for="fullname">Full Name</label>
                 <input
                     type="text"
                     id="fullname"
@@ -125,23 +129,7 @@
                     required
                     >
 
-
-                <label for="phone">
-                    Phone Number
-                </label>
-
-                <input
-                    type="text"
-                    id="phone"
-                    name="phone"
-                    required
-                    >
-
-
-                <label for="email">
-                    Email
-                </label>
-
+                <label for="email">Email</label>
                 <input
                     type="email"
                     id="email"
@@ -149,41 +137,22 @@
                     required
                     >
 
+                <div id="phoneGroup">
+                    <label for="phone">
+                        Phone Number
+                        <span id="phoneRequiredMark">*</span>
+                    </label>
 
-                <label for="nationalityID">
-                    Nationality
-                </label>
-
-                <select
-                    id="nationalityID"
-                    name="nationalityID"
-                    required
-                    >
-
-                    <option value="">
-                        -- Select Nationality --
-                    </option>
-
-                    <c:forEach
-                        var="n"
-                        items="${nationalities}"
+                    <input
+                        type="text"
+                        id="phone"
+                        name="phone"
                         >
-
-                        <option value="${n.nationalityID}">
-                            <c:out value="${n.nationalityName}" />
-                        </option>
-
-                    </c:forEach>
-
-                </select>
+                </div>
 
             </div>
 
-
-            <label for="address">
-                Address
-            </label>
-
+            <label for="address">Address</label>
             <input
                 type="text"
                 id="address"
@@ -191,31 +160,29 @@
                 required
                 >
 
+            <!-- Shown only for Vietnamese users -->
+            <div id="cccdGroup" class="register-step-hidden">
+                <label for="cccd">Identity Number (CCCD)</label>
 
-            <label for="cccd">
-                Identity Number (Vietnamese)
-            </label>
+                <input
+                    type="text"
+                    id="cccd"
+                    name="cccd"
+                    >
+            </div>
 
-            <input
-                type="text"
-                id="cccd"
-                name="cccd"
-                >
+            <!-- Shown only for foreign users -->
+            <div id="passportGroup" class="register-step-hidden">
+                <label for="passportNumber">Passport Number</label>
 
-
-            <label for="passportNumber">
-                Passport Number
-            </label>
-
-            <input
-                type="text"
-                id="passportNumber"
-                name="passportNumber"
-                >
-
+                <input
+                    type="text"
+                    id="passportNumber"
+                    name="passportNumber"
+                    >
+            </div>
 
             <div class="btn-group">
-
                 <button
                     type="button"
                     class="back-btn"
@@ -230,7 +197,6 @@
                     >
                     Register
                 </button>
-
             </div>
 
         </div>

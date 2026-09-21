@@ -83,6 +83,10 @@ public class RoomType implements Serializable {
     @OneToMany(mappedBy = "roomTypeID")
     private Collection<BookingDetail> bookingDetailCollection;
 
+    @Size(max = 255)
+    @Column(name = "RoomTypeImage", length = 255)
+    private String roomTypeImage;
+
     public RoomType() {
     }
 
@@ -140,6 +144,14 @@ public class RoomType implements Serializable {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getRoomTypeImage() {
+        return roomTypeImage;
+    }
+
+    public void setRoomTypeImage(String roomTypeImage) {
+        this.roomTypeImage = roomTypeImage;
     }
 
     @XmlTransient

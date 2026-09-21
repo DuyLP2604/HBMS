@@ -150,8 +150,7 @@ public class RoomTypeDAO {
         return availableTypes;
     }
 
-    private RoomTypeAvailability mapAvailability(
-            Object[] row) {
+    private RoomTypeAvailability mapAvailability(Object[] row) {
 
         String roomTypeID = row[0] == null
                 ? null
@@ -162,16 +161,23 @@ public class RoomTypeDAO {
                 : row[1].toString();
 
         int capacity = toInt(row[2]);
+
         BigDecimal price = toBigDecimal(row[3]);
-        long totalActiveRooms = toLong(row[4]);
-        long reservedRooms = toLong(row[5]);
-        long availableRooms = toLong(row[6]);
+
+        String roomTypeImage = row[4] == null
+                ? null
+                : row[4].toString();
+
+        long totalActiveRooms = toLong(row[5]);
+        long reservedRooms = toLong(row[6]);
+        long availableRooms = toLong(row[7]);
 
         return new RoomTypeAvailability(
                 roomTypeID,
                 typeName,
                 capacity,
                 price,
+                roomTypeImage,
                 totalActiveRooms,
                 reservedRooms,
                 availableRooms
@@ -222,5 +228,5 @@ public class RoomTypeDAO {
 
         return new BigDecimal(value.toString());
     }
-    
+
 }

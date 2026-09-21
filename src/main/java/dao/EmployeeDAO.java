@@ -217,6 +217,62 @@ public class EmployeeDAO {
         }
     }
 
+    public boolean isReceptionistByUserId(int userID) {
+        EntityManager em = EMF.createEntityManager();
+
+        try {
+            Long count = em.createQuery(
+                    "SELECT COUNT(e) "
+                    + "FROM Employee e "
+                    + "WHERE e.userID.userID = :userID "
+                    + "AND LOWER(e.position) = :position",
+                    Long.class
+            )
+                    .setParameter("userID", userID)
+                    .setParameter("position", "receptionist")
+                    .getSingleResult();
+
+            return count != null && count > 0;
+
+        } finally {
+            if (em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
+    public Employee getByUserId(int userID) {
+        EntityManager em = EMF.createEntityManager();
+
+        try {
+            TypedQuery<Employee> query = em.createQuery(
+                    "SELECT e FROM Employee e "
+                    + "WHERE e.userID.userID = :userID",
+                    Employee.class
+            );
+
+            query.setParameter("userID", userID);
+
+            List<Employee> result = query.getResultList();
+
+            if (result.isEmpty()) {
+                return null;
+            }
+
+            return result.get(0);
+
+        } catch (Exception ex) {
+            throw new RuntimeException(
+                    "Unable to find employee information.",
+                    ex
+            );
+        } finally {
+            if (em.isOpen()) {
+                em.close();
+            }
+        }
+    }
+
     private void validateEmployee(Employee employee) {
         if (employee == null) {
             throw new IllegalArgumentException(

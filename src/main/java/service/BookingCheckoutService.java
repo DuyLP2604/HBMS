@@ -306,22 +306,23 @@ public class BookingCheckoutService {
         @SuppressWarnings("unchecked")
         List<Object[]> rows = query.getResultList();
 
-        Map<String, Long> result
-                = new HashMap<>();
+        Map<String, Long> result = new HashMap<>();
 
         for (Object[] row : rows) {
-            String roomTypeID
-                    = row[0].toString().trim();
+            String roomTypeID = row[0] == null
+                    ? null
+                    : row[0].toString().trim();
 
-            long availableRooms
-                    = row[6] == null
-                            ? 0L
-                            : ((Number) row[6]).longValue();
+            long availableRooms = row[7] == null
+                    ? 0L
+                    : ((Number) row[7]).longValue();
 
-            result.put(
-                    roomTypeID,
-                    availableRooms
-            );
+            if (roomTypeID != null) {
+                result.put(
+                        roomTypeID,
+                        availableRooms
+                );
+            }
         }
 
         return result;

@@ -1,5 +1,6 @@
 package controller;
 
+import dao.EmployeeDAO;
 import entity.BookingDetail;
 import entity.Users;
 import jakarta.servlet.ServletException;
@@ -25,6 +26,9 @@ public class RoomAssignmentServlet extends HttpServlet {
     private final RoomAssignmentService assignmentService
             = new RoomAssignmentService();
 
+    private final EmployeeDAO employeeDAO
+            = new EmployeeDAO();
+
     @Override
     protected void doPost(
             HttpServletRequest request,
@@ -33,44 +37,53 @@ public class RoomAssignmentServlet extends HttpServlet {
 
         request.setCharacterEncoding("UTF-8");
 
-        HttpSession session
-                = request.getSession(false);
+        HttpSession session = request.getSession(false);
 
         Users user = session == null
                 ? null
                 : (Users) session.getAttribute("user");
 
-        if (user == null
-                || !hasStaffPermission(session, user)) {
-
+        // User has not logged in
+        if (user == null) {
             response.sendError(
-                    HttpServletResponse.SC_FORBIDDEN,
-                    "You do not have permission to perform this action."
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "You must log in to perform this action."
             );
-
             return;
         }
 
-        String bookingID
-                = request.getParameter("bookingID");
+        // Only receptionists can assign rooms
+        if (!isReceptionist(user)) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Only receptionists can assign rooms."
+            );
+            return;
+        }
 
-        if (bookingID == null
-                || bookingID.trim().isEmpty()) {
+        String bookingID = trimParameter(
+                request.getParameter("bookingID")
+        );
 
+        if (bookingID == null || bookingID.isEmpty()) {
             response.sendError(
                     HttpServletResponse.SC_BAD_REQUEST,
                     "Booking ID is required."
             );
-
             return;
         }
 
         try {
             List<BookingDetail> details
-                    = assignmentService
-                            .getBookingDetails(
-                                    bookingID.trim()
-                            );
+                    = assignmentService.getBookingDetails(
+                            bookingID
+                    );
+
+            if (details == null || details.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "No booking details were found."
+                );
+            }
 
             Map<Integer, List<String>> selectedRooms
                     = new HashMap<>();
@@ -85,19 +98,28 @@ public class RoomAssignmentServlet extends HttpServlet {
                                 parameterName
                         );
 
-                List<String> values
-                        = roomIDs == null
-                        ? new ArrayList<>()
-                        : Arrays.asList(roomIDs);
+                List<String> roomValues;
+
+                if (roomIDs == null) {
+                    roomValues = new ArrayList<>();
+                } else {
+                    roomValues = new ArrayList<>(
+                            Arrays.asList(roomIDs)
+                    );
+                }
 
                 selectedRooms.put(
                         detail.getBookingDetailID(),
-                        values
+                        roomValues
                 );
             }
 
+            /*
+             * The user ID is taken from the authenticated session.
+             * It is not taken from a form parameter.
+             */
             assignmentService.assignRooms(
-                    bookingID.trim(),
+                    bookingID,
                     selectedRooms,
                     user.getUserID()
             );
@@ -111,6 +133,13 @@ public class RoomAssignmentServlet extends HttpServlet {
                     request.getContextPath()
                     + "/staff/bookings"
             );
+
+        } catch (SecurityException ex) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    ex.getMessage()
+            );
+
         } catch (IllegalArgumentException
                 | IllegalStateException ex) {
 
@@ -124,6 +153,7 @@ public class RoomAssignmentServlet extends HttpServlet {
                     + "/staff/bookings?bookingID="
                     + bookingID
             );
+
         } catch (Exception ex) {
             ex.printStackTrace();
 
@@ -140,18 +170,29 @@ public class RoomAssignmentServlet extends HttpServlet {
         }
     }
 
-    private boolean hasStaffPermission(
-            HttpSession session,
-            Users user) {
-
-        String role
-                = (String) session.getAttribute("role");
-
-        if (role == null) {
-            role = user.getRole();
+    /**
+     * Checks whether the logged-in user is a receptionist.
+     */
+    private boolean isReceptionist(Users user) {
+        if (user == null) {
+            return false;
         }
 
-        return "Staff".equalsIgnoreCase(role)
-                || "Admin".equalsIgnoreCase(role);
+        if (!"Staff".equalsIgnoreCase(user.getRole())) {
+            return false;
+        }
+
+        return employeeDAO.isReceptionistByUserId(
+                user.getUserID()
+        );
+    }
+
+    /**
+     * Removes surrounding spaces from request parameters.
+     */
+    private String trimParameter(String value) {
+        return value == null
+                ? null
+                : value.trim();
     }
 }

@@ -1,5 +1,6 @@
 package service;
 
+import dao.EmployeeDAO;
 import entity.Booking;
 import entity.BookingDetail;
 import entity.Employee;
@@ -32,6 +33,9 @@ public class RoomAssignmentService {
                     "ASSIGNED",
                     "CHECKED_IN"
             );
+    
+    private final EmployeeDAO employeeDAO
+        = new EmployeeDAO();
 
     public List<Booking> getWaitingBookings() {
         EntityManager em = EMF.createEntityManager();
@@ -186,6 +190,12 @@ public class RoomAssignmentService {
             int userID) {
 
         EntityManager em = EMF.createEntityManager();
+
+        if (!employeeDAO.isReceptionistByUserId(userID)) {
+            throw new SecurityException(
+                    "Only receptionists can assign rooms."
+            );
+        }
 
         try {
             em.getTransaction().begin();
