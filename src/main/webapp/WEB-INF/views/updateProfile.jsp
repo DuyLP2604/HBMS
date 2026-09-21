@@ -160,7 +160,7 @@
                                         value="${n.nationalityID}"
                                         ${customerUpdate.nationalityID.nationalityID eq n.nationalityID ? 'selected' : ''}
                                         >
-                                        <c:out value="${n.nationalityName}" />
+                                        <c:out value="${n.nationalityName}" />  
                                     </option>
 
                                 </c:forEach>

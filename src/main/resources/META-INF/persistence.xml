@@ -1,44 +1,67 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<persistence xmlns="https://jakarta.ee/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="3.0" xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd">
 
-    <!-- Define Persistence Unit -->
+<persistence
+    xmlns="https://jakarta.ee/xml/ns/persistence"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    version="3.0"
+    xsi:schemaLocation="
+        https://jakarta.ee/xml/ns/persistence
+        https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd">
 
-    <persistence-unit name="my_persistence_unit" transaction-type="RESOURCE_LOCAL">
-        <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+    <persistence-unit
+        name="my_persistence_unit"
+        transaction-type="RESOURCE_LOCAL">
 
-        <class>entity.Invoice</class>
+        <provider>
+            org.eclipse.persistence.jpa.PersistenceProvider
+        </provider>
 
-        <class>entity.Booking</class>
-
-        <class>entity.Service</class>
-
-        <class>entity.Paymentmethod</class>
-
+        <!-- User and customer entities -->
         <class>entity.Users</class>
-
-        <class>entity.Payment</class>
-
+        <class>entity.Customer</class>
         <class>entity.Employee</class>
-
+        <class>entity.Nationality</class>
         <class>entity.Complaint</class>
 
-        <class>entity.Customer</class>
-
+        <!-- Room and booking entities -->
         <class>entity.Room</class>
+        <class>entity.RoomType</class>
+        <class>entity.Booking</class>
+        <class>entity.BookingDetail</class>
+        <class>entity.RoomAssignment</class>
 
+        <!-- Service entities -->
+        <class>entity.Service</class>
+        <class>entity.BookingService</class>
+        <class>entity.BookingServicePK</class>
+
+        <!-- Payment and invoice entities -->
+        <class>entity.Payment</class>
+        <class>entity.Paymentmethod</class>
+        <class>entity.Invoice</class>
+
+        <!-- Hotel entity -->
         <class>entity.Hotel</class>
 
-        <class>entity.Nationality</class>
+        <exclude-unlisted-classes>false</exclude-unlisted-classes>
 
         <properties>
 
-            <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlserver://localhost:1433;databaseName=QLKS;encrypt=true;trustServerCertificate=true;"/>
+            <property
+                name="jakarta.persistence.jdbc.url"
+                value="jdbc:sqlserver://localhost:1433;databaseName=QLKS;encrypt=true;trustServerCertificate=true;" />
 
-            <property name="jakarta.persistence.jdbc.user" value="sa"/>
+            <property
+                name="jakarta.persistence.jdbc.user"
+                value="sa" />
 
-            <property name="jakarta.persistence.jdbc.password" value="123456"/>
+            <property
+                name="jakarta.persistence.jdbc.password"
+                value="123456" />
 
-            <property name="jakarta.persistence.jdbc.driver" value="com.microsoft.sqlserver.jdbc.SQLServerDriver"/>
+            <property
+                name="jakarta.persistence.jdbc.driver"
+                value="com.microsoft.sqlserver.jdbc.SQLServerDriver" />
 
         </properties>
 

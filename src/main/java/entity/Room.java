@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package entity;
 
 import jakarta.persistence.Basic;
@@ -12,66 +8,99 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
-import jakarta.xml.bind.annotation.XmlTransient;
 import java.io.Serializable;
-import java.math.BigDecimal;
+import jakarta.persistence.OneToMany;
+import jakarta.xml.bind.annotation.XmlTransient;
 import java.util.Collection;
 
-/**
- *
- * @author Asus
- */
 @Entity
 @Table(name = "ROOM")
 @XmlRootElement
 @NamedQueries({
-    @NamedQuery(name = "Room.findAll", query = "SELECT r FROM Room r"),
-    @NamedQuery(name = "Room.findByRoomID", query = "SELECT r FROM Room r WHERE r.roomID = :roomID"),
-    @NamedQuery(name = "Room.findByRoomNumber", query = "SELECT r FROM Room r WHERE r.roomNumber = :roomNumber"),
-    @NamedQuery(name = "Room.findByRoomImage", query = "SELECT r FROM Room r WHERE r.roomImage = :roomImage"),
-    @NamedQuery(name = "Room.findByPrice", query = "SELECT r FROM Room r WHERE r.price = :price"),
-    @NamedQuery(name = "Room.findByStatus", query = "SELECT r FROM Room r WHERE r.status = :status")})
+    @NamedQuery(
+            name = "Room.findAll",
+            query = "SELECT r FROM Room r"
+    ),
+    @NamedQuery(
+            name = "Room.findByRoomID",
+            query = "SELECT r FROM Room r "
+            + "WHERE r.roomID = :roomID"
+    ),
+    @NamedQuery(
+            name = "Room.findByRoomNumber",
+            query = "SELECT r FROM Room r "
+            + "WHERE r.roomNumber = :roomNumber"
+    ),
+    @NamedQuery(
+            name = "Room.findByStatus",
+            query = "SELECT r FROM Room r "
+            + "WHERE r.status = :status"
+    ),
+    @NamedQuery(
+            name = "Room.findByRoomType",
+            query = "SELECT r FROM Room r "
+            + "WHERE r.roomTypeID = :roomTypeID"
+    ),
+    @NamedQuery(
+            name = "Room.findActiveByRoomType",
+            query = "SELECT r FROM Room r "
+            + "WHERE r.roomTypeID = :roomTypeID "
+            + "AND r.status = 'ACTIVE'"
+    )
+})
 public class Room implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
     @Id
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 3)
-    @Column(name = "RoomID")
+    @Column(
+            name = "RoomID",
+            nullable = false,
+            length = 3
+    )
     private String roomID;
+
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 20)
-    @Column(name = "RoomNumber")
+    @Column(
+            name = "RoomNumber",
+            nullable = false,
+            length = 20
+    )
     private String roomNumber;
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 100)
-    @Column(name = "RoomImage")
+
+    @Size(max = 100)
+    @Column(name = "RoomImage", length = 100)
     private String roomImage;
-    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
+
     @Basic(optional = false)
     @NotNull
-    @Column(name = "Price")
-    private BigDecimal price;
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 50)
-    @Column(name = "Status")
-    private String status;
+    @Size(min = 1, max = 20)
+    @Column(
+            name = "Status",
+            nullable = false,
+            length = 20
+    )
+    private String status = "ACTIVE";
+
+    @JoinColumn(
+            name = "RoomTypeID",
+            referencedColumnName = "RoomTypeID",
+            nullable = false
+    )
+    @ManyToOne(optional = false)
+    private RoomType roomTypeID;
+
     @OneToMany(mappedBy = "roomID")
-    private Collection<Service> serviceCollection;
-    @JoinColumn(name = "HotelID", referencedColumnName = "HotelID")
-    @ManyToOne
-    private Hotel hotelID;
-    @OneToMany(mappedBy = "roomID")
-    private Collection<Booking> bookingCollection;
+    private Collection<RoomAssignment> roomAssignmentCollection;
 
     public Room() {
     }
@@ -80,12 +109,18 @@ public class Room implements Serializable {
         this.roomID = roomID;
     }
 
-    public Room(String roomID, String roomNumber, String roomImage, BigDecimal price, String status) {
+    public Room(
+            String roomID,
+            String roomNumber,
+            String roomImage,
+            String status,
+            RoomType roomTypeID) {
+
         this.roomID = roomID;
         this.roomNumber = roomNumber;
         this.roomImage = roomImage;
-        this.price = price;
         this.status = status;
+        this.roomTypeID = roomTypeID;
     }
 
     public String getRoomID() {
@@ -112,14 +147,6 @@ public class Room implements Serializable {
         this.roomImage = roomImage;
     }
 
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
     public String getStatus() {
         return status;
     }
@@ -128,55 +155,52 @@ public class Room implements Serializable {
         this.status = status;
     }
 
-    @XmlTransient
-    public Collection<Service> getServiceCollection() {
-        return serviceCollection;
+    public RoomType getRoomTypeID() {
+        return roomTypeID;
     }
 
-    public void setServiceCollection(Collection<Service> serviceCollection) {
-        this.serviceCollection = serviceCollection;
-    }
-
-    public Hotel getHotelID() {
-        return hotelID;
-    }
-
-    public void setHotelID(Hotel hotelID) {
-        this.hotelID = hotelID;
+    public void setRoomTypeID(RoomType roomTypeID) {
+        this.roomTypeID = roomTypeID;
     }
 
     @XmlTransient
-    public Collection<Booking> getBookingCollection() {
-        return bookingCollection;
+    public Collection<RoomAssignment>
+            getRoomAssignmentCollection() {
+
+        return roomAssignmentCollection;
     }
 
-    public void setBookingCollection(Collection<Booking> bookingCollection) {
-        this.bookingCollection = bookingCollection;
+    public void setRoomAssignmentCollection(
+            Collection<RoomAssignment> roomAssignmentCollection) {
+
+        this.roomAssignmentCollection
+                = roomAssignmentCollection;
     }
 
     @Override
     public int hashCode() {
-        int hash = 0;
-        hash += (roomID != null ? roomID.hashCode() : 0);
-        return hash;
+        return roomID != null ? roomID.hashCode() : 0;
     }
 
     @Override
     public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Room)) {
             return false;
         }
+
         Room other = (Room) object;
-        if ((this.roomID == null && other.roomID != null) || (this.roomID != null && !this.roomID.equals(other.roomID))) {
+
+        if (roomID == null && other.roomID != null) {
             return false;
         }
-        return true;
+
+        return roomID == null
+                || roomID.equals(other.roomID);
     }
 
     @Override
     public String toString() {
-        return "entity.Room[ roomID=" + roomID + " ]";
+        return "entity.Room[roomID="
+                + roomID + "]";
     }
-
 }

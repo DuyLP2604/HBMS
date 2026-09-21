@@ -21,7 +21,7 @@
             Overview
         </a>
 
-        <a href="${pageContext.request.contextPath}/booking?action=list"
+        <a href="${pageContext.request.contextPath}/room-types"
            class="home-nav-link">
             Booking
         </a>
@@ -54,7 +54,7 @@
             </p>
 
             <a
-                href="${pageContext.request.contextPath}/booking?action=add"     
+                href="${pageContext.request.contextPath}/room-types"     
                 class="btn btn-primary btn-lg btn-book mt-3"
                 >
                 Book Now
@@ -117,7 +117,7 @@
                 <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
 
                     <a
-                        href="${pageContext.request.contextPath}/booking?action=add"  
+                        href="${pageContext.request.contextPath}/room-types"  
                         class="btn btn-primary btn-lg btn-book"
                         >
                         Booking

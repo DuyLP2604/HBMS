@@ -33,7 +33,7 @@
                             Profile
                         </a>
 
-                        <a href="${pageContext.request.contextPath}/booking?action=list">
+                        <a href="${pageContext.request.contextPath}/my-bookings">                   
                             My Bookings
                         </a>
 
@@ -42,32 +42,6 @@
                         </a>
 
                     </c:if>
-
-
-                    <c:if test="${sessionScope.user.role eq 'Staff'}">
-
-                        <a href="${pageContext.request.contextPath}/home">
-                            Home
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/customer?action=add">
-                            Add customer
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/booking?action=list">
-                            Manage Bookings
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/room">
-                            Manage Rooms
-                        </a>
-
-                        <a href="${pageContext.request.contextPath}/invoice">
-                            Invoice
-                        </a>
-
-                    </c:if>
-
 
                     <c:if test="${sessionScope.user.role eq 'Admin'}">
 
