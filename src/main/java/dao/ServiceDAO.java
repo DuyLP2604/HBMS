@@ -1,91 +1,254 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package dao;
 
 import entity.Booking;
-import entity.Room;
+import entity.BookingService;
+import entity.BookingServicePK;
 import entity.Service;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import util.PersistenceManager;
 
-/**
- *
- * @author ADMIN
- */
 public class ServiceDAO {
 
-    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
-
     public List<Service> getAllServices() {
-        try (EntityManager em = emf.createEntityManager()) {
-            String jpql = "SELECT new entity.Service(MIN(s.serviceID), s.serviceName, s.unitPrice) "
-                    + "FROM Service s "
-                    + "GROUP BY s.serviceName, s.unitPrice";
-            TypedQuery<Service> query = em.createQuery(jpql, Service.class);
+        EntityManager em = PersistenceManager.createEntityManager();
+
+        try {
+            String jpql
+                    = "SELECT s FROM Service s "
+                    + "ORDER BY s.serviceName";
+
+            TypedQuery<Service> query = em.createQuery(
+                    jpql,
+                    Service.class
+            );
+
             return query.getResultList();
+        } finally {
+            close(em);
+        }
+    }
+
+    public Service findByID(String serviceID) {
+        EntityManager em = PersistenceManager.createEntityManager();
+
+        try {
+            return em.find(Service.class, serviceID);
+        } finally {
+            close(em);
         }
     }
 
     public String generateServiceID() {
-        try (EntityManager em = emf.createEntityManager()) {
-            String jpql = "SELECT s.serviceID FROM Service s ORDER BY s.serviceID DESC";
-            TypedQuery<String> query = em.createQuery(jpql, String.class);
-            query.setMaxResults(1);
+        EntityManager em = PersistenceManager.createEntityManager();
 
-            List<String> results = query.getResultList();
-            if (!results.isEmpty()) {
-                String id = results.get(0);
-                int number = Integer.parseInt(id.substring(1));
-                return String.format("S%02d", number + 1);
+        try {
+            String jpql
+                    = "SELECT s.serviceID "
+                    + "FROM Service s";
+
+            TypedQuery<String> query = em.createQuery(
+                    jpql,
+                    String.class
+            );
+
+            List<String> serviceIDs
+                    = query.getResultList();
+
+            int largestNumber = 0;
+
+            for (String serviceID : serviceIDs) {
+                if (serviceID == null) {
+                    continue;
+                }
+
+                String normalizedID = serviceID.trim();
+
+                if (!normalizedID.matches("S\\d+")) {
+                    continue;
+                }
+
+                int number = Integer.parseInt(
+                        normalizedID.substring(1)
+                );
+
+                if (number > largestNumber) {
+                    largestNumber = number;
+                }
             }
-        } catch (Exception e) {
+
+            return String.format(
+                    "S%02d",
+                    largestNumber + 1
+            );
+        } catch (NumberFormatException exception) {
+            throw new IllegalStateException(
+                    "Unable to generate a new service ID.",
+                    exception
+            );
+        } finally {
+            close(em);
         }
-        return "S01";
     }
 
-    public void insertService(Service s) {
-        EntityManager em = emf.createEntityManager();
+    public void insertService(Service service) {
+        if (service == null) {
+            throw new IllegalArgumentException(
+                    "Service must not be null."
+            );
+        }
+
+        EntityManager em = PersistenceManager.createEntityManager();
+
         try {
             em.getTransaction().begin();
-            em.persist(s);
+
+            em.persist(service);
+
             em.getTransaction().commit();
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
+        } catch (Exception exception) {
+            rollback(em);
+
+            throw new IllegalStateException(
+                    "Unable to add the service.",
+                    exception
+            );
         } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
+            close(em);
         }
     }
 
-    public void insertBookingService(String bookingID, String serviceID) {
-        EntityManager em = emf.createEntityManager();
+    /*
+     * This overload keeps existing code working.
+     * The default quantity is one.
+     */
+    public void insertBookingService(
+            String bookingID,
+            String serviceID) {
+
+        insertBookingService(
+                bookingID,
+                serviceID,
+                1
+        );
+    }
+
+    public void insertBookingService(
+            String bookingID,
+            String serviceID,
+            int quantity) {
+
+        if (bookingID == null
+                || bookingID.trim().isEmpty()) {
+
+            throw new IllegalArgumentException(
+                    "Booking ID must not be empty."
+            );
+        }
+
+        if (serviceID == null
+                || serviceID.trim().isEmpty()) {
+
+            throw new IllegalArgumentException(
+                    "Service ID must not be empty."
+            );
+        }
+
+        if (quantity <= 0) {
+            throw new IllegalArgumentException(
+                    "Service quantity must be greater than zero."
+            );
+        }
+
+        EntityManager em = PersistenceManager.createEntityManager();
+
         try {
             em.getTransaction().begin();
 
-            Booking b = em.find(Booking.class, bookingID);
-            Service s = em.find(Service.class, serviceID);
+            String normalizedBookingID
+                    = bookingID.trim();
 
-            if (b != null && s != null) {
-                b.getServiceCollection().add(s);
-                em.merge(b);
+            String normalizedServiceID
+                    = serviceID.trim();
+
+            Booking booking = em.find(
+                    Booking.class,
+                    normalizedBookingID
+            );
+
+            Service service = em.find(
+                    Service.class,
+                    normalizedServiceID
+            );
+
+            if (booking == null) {
+                throw new IllegalArgumentException(
+                        "Booking not found: "
+                        + normalizedBookingID
+                );
             }
+
+            if (service == null) {
+                throw new IllegalArgumentException(
+                        "Service not found: "
+                        + normalizedServiceID
+                );
+            }
+
+            BookingServicePK primaryKey
+                    = new BookingServicePK(
+                            normalizedBookingID,
+                            normalizedServiceID
+                    );
+
+            BookingService bookingService = em.find(
+                    BookingService.class,
+                    primaryKey
+            );
+
+            if (bookingService == null) {
+
+                bookingService = new BookingService();
+                bookingService.setBooking(booking);
+                bookingService.setService(service);
+                bookingService.setQuantity(quantity);
+                bookingService.setUnitPrice(service.getUnitPrice());
+
+                em.persist(bookingService);
+            } else {
+                int newQuantity
+                        = bookingService.getQuantity()
+                        + quantity;
+
+                bookingService.setQuantity(newQuantity);
+            }
+
             em.getTransaction().commit();
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
+        } catch (IllegalArgumentException exception) {
+            rollback(em);
+
+            throw new IllegalStateException(
+                    "Unable to add the service "
+                    + "to the booking.",
+                    exception
+            );
         } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
+            close(em);
+        }
+    }
+
+    private void rollback(EntityManager em) {
+        if (em != null
+                && em.getTransaction().isActive()) {
+
+            em.getTransaction().rollback();
+        }
+    }
+
+    private void close(EntityManager em) {
+        if (em != null && em.isOpen()) {
+            em.close();
         }
     }
 }

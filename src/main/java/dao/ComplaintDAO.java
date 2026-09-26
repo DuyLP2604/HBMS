@@ -6,10 +6,9 @@ package dao;
 
 import entity.Complaint;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import util.PersistenceManager;
 
 /**
  *
@@ -17,10 +16,8 @@ import java.util.List;
  */
 public class ComplaintDAO {
 
-    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
-
     public List<Complaint> getAllComplaints() {
-        EntityManager em = emf.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             String spql = "SLECT cp FROM COMPLAINT cp";
             TypedQuery<Complaint> query = em.createQuery(spql, Complaint.class);
@@ -31,7 +28,7 @@ public class ComplaintDAO {
     }
 
     public Complaint getComplaintById(int id) {
-        EntityManager em = emf.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             return em.find(Complaint.class, id);
         } catch (Exception e) {
@@ -40,7 +37,7 @@ public class ComplaintDAO {
     }
 
     public void insertComplaint(Complaint cp) {
-        EntityManager em = emf.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
             em.persist(cp);
@@ -57,7 +54,7 @@ public class ComplaintDAO {
     }
 
     public void updateStatus(int id, String status) {
-        EntityManager em = emf.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
             Complaint cp = em.find(Complaint.class, id);

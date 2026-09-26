@@ -3,6 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Filter.java to edit this template
  */
 package filter;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -14,66 +15,43 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.annotation.WebFilter;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import entity.Users;
-
+import service.BookingExpirationService;
 
 /**
  *
  * @author default
  */
 @WebFilter(
-        filterName = "CheckLoginFilter",
+        filterName = "BookingExpirationFilter",
         urlPatterns = {
-            /*
-             * Customer booking actions.
-             * /room-types is intentionally NOT included
-             * because guests may search and view room types.
-             */
+            "/room-types",
             "/booking-cart",
             "/booking-cart/*",
             "/checkout",
             "/payment",
             "/my-bookings",
-            "/my-bookings/*",
-
-            /*
-             * Existing protected pages.
-             */
-            "/customer",
-            "/complaint",
-            "/employee",
-            "/profile",
-            "/booking",
-            "/dashboard",
-            "/invoice",
-            "/room",
-            "/service",
-
-            /*
-             * Staff pages.
-             */
-            "/staff/*"
+            "/my-bookings/*"
         }
 )
-public class CheckLoginFilter implements Filter {
-
+public class BookingExpirationFilter implements Filter {
+    
     private static final boolean debug = true;
+    
+    private final BookingExpirationService expirationService
+            = new BookingExpirationService();
 
     // The filter configuration object we are associated with.  If
     // this value is null, this filter instance is not currently
     // configured.
     private FilterConfig filterConfig = null;
-
-    public CheckLoginFilter() {
+    
+    public BookingExpirationFilter() {
     }
-
+    
     private void doBeforeProcessing(ServletRequest request, ServletResponse response)
             throws IOException, ServletException {
         if (debug) {
-            log("CheckLoginFilter:DoBeforeProcessing");
+            log("BookingExpirationFilter:DoBeforeProcessing");
         }
 
         // Write code here to process the request and/or response before
@@ -97,11 +75,11 @@ public class CheckLoginFilter implements Filter {
 	}
          */
     }
-
+    
     private void doAfterProcessing(ServletRequest request, ServletResponse response)
             throws IOException, ServletException {
         if (debug) {
-            log("CheckLoginFilter:DoAfterProcessing");
+            log("BookingExpirationFilter:DoAfterProcessing");
         }
 
         // Write code here to process the request and/or response after
@@ -133,36 +111,21 @@ public class CheckLoginFilter implements Filter {
      * @exception ServletException if a servlet error occurs
      */
     public void doFilter(
-            ServletRequest servletRequest,
-            ServletResponse servletResponse,
+            ServletRequest request,
+            ServletResponse response,
             FilterChain chain)
             throws IOException, ServletException {
 
-        HttpServletRequest request
-                = (HttpServletRequest) servletRequest;
-
-        HttpServletResponse response
-                = (HttpServletResponse) servletResponse;
-
-        HttpSession session
-                = request.getSession(false);
-
-        Users user = session == null
-                ? null
-                : (Users) session.getAttribute("user");
-
-        if (user == null) {
-            response.sendRedirect(
-                    request.getContextPath() + "/login"
+        try {
+            expirationService.expirePendingBookings();
+        } catch (Exception ex) {
+            throw new ServletException(
+                    "Unable to update expired bookings.",
+                    ex
             );
-
-            return;
         }
 
-        chain.doFilter(
-                servletRequest,
-                servletResponse
-        );
+        chain.doFilter(request, response);
     }
 
     /**
@@ -194,7 +157,7 @@ public class CheckLoginFilter implements Filter {
         this.filterConfig = filterConfig;
         if (filterConfig != null) {
             if (debug) {
-                log("CheckLoginFilter:Initializing filter");
+                log("BookingExpirationFilter:Initializing filter");
             }
         }
     }
@@ -205,17 +168,17 @@ public class CheckLoginFilter implements Filter {
     @Override
     public String toString() {
         if (filterConfig == null) {
-            return ("CheckLoginFilter()");
+            return ("BookingExpirationFilter()");
         }
-        StringBuffer sb = new StringBuffer("CheckLoginFilter(");
+        StringBuffer sb = new StringBuffer("BookingExpirationFilter(");
         sb.append(filterConfig);
         sb.append(")");
         return (sb.toString());
     }
-
+    
     private void sendProcessingError(Throwable t, ServletResponse response) {
         String stackTrace = getStackTrace(t);
-
+        
         if (stackTrace != null && !stackTrace.equals("")) {
             try {
                 response.setContentType("text/html");
@@ -242,7 +205,7 @@ public class CheckLoginFilter implements Filter {
             }
         }
     }
-
+    
     public static String getStackTrace(Throwable t) {
         String stackTrace = null;
         try {
@@ -256,9 +219,9 @@ public class CheckLoginFilter implements Filter {
         }
         return stackTrace;
     }
-
+    
     public void log(String msg) {
         filterConfig.getServletContext().log(msg);
     }
-
+    
 }

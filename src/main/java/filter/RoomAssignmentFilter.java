@@ -3,10 +3,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Filter.java to edit this template
  */
 package filter;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+
+import dao.EmployeeDAO;
+import entity.Users;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.FilterConfig;
@@ -17,63 +16,33 @@ import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import entity.Users;
-
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 
 /**
  *
  * @author default
  */
-@WebFilter(
-        filterName = "CheckLoginFilter",
-        urlPatterns = {
-            /*
-             * Customer booking actions.
-             * /room-types is intentionally NOT included
-             * because guests may search and view room types.
-             */
-            "/booking-cart",
-            "/booking-cart/*",
-            "/checkout",
-            "/payment",
-            "/my-bookings",
-            "/my-bookings/*",
-
-            /*
-             * Existing protected pages.
-             */
-            "/customer",
-            "/complaint",
-            "/employee",
-            "/profile",
-            "/booking",
-            "/dashboard",
-            "/invoice",
-            "/room",
-            "/service",
-
-            /*
-             * Staff pages.
-             */
-            "/staff/*"
-        }
-)
-public class CheckLoginFilter implements Filter {
-
+@WebFilter(filterName = "RoomAssignmentFilter", urlPatterns = {"/staff/room-assignments"})
+public class RoomAssignmentFilter implements Filter {
+    
     private static final boolean debug = true;
+    private final EmployeeDAO employeeDAO = new EmployeeDAO();
 
     // The filter configuration object we are associated with.  If
     // this value is null, this filter instance is not currently
     // configured.
     private FilterConfig filterConfig = null;
-
-    public CheckLoginFilter() {
+    
+    public RoomAssignmentFilter() {
     }
-
+    
     private void doBeforeProcessing(ServletRequest request, ServletResponse response)
             throws IOException, ServletException {
         if (debug) {
-            log("CheckLoginFilter:DoBeforeProcessing");
+            log("RoomAssignmentFilter:DoBeforeProcessing");
         }
 
         // Write code here to process the request and/or response before
@@ -97,11 +66,11 @@ public class CheckLoginFilter implements Filter {
 	}
          */
     }
-
+    
     private void doAfterProcessing(ServletRequest request, ServletResponse response)
             throws IOException, ServletException {
         if (debug) {
-            log("CheckLoginFilter:DoAfterProcessing");
+            log("RoomAssignmentFilter:DoAfterProcessing");
         }
 
         // Write code here to process the request and/or response after
@@ -132,37 +101,55 @@ public class CheckLoginFilter implements Filter {
      * @exception IOException if an input/output error occurs
      * @exception ServletException if a servlet error occurs
      */
+    @Override
     public void doFilter(
             ServletRequest servletRequest,
             ServletResponse servletResponse,
             FilterChain chain)
             throws IOException, ServletException {
 
-        HttpServletRequest request
-                = (HttpServletRequest) servletRequest;
+        HttpServletRequest request =
+                (HttpServletRequest) servletRequest;
 
-        HttpServletResponse response
-                = (HttpServletResponse) servletResponse;
+        HttpServletResponse response =
+                (HttpServletResponse) servletResponse;
 
-        HttpSession session
-                = request.getSession(false);
+        HttpSession session = request.getSession(false);
 
-        Users user = session == null
-                ? null
-                : (Users) session.getAttribute("user");
+        if (session == null) {
+            response.sendRedirect(
+                    request.getContextPath() + "/login"
+            );
+            return;
+        }
+
+        Users user = (Users) session.getAttribute("user");
 
         if (user == null) {
             response.sendRedirect(
                     request.getContextPath() + "/login"
             );
-
             return;
         }
 
-        chain.doFilter(
-                servletRequest,
-                servletResponse
-        );
+        boolean isStaff =
+                "Staff".equalsIgnoreCase(user.getRole());
+
+        boolean isReceptionist =
+                isStaff
+                && employeeDAO.isReceptionistByUserId(
+                        user.getUserID()
+                );
+
+        if (!isReceptionist) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Only receptionists can assign rooms."
+            );
+            return;
+        }
+
+        chain.doFilter(request, response);
     }
 
     /**
@@ -194,7 +181,7 @@ public class CheckLoginFilter implements Filter {
         this.filterConfig = filterConfig;
         if (filterConfig != null) {
             if (debug) {
-                log("CheckLoginFilter:Initializing filter");
+                log("RoomAssignmentFilter:Initializing filter");
             }
         }
     }
@@ -205,17 +192,17 @@ public class CheckLoginFilter implements Filter {
     @Override
     public String toString() {
         if (filterConfig == null) {
-            return ("CheckLoginFilter()");
+            return ("RoomAssignmentFilter()");
         }
-        StringBuffer sb = new StringBuffer("CheckLoginFilter(");
+        StringBuffer sb = new StringBuffer("RoomAssignmentFilter(");
         sb.append(filterConfig);
         sb.append(")");
         return (sb.toString());
     }
-
+    
     private void sendProcessingError(Throwable t, ServletResponse response) {
         String stackTrace = getStackTrace(t);
-
+        
         if (stackTrace != null && !stackTrace.equals("")) {
             try {
                 response.setContentType("text/html");
@@ -242,7 +229,7 @@ public class CheckLoginFilter implements Filter {
             }
         }
     }
-
+    
     public static String getStackTrace(Throwable t) {
         String stackTrace = null;
         try {
@@ -256,9 +243,9 @@ public class CheckLoginFilter implements Filter {
         }
         return stackTrace;
     }
-
+    
     public void log(String msg) {
         filterConfig.getServletContext().log(msg);
     }
-
+    
 }

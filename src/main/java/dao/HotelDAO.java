@@ -6,10 +6,9 @@ package dao;
 
 import entity.Hotel;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import util.PersistenceManager;
 
 /**
  *
@@ -17,10 +16,8 @@ import java.util.List;
  */
 public class HotelDAO {
 
-    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
-
     public List<Hotel> getAllHotels() {
-        try (EntityManager em = emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
             String jpql = "SELECT h FROM HOTEL h";
             TypedQuery<Hotel> query = em.createQuery(jpql, Hotel.class);
             return query.getResultList();
@@ -30,7 +27,7 @@ public class HotelDAO {
     }
 
     public Hotel getHotelById(String id) {
-        try (EntityManager em = emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
             return em.find(Hotel.class, id);
         } catch (Exception e) {
         }
@@ -38,7 +35,7 @@ public class HotelDAO {
     }
 
     public void insertHotel(Hotel h) {
-        EntityManager em = emf.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
             em.persist(h);
@@ -55,7 +52,7 @@ public class HotelDAO {
     }
 
     public void updateHotel(Hotel h) {
-        EntityManager em = emf.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
             em.merge(h);

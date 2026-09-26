@@ -6,10 +6,9 @@ package dao;
 
 import entity.Room;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import util.PersistenceManager;
 
 /**
  *
@@ -17,10 +16,8 @@ import java.util.List;
  */
 public class RoomDAO {
 
-    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
-
     public List<Room> getAll() {
-        try (EntityManager em = emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
             String jpql = "SELECT r FROM ROOM r";
             TypedQuery<Room> query = em.createQuery(jpql, Room.class);
             return query.getResultList();
@@ -30,7 +27,7 @@ public class RoomDAO {
     }
 
     public Room getById(String id) {
-        try (EntityManager em = emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
             return em.find(Room.class, id);
         } catch (Exception e) {
         }

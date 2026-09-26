@@ -1,127 +1,293 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package dao;
 
 import entity.Users;
+
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
+import util.PersistenceManager;
 
-/**
- *
- * @author default
- */
-//Changed to entity manager
 public class UserDAO {
 
-    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
-
     public String hashMD5(String password) {
-        String hash = "";
+
+        StringBuilder hash
+                = new StringBuilder();
+
         try {
-            MessageDigest md = MessageDigest.getInstance("md5");
-            byte[] bytes = md.digest(password.getBytes());
+
+            MessageDigest md
+                    = MessageDigest.getInstance("MD5");
+
+            byte[] bytes
+                    = md.digest(password.getBytes());
+
             for (byte b : bytes) {
-                hash += String.format("%02x", b);
+
+                hash.append(
+                        String.format("%02x", b)
+                );
             }
+
         } catch (NoSuchAlgorithmException e) {
+
+            e.printStackTrace();
         }
-        return hash;
+
+        return hash.toString();
     }
 
-    public Users login(String username, String password) {
-        EntityManager em = emf.createEntityManager();
-        String jpql = "SELECT u FROM Users u WHERE u.username = :username AND u.password = :password";
-        try {
-            TypedQuery<Users> query = em.createQuery(jpql, Users.class);
-            query.setParameter("username", username);
-            query.setParameter("password", hashMD5(password));
+    public Users login(
+            String username,
+            String password
+    ) {
 
-            List<Users> users = query.getResultList();
+        try (EntityManager em
+                = PersistenceManager.createEntityManager()) {
+
+            String jpql
+                    = "SELECT u "
+                    + "FROM Users u "
+                    + "WHERE u.username = :username "
+                    + "AND u.password = :password";
+
+            TypedQuery<Users> query
+                    = em.createQuery(
+                            jpql,
+                            Users.class
+                    );
+
+            query.setParameter(
+                    "username",
+                    username
+            );
+
+            query.setParameter(
+                    "password",
+                    hashMD5(password)
+            );
+
+            List<Users> users
+                    = query.setMaxResults(1)
+                            .getResultList();
+
             if (!users.isEmpty()) {
                 return users.get(0);
             }
+
         } catch (Exception e) {
-        } finally {
-            em.close();
+
+            e.printStackTrace();
         }
+
         return null;
     }
 
-    public boolean isUsernameExists(String username) {
-        EntityManager em = emf.createEntityManager();
-        String jpql = "SELECT u FROM Users u WHERE u.username = :username";
+    public boolean isUsernameExists(
+            String username
+    ) {
 
-        try {
-            TypedQuery<Long> query = em.createQuery(jpql, Long.class);
-            query.setParameter("username", username);
+        try (EntityManager em
+                = PersistenceManager.createEntityManager()) {
 
-            long count = query.getSingleResult();
+            String jpql
+                    = "SELECT COUNT(u) "
+                    + "FROM Users u "
+                    + "WHERE u.username = :username";
+
+            TypedQuery<Long> query
+                    = em.createQuery(
+                            jpql,
+                            Long.class
+                    );
+
+            query.setParameter(
+                    "username",
+                    username
+            );
+
+            Long count
+                    = query.getSingleResult();
+
             return count > 0;
 
         } catch (Exception e) {
-        } finally {
-            em.close();
+
+            e.printStackTrace();
         }
 
         return false;
     }
 
-    public int insertUser(String username, String password, String role) {
-        EntityManager em = emf.createEntityManager();
+    public int insertUser(
+            String username,
+            String password,
+            String role
+    ) {
+
+        EntityManager em
+                = PersistenceManager.createEntityManager();
 
         try {
-            Users newUser = new Users();
-            newUser.setUsername(username);
-            newUser.setPassword(hashMD5(password));
-            newUser.setRole(role);
+
+            Users newUser
+                    = new Users();
+
+            newUser.setUsername(
+                    username
+            );
+
+            newUser.setPassword(
+                    hashMD5(password)
+            );
+
+            newUser.setRole(
+                    role
+            );
 
             em.getTransaction().begin();
 
             em.persist(newUser);
+
             em.getTransaction().commit();
+
             return newUser.getUserID();
 
         } catch (Exception e) {
+
+            e.printStackTrace();
+
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
+
         } finally {
-            if (em != null && em.isOpen()) {
+
+            if (em.isOpen()) {
                 em.close();
             }
         }
+
         return -1;
     }
 
-    public boolean deleteUser(int userId) {
-        EntityManager em = emf.createEntityManager();
+    public boolean deleteUser(
+            int userId
+    ) {
+
+        EntityManager em
+                = PersistenceManager.createEntityManager();
+
         try {
+
             em.getTransaction().begin();
-            Users u = em.find(Users.class, userId);
-            if (u != null) {
-                em.remove(u);
-                em.getTransaction().commit();
-                return true;
-            } else {
+
+            Users user
+                    = em.find(
+                            Users.class,
+                            userId
+                    );
+
+            if (user == null) {
+
                 em.getTransaction().rollback();
+
                 return false;
             }
+
+            em.remove(user);
+
+            em.getTransaction().commit();
+
+            return true;
+
         } catch (Exception e) {
+
+            e.printStackTrace();
+
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
+
         } finally {
-            if (em != null && em.isOpen()) {
+
+            if (em.isOpen()) {
                 em.close();
             }
         }
+
+        return false;
+    }
+
+
+    /*
+     * Update user's password
+     */
+    public boolean updatePassword(
+            int userId,
+            String newPassword
+    ) {
+
+        EntityManager em
+                = PersistenceManager.createEntityManager();
+
+        try {
+
+            em.getTransaction().begin();
+
+            Users user
+                    = em.find(
+                            Users.class,
+                            userId
+                    );
+
+
+            /*
+             * User does not exist
+             */
+            if (user == null) {
+
+                em.getTransaction().rollback();
+
+                return false;
+            }
+
+
+            /*
+             * Update hashed password
+             */
+            user.setPassword(
+                    hashMD5(newPassword)
+            );
+
+
+            /*
+             * user is already managed by EntityManager,
+             * so merge() is not required.
+             */
+            em.getTransaction().commit();
+
+            return true;
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            if (em.getTransaction().isActive()) {
+
+                em.getTransaction().rollback();
+            }
+
+        } finally {
+
+            if (em.isOpen()) {
+                em.close();
+            }
+        }
+
         return false;
     }
 }

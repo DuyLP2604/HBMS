@@ -1,105 +1,185 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package controller;
 
 import dao.BookingDAO;
-import dao.HotelDAO;
-import dao.RoomDAO;
 import dao.ServiceDAO;
 import entity.Booking;
-import entity.Hotel;
-import entity.Room;
 import entity.Service;
 import entity.Users;
-import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.math.BigDecimal;
+import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import java.util.List;
 
-/**
- *
- * @author ADMIN
- */
-@WebServlet(name = "ServiceServlet", urlPatterns = {"/service"})
+@WebServlet(
+        name = "ServiceServlet",
+        urlPatterns = {"/service"}
+)
 public class ServiceServlet extends HttpServlet {
 
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
-    /**
-     * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+    protected void doGet(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
-        Users u = (Users) request.getSession().getAttribute("user");
-        if (u == null) {
-            response.sendRedirect("login");
+
+        Users currentUser = getCurrentUser(request);
+
+        if (currentUser == null) {
+            response.sendRedirect(
+                    request.getContextPath() + "/login"
+            );
             return;
         }
-        ServiceDAO dao = new ServiceDAO();
-        List<Service> list = dao.getAllServices();
-        request.setAttribute("list", list);
-        request.getRequestDispatcher("/WEB-INF/views/service.jsp").forward(request, response);
+
+        try {
+            ServiceDAO serviceDAO = new ServiceDAO();
+
+            List<Service> services
+                    = serviceDAO.getAllServices();
+
+            request.setAttribute("list", services);
+
+            request.getRequestDispatcher(
+                    "/WEB-INF/views/service.jsp"
+            ).forward(request, response);
+        } catch (Exception exception) {
+            throw new ServletException(
+                    "Unable to load the service list.",
+                    exception
+            );
+        }
     }
 
-    /**
-     * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
-        Users u = (Users) request.getSession().getAttribute("user");
 
-        ServiceDAO dao = new ServiceDAO();
-        BookingDAO bDao = new BookingDAO();
-        String selectedService = request.getParameter("selectedService");
+        Users currentUser = getCurrentUser(request);
 
-        if (selectedService != null && !selectedService.isEmpty()) {
-            try {
-                String[] parts = selectedService.split("\\|");
-                String serviceName = parts[0];
-                BigDecimal price = BigDecimal.valueOf(Double.parseDouble(parts[1]));
-                Booking latestBooking = bDao.getLatestBookingByUserId(u.getUserID());
-
-                if (latestBooking != null) {
-                    String serviceID = dao.generateServiceID();
-
-                    Service newService = new Service(serviceID, serviceName, price);
-                    newService.setRoomID(latestBooking.getRoomID());
-                    newService.setHotelID(latestBooking.getRoomID().getHotelID());
-                    dao.insertService(newService);
-
-                    dao.insertBookingService(latestBooking.getBookingID(), serviceID);
-                }
-            } catch (Exception e) {
-            }
+        if (currentUser == null) {
+            response.sendRedirect(
+                    request.getContextPath() + "/login"
+            );
+            return;
         }
 
-        response.sendRedirect("service");
+        HttpSession session = request.getSession();
+
+        String selectedServiceID
+                = request.getParameter(
+                        "selectedService"
+                );
+
+        String quantityValue
+                = request.getParameter("quantity");
+
+        try {
+            if (selectedServiceID == null
+                    || selectedServiceID.trim().isEmpty()) {
+
+                throw new IllegalArgumentException(
+                        "Please select a service."
+                );
+            }
+
+            int quantity = parseQuantity(quantityValue);
+
+            BookingDAO bookingDAO = new BookingDAO();
+
+            Booking latestBooking
+                    = bookingDAO.getLatestPendingBookingByUserId(
+                            currentUser.getUserID()
+                    );
+
+            if (latestBooking == null) {
+                throw new IllegalStateException(
+                        "No booking was found "
+                        + "for the current user."
+                );
+            }
+
+            /*
+             * Services are added before final payment.
+             * Adding a service changes Booking.TotalAmount.
+             */
+            if (!"PENDING_PAYMENT".equals(
+                    latestBooking.getBookingStatus())) {
+
+                throw new IllegalStateException(
+                        "Services can only be added "
+                        + "before the booking is paid."
+                );
+            }
+
+            ServiceDAO serviceDAO = new ServiceDAO();
+
+            serviceDAO.insertBookingService(
+                    latestBooking.getBookingID(),
+                    selectedServiceID.trim(),
+                    quantity
+            );
+
+            session.setAttribute(
+                    "successMessage",
+                    "The service was added successfully."
+            );
+        } catch (Exception exception) {
+            session.setAttribute(
+                    "errorMessage",
+                    exception.getMessage() != null
+                            ? exception.getMessage()
+                            : "Unable to add the service."
+            );
+        }
+
+        response.sendRedirect(
+                request.getContextPath() + "/service"
+        );
     }
 
-    /**
-     * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
-     */
+    private Users getCurrentUser(
+            HttpServletRequest request) {
+
+        return (Users) request
+                .getSession()
+                .getAttribute("user");
+    }
+
+    private int parseQuantity(String quantityValue) {
+        if (quantityValue == null
+                || quantityValue.trim().isEmpty()) {
+
+            return 1;
+        }
+
+        try {
+            int quantity = Integer.parseInt(
+                    quantityValue.trim()
+            );
+
+            if (quantity <= 0) {
+                throw new IllegalArgumentException(
+                        "Service quantity must be "
+                        + "greater than zero."
+                );
+            }
+
+            return quantity;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(
+                    "Service quantity must be a valid number."
+            );
+        }
+    }
+
     @Override
     public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
+        return "Handles booking service selection.";
+    }
 }
