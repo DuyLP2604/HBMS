@@ -1,6 +1,11 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package entity;
 
 import jakarta.persistence.Basic;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -15,86 +20,45 @@ import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import java.io.Serializable;
 
+/**
+ *
+ * @author Asus
+ */
 @Entity
 @Table(name = "USERS")
 @XmlRootElement
 @NamedQueries({
-    @NamedQuery(
-        name = "Users.findAll",
-        query = "SELECT u FROM Users u"
-    ),
-    @NamedQuery(
-        name = "Users.findByUserID",
-        query = "SELECT u FROM Users u "
-              + "WHERE u.userID = :userID"
-    ),
-    @NamedQuery(
-        name = "Users.findByUsername",
-        query = "SELECT u FROM Users u "
-              + "WHERE u.username = :username"
-    ),
-    @NamedQuery(
-        name = "Users.findByRole",
-        query = "SELECT u FROM Users u "
-              + "WHERE u.role = :role"
-    )
-})
+    @NamedQuery(name = "Users.findAll", query = "SELECT u FROM Users u"),
+    @NamedQuery(name = "Users.findByUserID", query = "SELECT u FROM Users u WHERE u.userID = :userID"),
+    @NamedQuery(name = "Users.findByUsername", query = "SELECT u FROM Users u WHERE u.username = :username"),
+    @NamedQuery(name = "Users.findByPassword", query = "SELECT u FROM Users u WHERE u.password = :password"),
+    @NamedQuery(name = "Users.findByRole", query = "SELECT u FROM Users u WHERE u.role = :role")})
 public class Users implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Basic(optional = false)
-    @Column(
-        name = "UserID",
-        nullable = false
-    )
+    @Column(name = "UserID")
     private Integer userID;
-
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 50)
-    @Column(
-        name = "Username",
-        nullable = false,
-        unique = true,
-        length = 50
-    )
+    @Column(name = "Username")
     private String username;
-
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 255)
-    @Column(
-        name = "Password",
-        nullable = false,
-        length = 255
-    )
+    @Column(name = "Password")
     private String password;
-
     @Basic(optional = false)
     @NotNull
-    @Size(min = 1, max = 20)
-    @Column(
-        name = "Role",
-        nullable = false,
-        length = 20
-    )
+    @Size(min = 1, max = 50)
+    @Column(name = "Role")
     private String role;
-
-    /*
-     * mappedBy trỏ tới thuộc tính userID
-     * trong Employee.java.
-     */
-    @OneToOne(mappedBy = "userID")
+    @OneToOne(cascade = CascadeType.ALL, mappedBy = "userID")
     private Employee employee;
-
-    /*
-     * mappedBy trỏ tới thuộc tính userID
-     * trong Customer.java.
-     */
-    @OneToOne(mappedBy = "userID")
+    @OneToOne(cascade = CascadeType.ALL, mappedBy = "userID")
     private Customer customer;
 
     public Users() {
@@ -104,22 +68,7 @@ public class Users implements Serializable {
         this.userID = userID;
     }
 
-    public Users(
-            String username,
-            String password,
-            String role) {
-
-        this.username = username;
-        this.password = password;
-        this.role = role;
-    }
-
-    public Users(
-            Integer userID,
-            String username,
-            String password,
-            String role) {
-
+    public Users(Integer userID, String username, String password, String role) {
         this.userID = userID;
         this.username = username;
         this.password = password;
@@ -176,28 +125,27 @@ public class Users implements Serializable {
 
     @Override
     public int hashCode() {
-        return userID != null ? userID.hashCode() : 0;
+        int hash = 0;
+        hash += (userID != null ? userID.hashCode() : 0);
+        return hash;
     }
 
     @Override
     public boolean equals(Object object) {
+        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Users)) {
             return false;
         }
-
         Users other = (Users) object;
-
-        if (userID == null && other.userID != null) {
+        if ((this.userID == null && other.userID != null) || (this.userID != null && !this.userID.equals(other.userID))) {
             return false;
         }
-
-        return userID == null
-                || userID.equals(other.userID);
+        return true;
     }
 
     @Override
     public String toString() {
-        return "entity.Users[userID="
-                + userID + "]";
+        return "entity.Users[ userID=" + userID + " ]";
     }
+
 }

@@ -1,3 +1,7 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package entity;
 
 import jakarta.persistence.Basic;
@@ -12,70 +16,40 @@ import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import java.io.Serializable;
 
+/**
+ *
+ * @author Asus
+ */
 @Entity
 @Table(name = "HOTEL")
 @XmlRootElement
 @NamedQueries({
-    @NamedQuery(
-        name = "Hotel.findAll",
-        query = "SELECT h FROM Hotel h"
-    ),
-    @NamedQuery(
-        name = "Hotel.findByHotelID",
-        query = "SELECT h FROM Hotel h "
-              + "WHERE h.hotelID = :hotelID"
-    ),
-    @NamedQuery(
-        name = "Hotel.findByHotelName",
-        query = "SELECT h FROM Hotel h "
-              + "WHERE h.hotelName = :hotelName"
-    ),
-    @NamedQuery(
-        name = "Hotel.findByAddress",
-        query = "SELECT h FROM Hotel h "
-              + "WHERE h.address = :address"
-    )
-})
+    @NamedQuery(name = "Hotel.findAll", query = "SELECT h FROM Hotel h"),
+    @NamedQuery(name = "Hotel.findByHotelID", query = "SELECT h FROM Hotel h WHERE h.hotelID = :hotelID"),
+    @NamedQuery(name = "Hotel.findByHotelName", query = "SELECT h FROM Hotel h WHERE h.hotelName = :hotelName"),
+    @NamedQuery(name = "Hotel.findByHotelImage", query = "SELECT h FROM Hotel h WHERE h.hotelImage = :hotelImage"),
+    @NamedQuery(name = "Hotel.findByAddress", query = "SELECT h FROM Hotel h WHERE h.address = :address")})
 public class Hotel implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
     @Id
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 3)
-    @Column(
-        name = "HotelID",
-        nullable = false,
-        length = 3
-    )
+    @Column(name = "HotelID")
     private String hotelID;
-
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 50)
-    @Column(
-        name = "HotelName",
-        nullable = false,
-        length = 50
-    )
+    @Column(name = "HotelName")
     private String hotelName;
-
-    /*
-     * HotelImage cho phép NULL trong database.
-     */
     @Size(max = 100)
-    @Column(name = "HotelImage", length = 100)
+    @Column(name = "HotelImage")
     private String hotelImage;
-
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 200)
-    @Column(
-        name = "Address",
-        nullable = false,
-        length = 200
-    )
+    @Column(name = "Address")
     private String address;
 
     public Hotel() {
@@ -85,15 +59,9 @@ public class Hotel implements Serializable {
         this.hotelID = hotelID;
     }
 
-    public Hotel(
-            String hotelID,
-            String hotelName,
-            String hotelImage,
-            String address) {
-
+    public Hotel(String hotelID, String hotelName, String address) {
         this.hotelID = hotelID;
         this.hotelName = hotelName;
-        this.hotelImage = hotelImage;
         this.address = address;
     }
 
@@ -131,30 +99,27 @@ public class Hotel implements Serializable {
 
     @Override
     public int hashCode() {
-        return hotelID != null
-                ? hotelID.hashCode()
-                : 0;
+        int hash = 0;
+        hash += (hotelID != null ? hotelID.hashCode() : 0);
+        return hash;
     }
 
     @Override
     public boolean equals(Object object) {
+        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Hotel)) {
             return false;
         }
-
         Hotel other = (Hotel) object;
-
-        if (hotelID == null && other.hotelID != null) {
+        if ((this.hotelID == null && other.hotelID != null) || (this.hotelID != null && !this.hotelID.equals(other.hotelID))) {
             return false;
         }
-
-        return hotelID == null
-                || hotelID.equals(other.hotelID);
+        return true;
     }
 
     @Override
     public String toString() {
-        return "entity.Hotel[hotelID="
-                + hotelID + "]";
+        return "entity.Hotel[ hotelID=" + hotelID + " ]";
     }
+
 }
