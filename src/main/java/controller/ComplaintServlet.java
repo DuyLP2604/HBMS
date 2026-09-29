@@ -48,8 +48,15 @@ public class ComplaintServlet extends HttpServlet {
             // Chỉ Admin/Staff mới được xem danh sách khiếu nại
             HttpSession session = request.getSession();
             String role = (String) session.getAttribute("role");
-            if (role == null || (!role.equalsIgnoreCase("Admin") && !role.equalsIgnoreCase("Staff"))) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page!");
+            if (role == null
+                    || (!role.equalsIgnoreCase("Admin")
+                    && !role.equalsIgnoreCase("Staff"))) {
+
+                response.sendError(
+                        HttpServletResponse.SC_FORBIDDEN,
+                        "You do not have permission to access this page!"
+                );
+                return;
             }
             List<Complaint> list = daoCp.getAllComplaints();
             request.setAttribute("complaints", list);
@@ -81,11 +88,10 @@ public class ComplaintServlet extends HttpServlet {
         String action = request.getParameter("action");
         ComplaintDAO daoCp = new ComplaintDAO();
         HttpSession session = request.getSession();
-        CustomerDAO cdao = new CustomerDAO();
-
         Users user = (Users) session.getAttribute("user");
-        Customer customer = cdao.getCustomerByUserId(user.getUserID());
         if ("add".equalsIgnoreCase(action)) {
+            CustomerDAO cdao = new CustomerDAO();
+            Customer customer = cdao.getCustomerByUserId(user.getUserID());
             String title = request.getParameter("title");
             String content = request.getParameter("content");
 
@@ -95,7 +101,15 @@ public class ComplaintServlet extends HttpServlet {
             cp.setCustomerID(customer);
 
             daoCp.insertComplaint(cp);
-            response.sendRedirect("complaint?action=add&success=1");
+            Flash.success(
+                    request,
+                    "Complaint added successfully."
+            );
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/complaint?action=add"
+            );
+            return;
 
         } else if ("updateStatus".equalsIgnoreCase(action)) {
             String id = request.getParameter("id");
@@ -105,7 +119,11 @@ public class ComplaintServlet extends HttpServlet {
                     request,
                     "Complaint status updated successfully."
             );
-            response.sendRedirect("/complaint?action=viewDetail&id=" + id);
+            response.sendRedirect(
+                    request.getContextPath()
+                    + "/complaint?action=list"
+            );
+            return;
         }
     }
 
