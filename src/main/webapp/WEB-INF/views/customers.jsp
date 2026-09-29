@@ -1,5 +1,6 @@
 <%@page contentType="text/html" pageEncoding="UTF-8" %>
 <%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 
 <layout:layout title="Customer List" pageCss="customer.css" useBootstrap="true" bodyClass="bg-light"  >
@@ -21,15 +22,15 @@
                             <input type="hidden" name="action" value="list" >
                             <div class="input-group">
                                 <span class="input-group-text bg-white">
-                                    ID
+                                    Name
                                 </span>
-                                <input type="text" name="searchId" class="form-control"
-                                       value="<c:out value='${param.searchId}' />"
-                                       placeholder="Enter customer ID..." >
+                                <input type="text" name="searchName" class="form-control"
+                                       value="<c:out value='${param.searchName}' />"
+                                       placeholder="Enter customer name..." >
 
                                 <button type="submit" class="btn btn-primary" > Search </button>
 
-                                <c:if test="${not empty param.searchId}">
+                                <c:if test="${not empty param.searchName}">
                                     <a href="${pageContext.request.contextPath}/customer?action=list" class="btn btn-secondary" >Clear Filter</a>
                                 </c:if>
                             </div>
@@ -52,7 +53,7 @@
 
                         <tbody>
                             <c:forEach var="c" items="${customers}" >
-                                <c:if test="${empty param.searchId or c.customerID.trim().equalsIgnoreCase(param.searchId.trim())}">
+                                <c:if test="${empty param.searchName or fn:contains(fn:toLowerCase(c.fullName), fn:toLowerCase(param.searchName.trim()))}">
 
                                     <tr>
                                         <td class="fw-bold text-secondary">
