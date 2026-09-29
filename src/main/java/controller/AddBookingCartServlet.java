@@ -23,9 +23,6 @@ import util.BookingCartSession;
 )
 public class AddBookingCartServlet extends HttpServlet {
 
-    private final RoomTypeDAO roomTypeDAO
-            = new RoomTypeDAO();
-
     @Override
     protected void doPost(
             HttpServletRequest request,
@@ -37,7 +34,7 @@ public class AddBookingCartServlet extends HttpServlet {
         HttpSession session = request.getSession();
 
         Users user = (Users) session.getAttribute("user");
-
+        RoomTypeDAO roomTypeDAO = new RoomTypeDAO();
         if (user == null) {
             session.setAttribute(
                     "bookingError",
