@@ -2,22 +2,16 @@ package service;
 
 import entity.Booking;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.LockModeType;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.Arrays;
 import java.util.List;
+import util.PersistenceManager;
 
 public class BookingLifecycleService {
 
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
-
     public List<Booking> getOperationalBookings() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -50,7 +44,7 @@ public class BookingLifecycleService {
     }
 
     public void checkIn(String bookingID) {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();
@@ -109,7 +103,7 @@ public class BookingLifecycleService {
     }
 
     public void checkOut(String bookingID) {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();
@@ -153,7 +147,7 @@ public class BookingLifecycleService {
             String bookingID,
             int userID) {
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();

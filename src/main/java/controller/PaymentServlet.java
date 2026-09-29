@@ -23,18 +23,16 @@ import java.nio.charset.StandardCharsets;
 )
 public class PaymentServlet extends HttpServlet {
 
-    private final PaymentService paymentService
-            = new PaymentService();
-
-    private final PaymentmethodDAO paymentmethodDAO
-            = new PaymentmethodDAO();
-
     @Override
     protected void doGet(
             HttpServletRequest request,
             HttpServletResponse response)
             throws ServletException, IOException {
+        PaymentService paymentService
+                = new PaymentService();
 
+        PaymentmethodDAO paymentmethodDAO
+                = new PaymentmethodDAO();
         HttpSession session
                 = request.getSession(false);
 
@@ -199,7 +197,8 @@ public class PaymentServlet extends HttpServlet {
             throws ServletException, IOException {
 
         request.setCharacterEncoding("UTF-8");
-
+        PaymentService paymentService
+                = new PaymentService();
         HttpSession session
                 = request.getSession(false);
 

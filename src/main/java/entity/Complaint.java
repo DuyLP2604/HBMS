@@ -1,3 +1,7 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package entity;
 
 import jakarta.persistence.Basic;
@@ -10,7 +14,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
@@ -20,102 +23,50 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 import java.io.Serializable;
 import java.util.Date;
 
+/**
+ *
+ * @author Asus
+ */
 @Entity
 @Table(name = "COMPLAINT")
 @XmlRootElement
 @NamedQueries({
-    @NamedQuery(
-        name = "Complaint.findAll",
-        query = "SELECT c FROM Complaint c"
-    ),
-    @NamedQuery(
-        name = "Complaint.findByComplaintID",
-        query = "SELECT c FROM Complaint c "
-              + "WHERE c.complaintID = :complaintID"
-    ),
-    @NamedQuery(
-        name = "Complaint.findByTitle",
-        query = "SELECT c FROM Complaint c "
-              + "WHERE c.title = :title"
-    ),
-    @NamedQuery(
-        name = "Complaint.findByCreatedAt",
-        query = "SELECT c FROM Complaint c "
-              + "WHERE c.createdAt = :createdAt"
-    ),
-    @NamedQuery(
-        name = "Complaint.findByStatus",
-        query = "SELECT c FROM Complaint c "
-              + "WHERE c.status = :status"
-    ),
-    @NamedQuery(
-        name = "Complaint.findByCustomer",
-        query = "SELECT c FROM Complaint c "
-              + "WHERE c.customerID = :customerID "
-              + "ORDER BY c.createdAt DESC"
-    )
-})
+    @NamedQuery(name = "Complaint.findAll", query = "SELECT c FROM Complaint c"),
+    @NamedQuery(name = "Complaint.findByComplaintID", query = "SELECT c FROM Complaint c WHERE c.complaintID = :complaintID"),
+    @NamedQuery(name = "Complaint.findByTitle", query = "SELECT c FROM Complaint c WHERE c.title = :title"),
+    @NamedQuery(name = "Complaint.findByContent", query = "SELECT c FROM Complaint c WHERE c.content = :content"),
+    @NamedQuery(name = "Complaint.findByCreatedAt", query = "SELECT c FROM Complaint c WHERE c.createdAt = :createdAt"),
+    @NamedQuery(name = "Complaint.findByStatus", query = "SELECT c FROM Complaint c WHERE c.status = :status")})
 public class Complaint implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Basic(optional = false)
-    @Column(
-        name = "ComplaintID",
-        nullable = false
-    )
+    @Column(name = "ComplaintID")
     private Integer complaintID;
-
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 200)
-    @Column(
-        name = "Title",
-        nullable = false,
-        length = 200
-    )
+    @Column(name = "Title")
     private String title;
-
-    /*
-     * Database sử dụng NVARCHAR(MAX).
-     * Không dùng @Size(max = 2147483647).
-     */
     @Basic(optional = false)
     @NotNull
-    @Column(
-        name = "Content",
-        nullable = false,
-        columnDefinition = "NVARCHAR(MAX)"
-    )
+    @Size(min = 1, max = 2147483647)
+    @Column(name = "Content")
     private String content;
-
     @Basic(optional = false)
     @NotNull
-    @Column(name = "CreatedAt", nullable = false)
+    @Column(name = "CreatedAt")
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdAt;
-
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 30)
-    @Column(
-        name = "Status",
-        nullable = false,
-        length = 30
-    )
-    private String status = "Chưa xử lý";
-
-    /*
-     * CustomerID cho phép NULL trong database.
-     */
-    @JoinColumn(
-        name = "CustomerID",
-        referencedColumnName = "CustomerID",
-        nullable = true
-    )
-    @ManyToOne(optional = true)
+    @Column(name = "Status")
+    private String status;
+    @JoinColumn(name = "CustomerID", referencedColumnName = "CustomerID")
+    @ManyToOne
     private Customer customerID;
 
     public Complaint() {
@@ -125,27 +76,12 @@ public class Complaint implements Serializable {
         this.complaintID = complaintID;
     }
 
-    public Complaint(
-            String title,
-            String content,
-            Customer customerID) {
-
+    public Complaint(Integer complaintID, String title, String content, Date createdAt, String status) {
+        this.complaintID = complaintID;
         this.title = title;
         this.content = content;
-        this.customerID = customerID;
-        this.status = "Chưa xử lý";
-        this.createdAt = new Date();
-    }
-
-    @PrePersist
-    private void prePersist() {
-        if (createdAt == null) {
-            createdAt = new Date();
-        }
-
-        if (status == null || status.isBlank()) {
-            status = "Chưa xử lý";
-        }
+        this.createdAt = createdAt;
+        this.status = status;
     }
 
     public Integer getComplaintID() {
@@ -198,33 +134,27 @@ public class Complaint implements Serializable {
 
     @Override
     public int hashCode() {
-        return complaintID != null
-                ? complaintID.hashCode()
-                : 0;
+        int hash = 0;
+        hash += (complaintID != null ? complaintID.hashCode() : 0);
+        return hash;
     }
 
     @Override
     public boolean equals(Object object) {
+        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Complaint)) {
             return false;
         }
-
         Complaint other = (Complaint) object;
-
-        if (complaintID == null
-                && other.complaintID != null) {
+        if ((this.complaintID == null && other.complaintID != null) || (this.complaintID != null && !this.complaintID.equals(other.complaintID))) {
             return false;
         }
-
-        return complaintID == null
-                || complaintID.equals(
-                        other.complaintID
-                );
+        return true;
     }
 
     @Override
     public String toString() {
-        return "entity.Complaint[complaintID="
-                + complaintID + "]";
+        return "entity.Complaint[ complaintID=" + complaintID + " ]";
     }
+
 }

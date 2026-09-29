@@ -7,16 +7,12 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import util.PersistenceManager;
 
 public class EmployeeDAO {
 
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
-
     public List<Employee> getAllEmployees() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -47,7 +43,7 @@ public class EmployeeDAO {
             return null;
         }
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             return em.find(
@@ -79,7 +75,7 @@ public class EmployeeDAO {
             );
         }
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();
@@ -126,7 +122,7 @@ public class EmployeeDAO {
         validateEmployee(employee);
         validateUser(user);
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();
@@ -159,7 +155,7 @@ public class EmployeeDAO {
     public void updateEmployee(Employee employee) {
         validateEmployee(employee);
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();
@@ -218,7 +214,7 @@ public class EmployeeDAO {
     }
 
     public boolean isReceptionistByUserId(int userID) {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             Long count = em.createQuery(
@@ -242,7 +238,7 @@ public class EmployeeDAO {
     }
 
     public Employee getByUserId(int userID) {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             TypedQuery<Employee> query = em.createQuery(

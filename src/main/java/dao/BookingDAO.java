@@ -2,41 +2,14 @@ package dao;
 
 import entity.Booking;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import util.PersistenceManager;
 
 public class BookingDAO {
 
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
-
     public List<Booking> getAll() {
-        EntityManager em = EMF.createEntityManager();
-
-        try {
-            String jpql
-                    = "SELECT b "
-                    + "FROM Booking b "
-                    + "ORDER BY b.bookingDate DESC";
-
-            TypedQuery<Booking> query = em.createQuery(
-                    jpql,
-                    Booking.class
-            );
-
-            return query.getResultList();
-        } catch (Exception exception) {
-            throw new IllegalStateException(
-                    "Unable to load bookings.",
-                    exception
-            );
-        } finally {
-            close(em);
-        }
+        return new DAOFramework<>(Booking.class).getAll().reversed();
     }
 
     public Booking getById(String bookingID) {
@@ -45,22 +18,7 @@ public class BookingDAO {
 
             return null;
         }
-
-        EntityManager em = EMF.createEntityManager();
-
-        try {
-            return em.find(
-                    Booking.class,
-                    bookingID.trim()
-            );
-        } catch (Exception exception) {
-            throw new IllegalStateException(
-                    "Unable to find the booking.",
-                    exception
-            );
-        } finally {
-            close(em);
-        }
+        return new DAOFramework<>(Booking.class).findById(bookingID);
     }
 
     /*
@@ -76,8 +34,7 @@ public class BookingDAO {
             return null;
         }
 
-        EntityManager em = EMF.createEntityManager();
-
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             String jpql
                     = "SELECT DISTINCT b "
@@ -113,7 +70,7 @@ public class BookingDAO {
                     exception
             );
         } finally {
-            close(em);
+            em.close();
         }
     }
 
@@ -138,8 +95,7 @@ public class BookingDAO {
             );
         }
 
-        EntityManager em = EMF.createEntityManager();
-
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             String jpql
                     = "SELECT b "
@@ -165,8 +121,9 @@ public class BookingDAO {
                     exception
             );
         } finally {
-            close(em);
+            em.close();
         }
+
     }
 
     /*
@@ -176,8 +133,7 @@ public class BookingDAO {
     public List<Booking> getByAccountUserId(
             int userID) {
 
-        EntityManager em = EMF.createEntityManager();
-
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             String jpql
                     = "SELECT b "
@@ -200,15 +156,14 @@ public class BookingDAO {
                     exception
             );
         } finally {
-            close(em);
+            em.close();
         }
     }
 
     public Booking getLatestBookingByUserId(
             int userID) {
 
-        EntityManager em = EMF.createEntityManager();
-
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             String jpql
                     = "SELECT b "
@@ -237,7 +192,7 @@ public class BookingDAO {
                     exception
             );
         } finally {
-            close(em);
+            em.close();
         }
     }
 
@@ -248,8 +203,7 @@ public class BookingDAO {
     public Booking getLatestPendingBookingByUserId(
             int userID) {
 
-        EntityManager em = EMF.createEntityManager();
-
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             String jpql
                     = "SELECT b "
@@ -286,7 +240,7 @@ public class BookingDAO {
                     exception
             );
         } finally {
-            close(em);
+            em.close();
         }
     }
 
@@ -305,8 +259,7 @@ public class BookingDAO {
             );
         }
 
-        EntityManager em = EMF.createEntityManager();
-
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             String jpql
                     = "SELECT b "
@@ -333,7 +286,7 @@ public class BookingDAO {
                     exception
             );
         } finally {
-            close(em);
+            em.close();
         }
     }
 
@@ -351,8 +304,7 @@ public class BookingDAO {
 
         validateStatus(bookingStatus);
 
-        EntityManager em = EMF.createEntityManager();
-
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
 
@@ -374,14 +326,14 @@ public class BookingDAO {
 
             em.getTransaction().commit();
         } catch (Exception exception) {
-            rollback(em);
+            em.getTransaction().rollback();
 
             throw new IllegalStateException(
                     "Unable to update booking status.",
                     exception
             );
         } finally {
-            close(em);
+            em.close();
         }
     }
 
@@ -412,17 +364,7 @@ public class BookingDAO {
         }
     }
 
-    private void rollback(EntityManager em) {
-        if (em != null
-                && em.getTransaction().isActive()) {
-
-            em.getTransaction().rollback();
-        }
-    }
-
-    private void close(EntityManager em) {
-        if (em != null && em.isOpen()) {
-            em.close();
-        }
+    public static void main(String[] args) {
+        System.out.println(new BookingDAO().getAll());
     }
 }

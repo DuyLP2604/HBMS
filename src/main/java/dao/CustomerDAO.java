@@ -3,28 +3,20 @@ package dao;
 import entity.Customer;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 
 import java.util.List;
-
+import util.PersistenceManager;
 
 public class CustomerDAO {
 
-    private final EntityManagerFactory emf =
-            Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
-
-
     public String generateCustomerID() {
 
-        try (EntityManager em =
-                emf.createEntityManager()) {
+        try (EntityManager em
+                = PersistenceManager.createEntityManager()) {
 
-            String jpql =
-                    "SELECT MAX("
+            String jpql
+                    = "SELECT MAX("
                     + "CAST(SUBSTRING("
                     + "c.customerID, 3, "
                     + "LENGTH(c.customerID)"
@@ -32,14 +24,14 @@ public class CustomerDAO {
                     + ") "
                     + "FROM Customer c";
 
-            TypedQuery<Integer> query =
-                    em.createQuery(
+            TypedQuery<Integer> query
+                    = em.createQuery(
                             jpql,
                             Integer.class
                     );
 
-            Integer maxId =
-                    query.getSingleResult();
+            Integer maxId
+                    = query.getSingleResult();
 
             if (maxId != null) {
 
@@ -56,11 +48,9 @@ public class CustomerDAO {
         return "KH01";
     }
 
-
     public boolean insertCustomer(Customer customer) {
 
-        EntityManager em =
-                emf.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
 
@@ -90,17 +80,15 @@ public class CustomerDAO {
         return false;
     }
 
-
     public List<Customer> getAllCustomers() {
 
-        try (EntityManager em =
-                emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
 
-            String jpql =
-                    "SELECT c FROM Customer c";
+            String jpql
+                    = "SELECT c FROM Customer c";
 
-            TypedQuery<Customer> query =
-                    em.createQuery(
+            TypedQuery<Customer> query
+                    = em.createQuery(
                             jpql,
                             Customer.class
                     );
@@ -114,11 +102,9 @@ public class CustomerDAO {
         return List.of();
     }
 
-
     public Customer getCustomerById(String id) {
 
-        try (EntityManager em =
-                emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
 
             return em.find(
                     Customer.class,
@@ -132,11 +118,9 @@ public class CustomerDAO {
         return null;
     }
 
-
     public void updateCustomer(Customer customer) {
 
-        EntityManager em =
-                emf.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
 
@@ -162,21 +146,19 @@ public class CustomerDAO {
         }
     }
 
-
     public Customer getCustomerByUserId(
             int userId
     ) {
 
-        try (EntityManager em =
-                emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
 
-            String jpql =
-                    "SELECT c "
+            String jpql
+                    = "SELECT c "
                     + "FROM Customer c "
                     + "WHERE c.userID.userID = :userId";
 
-            TypedQuery<Customer> query =
-                    em.createQuery(
+            TypedQuery<Customer> query
+                    = em.createQuery(
                             jpql,
                             Customer.class
                     );
@@ -186,9 +168,9 @@ public class CustomerDAO {
                     userId
             );
 
-            List<Customer> customers =
-                    query.setMaxResults(1)
-                         .getResultList();
+            List<Customer> customers
+                    = query.setMaxResults(1)
+                            .getResultList();
 
             if (!customers.isEmpty()) {
                 return customers.get(0);
@@ -201,7 +183,6 @@ public class CustomerDAO {
         return null;
     }
 
-
     public Customer getCustomerByEmailOrPhone(
             String identifier
     ) {
@@ -212,20 +193,19 @@ public class CustomerDAO {
             return null;
         }
 
-        String value =
-                identifier.trim();
+        String value
+                = identifier.trim();
 
-        try (EntityManager em =
-                emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
 
-            String jpql =
-                    "SELECT c "
+            String jpql
+                    = "SELECT c "
                     + "FROM Customer c "
                     + "WHERE LOWER(c.email) = LOWER(:email) "
                     + "OR c.phone = :phone";
 
-            TypedQuery<Customer> query =
-                    em.createQuery(
+            TypedQuery<Customer> query
+                    = em.createQuery(
                             jpql,
                             Customer.class
                     );
@@ -240,9 +220,9 @@ public class CustomerDAO {
                     value
             );
 
-            List<Customer> customers =
-                    query.setMaxResults(1)
-                         .getResultList();
+            List<Customer> customers
+                    = query.setMaxResults(1)
+                            .getResultList();
 
             if (!customers.isEmpty()) {
                 return customers.get(0);

@@ -5,20 +5,14 @@ import entity.BookingService;
 import entity.BookingServicePK;
 import entity.Service;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import util.PersistenceManager;
 
 public class ServiceDAO {
 
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
-
     public List<Service> getAllServices() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -37,7 +31,7 @@ public class ServiceDAO {
     }
 
     public Service findByID(String serviceID) {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             return em.find(Service.class, serviceID);
@@ -47,7 +41,7 @@ public class ServiceDAO {
     }
 
     public String generateServiceID() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -105,7 +99,7 @@ public class ServiceDAO {
             );
         }
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();
@@ -167,7 +161,7 @@ public class ServiceDAO {
             );
         }
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();
@@ -214,12 +208,12 @@ public class ServiceDAO {
             );
 
             if (bookingService == null) {
-                bookingService = new BookingService(
-                        booking,
-                        service,
-                        quantity,
-                        service.getUnitPrice()
-                );
+
+                bookingService = new BookingService();
+                bookingService.setBooking(booking);
+                bookingService.setService(service);
+                bookingService.setQuantity(quantity);
+                bookingService.setUnitPrice(service.getUnitPrice());
 
                 em.persist(bookingService);
             } else {
@@ -231,7 +225,7 @@ public class ServiceDAO {
             }
 
             em.getTransaction().commit();
-        } catch (Exception exception) {
+        } catch (IllegalArgumentException exception) {
             rollback(em);
 
             throw new IllegalStateException(

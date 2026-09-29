@@ -2,73 +2,26 @@ package dao;
 
 import entity.Complaint;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import util.PersistenceManager;
 
 public class ComplaintDAO {
 
-    private static final EntityManagerFactory EMF =
-            Persistence.createEntityManagerFactory("my_persistence_unit");
-
     public List<Complaint> getAllComplaints() {
-        EntityManager em = EMF.createEntityManager();
-
-        try {
-            TypedQuery<Complaint> query = em.createQuery(
-                    "SELECT cp FROM Complaint cp "
-                    + "LEFT JOIN FETCH cp.customerID "
-                    + "ORDER BY cp.complaintID DESC",
-                    Complaint.class
-            );
-
-            return query.getResultList();
-        } catch (Exception ex) {
-            throw new IllegalStateException(
-                    "Unable to load complaints.", ex
-            );
-        } finally {
-            em.close();
-        }
+        return new DAOFramework<>(Complaint.class).getAll();
     }
 
     public Complaint getComplaintById(int id) {
-        EntityManager em = EMF.createEntityManager();
-
-        try {
-            return em.find(Complaint.class, id);
-        } catch (Exception ex) {
-            throw new IllegalStateException(
-                    "Unable to find complaint " + id + ".", ex
-            );
-        } finally {
-            em.close();
-        }
+        return new DAOFramework<>(Complaint.class).findById("" + id);
     }
 
-    public void insertComplaint(Complaint complaint) {
-        EntityManager em = EMF.createEntityManager();
-
-        try {
-            em.getTransaction().begin();
-            em.persist(complaint);
-            em.getTransaction().commit();
-        } catch (Exception ex) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            throw new IllegalStateException(
-                    "Unable to add complaint.", ex
-            );
-        } finally {
-            em.close();
-        }
+    public void insertComplaint(Complaint cp) {
+        new DAOFramework<>(Complaint.class).insert(cp);
     }
 
     public void updateStatus(int id, String status) {
-        EntityManager em = EMF.createEntityManager();
-
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
 
@@ -91,5 +44,9 @@ public class ComplaintDAO {
         } finally {
             em.close();
         }
+    }
+
+    public static void main(String[] args) {
+        System.out.println(new ComplaintDAO().getAllComplaints());
     }
 }
