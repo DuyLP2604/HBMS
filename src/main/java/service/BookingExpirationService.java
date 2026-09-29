@@ -2,18 +2,12 @@ package service;
 
 import entity.Booking;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
+import util.PersistenceManager;
 
 public class BookingExpirationService {
 
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
-
     public int expirePendingBookings() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();
@@ -42,7 +36,7 @@ public class BookingExpirationService {
             /*
              * Remove stale Booking objects from this EMF cache.
              */
-            EMF.getCache().evict(Booking.class);
+            PersistenceManager.getEMF().getCache().evict(Booking.class);
 
             return updatedRows;
         } catch (Exception ex) {
