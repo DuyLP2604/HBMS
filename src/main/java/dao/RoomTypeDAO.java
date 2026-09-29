@@ -3,9 +3,7 @@ package dao;
 import dto.RoomTypeAvailability;
 import entity.RoomType;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.ParameterMode;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.StoredProcedureQuery;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
@@ -13,16 +11,12 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import util.PersistenceManager;
 
 public class RoomTypeDAO {
 
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
-
     public List<RoomType> getAllRoomTypes() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -50,7 +44,7 @@ public class RoomTypeDAO {
             return null;
         }
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             return em.find(
@@ -75,7 +69,7 @@ public class RoomTypeDAO {
 
         validateDateRange(checkInDate, checkOutDate);
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             StoredProcedureQuery query

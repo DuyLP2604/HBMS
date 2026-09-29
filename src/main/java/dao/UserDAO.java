@@ -3,35 +3,27 @@ package dao;
 import entity.Users;
 
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
-
+import util.PersistenceManager;
 
 public class UserDAO {
 
-    private final EntityManagerFactory emf =
-            Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
-
-
     public String hashMD5(String password) {
 
-        StringBuilder hash =
-                new StringBuilder();
+        StringBuilder hash
+                = new StringBuilder();
 
         try {
 
-            MessageDigest md =
-                    MessageDigest.getInstance("MD5");
+            MessageDigest md
+                    = MessageDigest.getInstance("MD5");
 
-            byte[] bytes =
-                    md.digest(password.getBytes());
+            byte[] bytes
+                    = md.digest(password.getBytes());
 
             for (byte b : bytes) {
 
@@ -48,23 +40,22 @@ public class UserDAO {
         return hash.toString();
     }
 
-
     public Users login(
             String username,
             String password
     ) {
 
-        try (EntityManager em =
-                emf.createEntityManager()) {
+        try (EntityManager em
+                = PersistenceManager.createEntityManager()) {
 
-            String jpql =
-                    "SELECT u "
+            String jpql
+                    = "SELECT u "
                     + "FROM Users u "
                     + "WHERE u.username = :username "
                     + "AND u.password = :password";
 
-            TypedQuery<Users> query =
-                    em.createQuery(
+            TypedQuery<Users> query
+                    = em.createQuery(
                             jpql,
                             Users.class
                     );
@@ -79,9 +70,9 @@ public class UserDAO {
                     hashMD5(password)
             );
 
-            List<Users> users =
-                    query.setMaxResults(1)
-                         .getResultList();
+            List<Users> users
+                    = query.setMaxResults(1)
+                            .getResultList();
 
             if (!users.isEmpty()) {
                 return users.get(0);
@@ -95,21 +86,20 @@ public class UserDAO {
         return null;
     }
 
-
     public boolean isUsernameExists(
             String username
     ) {
 
-        try (EntityManager em =
-                emf.createEntityManager()) {
+        try (EntityManager em
+                = PersistenceManager.createEntityManager()) {
 
-            String jpql =
-                    "SELECT COUNT(u) "
+            String jpql
+                    = "SELECT COUNT(u) "
                     + "FROM Users u "
                     + "WHERE u.username = :username";
 
-            TypedQuery<Long> query =
-                    em.createQuery(
+            TypedQuery<Long> query
+                    = em.createQuery(
                             jpql,
                             Long.class
                     );
@@ -119,8 +109,8 @@ public class UserDAO {
                     username
             );
 
-            Long count =
-                    query.getSingleResult();
+            Long count
+                    = query.getSingleResult();
 
             return count > 0;
 
@@ -132,20 +122,19 @@ public class UserDAO {
         return false;
     }
 
-
     public int insertUser(
             String username,
             String password,
             String role
     ) {
 
-        EntityManager em =
-                emf.createEntityManager();
+        EntityManager em
+                = PersistenceManager.createEntityManager();
 
         try {
 
-            Users newUser =
-                    new Users();
+            Users newUser
+                    = new Users();
 
             newUser.setUsername(
                     username
@@ -159,13 +148,11 @@ public class UserDAO {
                     role
             );
 
-
             em.getTransaction().begin();
 
             em.persist(newUser);
 
             em.getTransaction().commit();
-
 
             return newUser.getUserID();
 
@@ -187,25 +174,22 @@ public class UserDAO {
         return -1;
     }
 
-
     public boolean deleteUser(
             int userId
     ) {
 
-        EntityManager em =
-                emf.createEntityManager();
+        EntityManager em
+                = PersistenceManager.createEntityManager();
 
         try {
 
             em.getTransaction().begin();
 
-
-            Users user =
-                    em.find(
+            Users user
+                    = em.find(
                             Users.class,
                             userId
                     );
-
 
             if (user == null) {
 
@@ -213,7 +197,6 @@ public class UserDAO {
 
                 return false;
             }
-
 
             em.remove(user);
 
@@ -248,16 +231,15 @@ public class UserDAO {
             String newPassword
     ) {
 
-        EntityManager em =
-                emf.createEntityManager();
+        EntityManager em
+                = PersistenceManager.createEntityManager();
 
         try {
 
             em.getTransaction().begin();
 
-
-            Users user =
-                    em.find(
+            Users user
+                    = em.find(
                             Users.class,
                             userId
                     );
@@ -288,13 +270,11 @@ public class UserDAO {
              */
             em.getTransaction().commit();
 
-
             return true;
 
         } catch (Exception e) {
 
             e.printStackTrace();
-
 
             if (em.getTransaction().isActive()) {
 
@@ -307,7 +287,6 @@ public class UserDAO {
                 em.close();
             }
         }
-
 
         return false;
     }

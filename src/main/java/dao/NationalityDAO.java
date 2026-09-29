@@ -6,10 +6,9 @@ package dao;
 
 import entity.Nationality;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import util.PersistenceManager;
 
 /**
  *
@@ -17,10 +16,8 @@ import java.util.List;
  */
 public class NationalityDAO {
 
-    EntityManagerFactory emf = Persistence.createEntityManagerFactory("my_persistence_unit");
-
     public List<Nationality> getAll() {
-        try (EntityManager em = emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
             String jpql = "SELECT n FROM Nationality n";
             TypedQuery<Nationality> query = em.createQuery(jpql, Nationality.class);
             return query.getResultList();
@@ -31,7 +28,7 @@ public class NationalityDAO {
     }
 
     public Nationality getNationalityById(String nationalityId) {
-        try (EntityManager em = emf.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
             return em.find(Nationality.class, nationalityId);
         } catch (Exception e) {
         }

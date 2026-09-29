@@ -5,27 +5,21 @@ import dto.CustomerBookingView;
 import entity.Booking;
 import entity.BookingDetail;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import util.PersistenceManager;
 
 public class CustomerBookingDAO {
-
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
 
     public List<CustomerBookingView> getByUserID(
             int userID) {
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -79,7 +73,7 @@ public class CustomerBookingDAO {
             String bookingID,
             int userID) {
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             Booking booking = findOwnedBooking(

@@ -8,8 +8,6 @@ import entity.Hotel;
 import entity.Invoice;
 import entity.RoomAssignment;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,19 +18,15 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import util.PersistenceManager;
 
 public class InvoiceDAO {
-
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
 
     public List<Map<String, String>> getOccupiedRooms() {
         List<Map<String, String>> result
                 = new ArrayList<>();
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -145,7 +139,7 @@ public class InvoiceDAO {
         List<Map<String, String>> result
                 = new ArrayList<>();
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -236,7 +230,7 @@ public class InvoiceDAO {
     }
 
     public boolean isBookingPaid(String bookingID) {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             Booking booking = em.find(
@@ -267,7 +261,7 @@ public class InvoiceDAO {
         List<Map<String, String>> result
                 = new ArrayList<>();
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -297,21 +291,19 @@ public class InvoiceDAO {
 
                 serviceMap.put(
                         "serviceID",
-                        bookingService.getServiceID()
+                        bookingService.getService()
                                 .getServiceID()
                 );
 
                 serviceMap.put(
                         "serviceName",
-                        bookingService.getServiceID()
+                        bookingService.getService()
                                 .getServiceName()
                 );
 
                 serviceMap.put(
                         "quantity",
-                        bookingService.getQuantity()
-                                .toString()
-                );
+                        "" + bookingService.getQuantity());
 
                 serviceMap.put(
                         "unitPrice",
@@ -337,7 +329,7 @@ public class InvoiceDAO {
     public Map<String, String>
             getRoomDetailByBooking(String bookingID) {
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             Booking booking = em.find(
@@ -468,7 +460,7 @@ public class InvoiceDAO {
             String bookingID,
             String employeeID) {
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();
@@ -556,11 +548,10 @@ public class InvoiceDAO {
              * Room.Status only represents ACTIVE,
              * MAINTENANCE or INACTIVE.
              */
-
             em.getTransaction().commit();
 
             return true;
-        } catch (Exception exception) {
+        } catch (IllegalArgumentException | IllegalStateException exception) {
             rollback(em);
 
             throw new IllegalStateException(
