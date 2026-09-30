@@ -6,7 +6,6 @@ package dao;
 
 import entity.Complaint;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
 import java.util.List;
 import util.PersistenceManager;
 
@@ -14,18 +13,14 @@ import util.PersistenceManager;
  *
  * @author TAN LOI
  */
-public class ComplaintDAO {
+public class ComplaintDAO extends DAOFramework<Complaint> {
 
-    public List<Complaint> getAllComplaints() {
-        return new DAOFramework<>(Complaint.class).getAll();
+    public ComplaintDAO() {
+        super(Complaint.class);
     }
 
     public Complaint getComplaintById(int id) {
-        return new DAOFramework<>(Complaint.class).findById("" + id);
-    }
-
-    public void insertComplaint(Complaint cp) {
-        new DAOFramework<>(Complaint.class).insert(cp);
+        return new DAOFramework<>(Complaint.class).getById("" + id);
     }
 
     public void updateStatus(int id, String status) {
@@ -48,6 +43,6 @@ public class ComplaintDAO {
     }
 
     public static void main(String[] args) {
-        System.out.println(new ComplaintDAO().getAllComplaints());
+        System.out.println(new ComplaintDAO().getAll());
     }
 }

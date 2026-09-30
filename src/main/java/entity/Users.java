@@ -35,12 +35,6 @@ import java.io.Serializable;
     @NamedQuery(name = "Users.findByRole", query = "SELECT u FROM Users u WHERE u.role = :role")})
 public class Users implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Basic(optional = false)
-    @Column(name = "UserID")
-    private Integer userID;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 50)
@@ -56,6 +50,13 @@ public class Users implements Serializable {
     @Size(min = 1, max = 50)
     @Column(name = "Role")
     private String role;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Basic(optional = false)
+    @Column(name = "UserID")
+    private Integer userID;
     @OneToOne(cascade = CascadeType.ALL, mappedBy = "userID")
     private Employee employee;
     @OneToOne(cascade = CascadeType.ALL, mappedBy = "userID")
@@ -83,29 +84,6 @@ public class Users implements Serializable {
         this.userID = userID;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
-    }
 
     public Employee getEmployee() {
         return employee;
@@ -146,6 +124,30 @@ public class Users implements Serializable {
     @Override
     public String toString() {
         return "entity.Users[ userID=" + userID + " ]";
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 
 }

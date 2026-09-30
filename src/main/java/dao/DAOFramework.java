@@ -30,7 +30,7 @@ public class DAOFramework<entity> {
         }
     }
 
-    public entity findById(String id) {
+    public entity getById(String id) {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
             return em.find(this.e, id);
         } catch (Exception ex) {

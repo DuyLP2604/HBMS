@@ -32,6 +32,12 @@ import java.util.Collection;
     @NamedQuery(name = "Nationality.findByNationalityName", query = "SELECT n FROM Nationality n WHERE n.nationalityName = :nationalityName")})
 public class Nationality implements Serializable {
 
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 100)
+    @Column(name = "NationalityName")
+    private String nationalityName;
+
     private static final long serialVersionUID = 1L;
     @Id
     @Basic(optional = false)
@@ -39,11 +45,6 @@ public class Nationality implements Serializable {
     @Size(min = 1, max = 50)
     @Column(name = "NationalityID")
     private String nationalityID;
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 100)
-    @Column(name = "NationalityName")
-    private String nationalityName;
     @OneToMany(mappedBy = "nationalityID")
     private Collection<Customer> customerCollection;
 
@@ -67,13 +68,6 @@ public class Nationality implements Serializable {
         this.nationalityID = nationalityID;
     }
 
-    public String getNationalityName() {
-        return nationalityName;
-    }
-
-    public void setNationalityName(String nationalityName) {
-        this.nationalityName = nationalityName;
-    }
 
     @XmlTransient
     public Collection<Customer> getCustomerCollection() {
@@ -107,6 +101,14 @@ public class Nationality implements Serializable {
     @Override
     public String toString() {
         return "entity.Nationality[ nationalityID=" + nationalityID + " ]";
+    }
+
+    public String getNationalityName() {
+        return nationalityName;
+    }
+
+    public void setNationalityName(String nationalityName) {
+        this.nationalityName = nationalityName;
     }
 
 }

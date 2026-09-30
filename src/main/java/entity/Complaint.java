@@ -39,12 +39,6 @@ import java.util.Date;
     @NamedQuery(name = "Complaint.findByStatus", query = "SELECT c FROM Complaint c WHERE c.status = :status")})
 public class Complaint implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Basic(optional = false)
-    @Column(name = "ComplaintID")
-    private Integer complaintID;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 200)
@@ -65,6 +59,13 @@ public class Complaint implements Serializable {
     @Size(min = 1, max = 30)
     @Column(name = "Status")
     private String status;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Basic(optional = false)
+    @Column(name = "ComplaintID")
+    private Integer complaintID;
     @JoinColumn(name = "CustomerID", referencedColumnName = "CustomerID")
     @ManyToOne
     private Customer customerID;
@@ -92,37 +93,6 @@ public class Complaint implements Serializable {
         this.complaintID = complaintID;
     }
 
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public Date getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Date createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
 
     public Customer getCustomerID() {
         return customerID;
@@ -155,6 +125,38 @@ public class Complaint implements Serializable {
     @Override
     public String toString() {
         return "entity.Complaint[ complaintID=" + complaintID + " ]";
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
 }

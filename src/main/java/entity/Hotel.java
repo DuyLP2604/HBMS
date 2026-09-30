@@ -31,13 +31,6 @@ import java.io.Serializable;
     @NamedQuery(name = "Hotel.findByAddress", query = "SELECT h FROM Hotel h WHERE h.address = :address")})
 public class Hotel implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 3)
-    @Column(name = "HotelID")
-    private String hotelID;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 50)
@@ -51,6 +44,14 @@ public class Hotel implements Serializable {
     @Size(min = 1, max = 200)
     @Column(name = "Address")
     private String address;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 3)
+    @Column(name = "HotelID")
+    private String hotelID;
 
     public Hotel() {
     }
@@ -73,29 +74,6 @@ public class Hotel implements Serializable {
         this.hotelID = hotelID;
     }
 
-    public String getHotelName() {
-        return hotelName;
-    }
-
-    public void setHotelName(String hotelName) {
-        this.hotelName = hotelName;
-    }
-
-    public String getHotelImage() {
-        return hotelImage;
-    }
-
-    public void setHotelImage(String hotelImage) {
-        this.hotelImage = hotelImage;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
 
     @Override
     public int hashCode() {
@@ -120,6 +98,30 @@ public class Hotel implements Serializable {
     @Override
     public String toString() {
         return "entity.Hotel[ hotelID=" + hotelID + " ]";
+    }
+
+    public String getHotelName() {
+        return hotelName;
+    }
+
+    public void setHotelName(String hotelName) {
+        this.hotelName = hotelName;
+    }
+
+    public String getHotelImage() {
+        return hotelImage;
+    }
+
+    public void setHotelImage(String hotelImage) {
+        this.hotelImage = hotelImage;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 
 }

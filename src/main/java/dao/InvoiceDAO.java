@@ -522,10 +522,6 @@ public class InvoiceDAO {
                         generateInvoiceID(em)
                 );
 
-                invoice.setInvoiceType(
-                        "Checkout Invoice"
-                );
-
                 invoice.setInvoiceDate(new Date());
                 invoice.setBookingID(booking);
 

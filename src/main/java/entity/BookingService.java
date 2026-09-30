@@ -34,9 +34,6 @@ import java.math.BigDecimal;
     @NamedQuery(name = "BookingService.findBySubtotal", query = "SELECT b FROM BookingService b WHERE b.subtotal = :subtotal")})
 public class BookingService implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @EmbeddedId
-    protected BookingServicePK bookingServicePK;
     @Basic(optional = false)
     @NotNull
     @Column(name = "Quantity")
@@ -50,6 +47,10 @@ public class BookingService implements Serializable {
     @NotNull
     @Column(name = "Subtotal")
     private BigDecimal subtotal;
+
+    private static final long serialVersionUID = 1L;
+    @EmbeddedId
+    protected BookingServicePK bookingServicePK;
     @JoinColumn(name = "BookingID", referencedColumnName = "BookingID", insertable = false, updatable = false)
     @ManyToOne(optional = false)
     private Booking booking;
@@ -83,29 +84,6 @@ public class BookingService implements Serializable {
         this.bookingServicePK = bookingServicePK;
     }
 
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
-
-    public BigDecimal getUnitPrice() {
-        return unitPrice;
-    }
-
-    public void setUnitPrice(BigDecimal unitPrice) {
-        this.unitPrice = unitPrice;
-    }
-
-    public BigDecimal getSubtotal() {
-        return subtotal;
-    }
-
-    public void setSubtotal(BigDecimal subtotal) {
-        this.subtotal = subtotal;
-    }
 
     public Booking getBooking() {
         return booking;
@@ -146,6 +124,30 @@ public class BookingService implements Serializable {
     @Override
     public String toString() {
         return "entity.BookingService[ bookingServicePK=" + bookingServicePK + " ]";
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
+    }
+
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+
+    public void setSubtotal(BigDecimal subtotal) {
+        this.subtotal = subtotal;
     }
 
 }

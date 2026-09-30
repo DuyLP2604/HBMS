@@ -40,12 +40,6 @@ import java.util.Collection;
     @NamedQuery(name = "BookingDetail.findBySubtotal", query = "SELECT b FROM BookingDetail b WHERE b.subtotal = :subtotal")})
 public class BookingDetail implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Basic(optional = false)
-    @Column(name = "BookingDetailID")
-    private Integer bookingDetailID;
     @Basic(optional = false)
     @NotNull
     @Column(name = "Quantity")
@@ -63,6 +57,13 @@ public class BookingDetail implements Serializable {
     @NotNull
     @Column(name = "Subtotal")
     private BigDecimal subtotal;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Basic(optional = false)
+    @Column(name = "BookingDetailID")
+    private Integer bookingDetailID;
     @JoinColumn(name = "BookingID", referencedColumnName = "BookingID")
     @ManyToOne(optional = false)
     private Booking bookingID;
@@ -95,37 +96,6 @@ public class BookingDetail implements Serializable {
         this.bookingDetailID = bookingDetailID;
     }
 
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
-
-    public int getGuestCount() {
-        return guestCount;
-    }
-
-    public void setGuestCount(int guestCount) {
-        this.guestCount = guestCount;
-    }
-
-    public BigDecimal getUnitPrice() {
-        return unitPrice;
-    }
-
-    public void setUnitPrice(BigDecimal unitPrice) {
-        this.unitPrice = unitPrice;
-    }
-
-    public BigDecimal getSubtotal() {
-        return subtotal;
-    }
-
-    public void setSubtotal(BigDecimal subtotal) {
-        this.subtotal = subtotal;
-    }
 
     public Booking getBookingID() {
         return bookingID;
@@ -175,6 +145,38 @@ public class BookingDetail implements Serializable {
     @Override
     public String toString() {
         return "entity.BookingDetail[ bookingDetailID=" + bookingDetailID + " ]";
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public int getGuestCount() {
+        return guestCount;
+    }
+
+    public void setGuestCount(int guestCount) {
+        this.guestCount = guestCount;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
+    }
+
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+
+    public void setSubtotal(BigDecimal subtotal) {
+        this.subtotal = subtotal;
     }
 
 }

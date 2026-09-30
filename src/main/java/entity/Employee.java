@@ -40,13 +40,6 @@ import java.util.Collection;
     @NamedQuery(name = "Employee.findByPhone", query = "SELECT e FROM Employee e WHERE e.phone = :phone")})
 public class Employee implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 6)
-    @Column(name = "EmployeeID")
-    private String employeeID;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 100)
@@ -57,9 +50,6 @@ public class Employee implements Serializable {
     @Size(min = 1, max = 50)
     @Column(name = "Position")
     private String position;
-    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
-    @Column(name = "Salary")
-    private BigDecimal salary;
     @Size(max = 20)
     @Column(name = "Shift")
     private String shift;
@@ -67,9 +57,21 @@ public class Employee implements Serializable {
     @Column(name = "Address")
     private String address;
     // @Pattern(regexp="^\\(?(\\d{3})\\)?[- ]?(\\d{3})[- ]?(\\d{4})$", message="Invalid phone/fax format, should be as xxx-xxx-xxxx")//if the field contains phone or fax number consider using this annotation to enforce field validation
+    // @Pattern(regexp="^\\(?(\\d{3})\\)?[- ]?(\\d{3})[- ]?(\\d{4})$", message="Invalid phone/fax format, should be as xxx-xxx-xxxx")//if the field contains phone or fax number consider using this annotation to enforce field validation
     @Size(max = 20)
     @Column(name = "Phone")
     private String phone;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 6)
+    @Column(name = "EmployeeID")
+    private String employeeID;
+    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
+    @Column(name = "Salary")
+    private BigDecimal salary;
     @JoinColumn(name = "UserID", referencedColumnName = "UserID")
     @OneToOne(optional = false)
     private Users userID;
@@ -99,21 +101,6 @@ public class Employee implements Serializable {
         this.employeeID = employeeID;
     }
 
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getPosition() {
-        return position;
-    }
-
-    public void setPosition(String position) {
-        this.position = position;
-    }
 
     public BigDecimal getSalary() {
         return salary;
@@ -123,29 +110,6 @@ public class Employee implements Serializable {
         this.salary = salary;
     }
 
-    public String getShift() {
-        return shift;
-    }
-
-    public void setShift(String shift) {
-        this.shift = shift;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
 
     public Users getUserID() {
         return userID;
@@ -196,6 +160,46 @@ public class Employee implements Serializable {
     @Override
     public String toString() {
         return "entity.Employee[ employeeID=" + employeeID + " ]";
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
+
+    public String getShift() {
+        return shift;
+    }
+
+    public void setShift(String shift) {
+        this.shift = shift;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
     }
 
 }

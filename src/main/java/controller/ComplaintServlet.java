@@ -51,7 +51,7 @@ public class ComplaintServlet extends HttpServlet {
             if (role == null || (!role.equalsIgnoreCase("Admin") && !role.equalsIgnoreCase("Staff"))) {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page!");
             }
-            List<Complaint> list = daoCp.getAllComplaints();
+            List<Complaint> list = daoCp.getAll();
             request.setAttribute("complaints", list);
             request.getRequestDispatcher("/WEB-INF/views/complaints.jsp").forward(request, response);
 
@@ -94,7 +94,7 @@ public class ComplaintServlet extends HttpServlet {
             cp.setContent(content);
             cp.setCustomerID(customer);
 
-            daoCp.insertComplaint(cp);
+            daoCp.insert(cp);
             response.sendRedirect("complaint?action=add&success=1");
 
         } else if ("updateStatus".equalsIgnoreCase(action)) {

@@ -32,6 +32,12 @@ import java.util.Collection;
     @NamedQuery(name = "Paymentmethod.findByMethodName", query = "SELECT p FROM Paymentmethod p WHERE p.methodName = :methodName")})
 public class Paymentmethod implements Serializable {
 
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 30)
+    @Column(name = "MethodName")
+    private String methodName;
+
     private static final long serialVersionUID = 1L;
     @Id
     @Basic(optional = false)
@@ -39,11 +45,6 @@ public class Paymentmethod implements Serializable {
     @Size(min = 1, max = 4)
     @Column(name = "MethodID")
     private String methodID;
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 30)
-    @Column(name = "MethodName")
-    private String methodName;
     @OneToMany(mappedBy = "methodID")
     private Collection<Payment> paymentCollection;
 
@@ -67,13 +68,6 @@ public class Paymentmethod implements Serializable {
         this.methodID = methodID;
     }
 
-    public String getMethodName() {
-        return methodName;
-    }
-
-    public void setMethodName(String methodName) {
-        this.methodName = methodName;
-    }
 
     @XmlTransient
     public Collection<Payment> getPaymentCollection() {
@@ -107,6 +101,14 @@ public class Paymentmethod implements Serializable {
     @Override
     public String toString() {
         return "entity.Paymentmethod[ methodID=" + methodID + " ]";
+    }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
     }
 
 }

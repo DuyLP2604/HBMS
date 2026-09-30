@@ -37,13 +37,6 @@ import java.util.Collection;
     @NamedQuery(name = "Room.findByStatus", query = "SELECT r FROM Room r WHERE r.status = :status")})
 public class Room implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 3)
-    @Column(name = "RoomID")
-    private String roomID;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 20)
@@ -57,6 +50,14 @@ public class Room implements Serializable {
     @Size(min = 1, max = 20)
     @Column(name = "Status")
     private String status;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 3)
+    @Column(name = "RoomID")
+    private String roomID;
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "roomID")
     private Collection<RoomAssignment> roomAssignmentCollection;
     @JoinColumn(name = "RoomTypeID", referencedColumnName = "RoomTypeID")
@@ -84,29 +85,6 @@ public class Room implements Serializable {
         this.roomID = roomID;
     }
 
-    public String getRoomNumber() {
-        return roomNumber;
-    }
-
-    public void setRoomNumber(String roomNumber) {
-        this.roomNumber = roomNumber;
-    }
-
-    public String getRoomImage() {
-        return roomImage;
-    }
-
-    public void setRoomImage(String roomImage) {
-        this.roomImage = roomImage;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
 
     @XmlTransient
     public Collection<RoomAssignment> getRoomAssignmentCollection() {
@@ -148,6 +126,30 @@ public class Room implements Serializable {
     @Override
     public String toString() {
         return "entity.Room[ roomID=" + roomID + " ]";
+    }
+
+    public String getRoomNumber() {
+        return roomNumber;
+    }
+
+    public void setRoomNumber(String roomNumber) {
+        this.roomNumber = roomNumber;
+    }
+
+    public String getRoomImage() {
+        return roomImage;
+    }
+
+    public void setRoomImage(String roomImage) {
+        this.roomImage = roomImage;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
 }
