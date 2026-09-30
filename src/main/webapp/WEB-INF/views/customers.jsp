@@ -34,8 +34,7 @@
             <div class="card-body">
                 <div class="row mb-4">
                     <div class="col-md-6">
-                        <form action="${pageContext.request.contextPath}/customer"
-                              method="get"
+                        <form action="${pageContext.request.contextPath}/customer"method="get"
                               class="d-flex gap-2">
 
                             <input type="hidden" name="action" value="list">
@@ -43,11 +42,8 @@
                             <div class="input-group">
                                 <span class="input-group-text bg-white">ID</span>
 
-                                <input type="text"
-                                       name="searchId"
-                                       class="form-control"
-                                       value="<c:out value='${param.searchId}' />"
-                                       placeholder="Enter customer ID...">
+                                <input type="text" name="keyword" class="form-control"value="<c:out value='${param.keyword}' />"
+                                       placeholder="Enter Customer ID or Name...">
 
                                 <button type="submit" class="btn btn-primary">
                                     Search
@@ -78,48 +74,47 @@
 
                         <tbody>
                             <c:forEach var="c" items="${customers}">
-                                <c:if test="${empty param.searchId or c.customerID.trim().equalsIgnoreCase(param.searchId.trim())}">
-                                    <tr>
-                                        <td class="fw-bold text-secondary">
-                                            <c:out value="${c.customerID}" />
-                                        </td>
+                                <tr>
+                                    <td class="fw-bold text-secondary">
+                                        <c:out value="${c.customerID}" />
+                                    </td>
 
-                                        <td>
-                                            <c:out value="${c.fullName}" />
-                                        </td>
+                                    <td>
+                                        <c:out value="${c.fullName}" />
+                                    </td>
 
-                                        <td>
-                                            <c:out value="${c.phone}" />
-                                        </td>
+                                    <td>
+                                        <c:out value="${c.phone}" />
+                                    </td>
 
-                                        <td>
-                                            <c:out value="${c.nationalityID.nationalityName}" />
-                                        </td>
+                                    <td>
+                                        <c:out value="${c.nationalityID.nationalityName}" />
+                                    </td>
 
-                                        <td class="text-center">
-                                            <a href="${pageContext.request.contextPath}/customer?action=viewDetail&amp;id=${c.customerID}"
-                                               class="btn btn-outline-info btn-sm me-1">
-                                                View Details
-                                            </a>
+                                    <td class="text-center">
+                                        <a href="${pageContext.request.contextPath}/customer?action=viewDetail&amp;id=${c.customerID}"
+                                           class="btn btn-outline-info btn-sm me-1">
+                                            View Details
+                                        </a>
 
-                                            <c:choose>
-                                                <c:when test="${sessionScope.user.role eq 'Admin'}">
-                                                    <span class="btn btn-outline-warning btn-sm disabled"
-                                                          aria-disabled="true"
-                                                          title="Admin cannot edit customers">
-                                                        Edit
-                                                    </span>
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <a href="${pageContext.request.contextPath}/customer?action=update&amp;id=${c.customerID}"
-                                                       class="btn btn-outline-warning btn-sm">
-                                                        Edit
-                                                    </a>
-                                                </c:otherwise>
-                                            </c:choose>
-                                        </td>
-                                    </tr>
-                                </c:if>
+                                        <c:choose>
+                                            <c:when test="${sessionScope.user.role eq 'Admin'}">
+                                                <span class="btn btn-outline-warning btn-sm disabled"
+                                                      aria-disabled="true"
+                                                      title="Admin cannot edit customers">
+                                                    Edit
+                                                </span>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <a href="${pageContext.request.contextPath}/customer?action=update&amp;id=${c.customerID}"
+                                                   class="btn btn-outline-warning btn-sm">
+                                                    Edit
+                                                </a>
+                                            </c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                </tr>
+
                             </c:forEach>
 
                             <c:if test="${empty customers}">

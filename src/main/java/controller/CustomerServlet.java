@@ -58,9 +58,15 @@ public class CustomerServlet extends HttpServlet {
         NationalityDAO daoNat = new NationalityDAO();
 
         if ("list".equalsIgnoreCase(action)) {
-            List<Customer> customers = daoCus.getAllCustomers();
-            request.setAttribute("customers", customers);
-
+            String keyword = request.getParameter("keyword");
+            List<Customer> customerList;
+            // tim theo name
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                customerList = daoCus.searchCustomerByKeyword(keyword.trim());
+            } else {
+                customerList = daoCus.getAllCustomers();
+            }
+            request.setAttribute("customers", customerList);
             request.getRequestDispatcher("/WEB-INF/views/customers.jsp")
                     .forward(request, response);
 
