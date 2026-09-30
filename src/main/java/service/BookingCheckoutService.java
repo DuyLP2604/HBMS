@@ -7,10 +7,8 @@ import entity.BookingDetail;
 import entity.Customer;
 import entity.RoomType;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.ParameterMode;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.StoredProcedureQuery;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
@@ -24,13 +22,9 @@ import entity.Hotel;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
+import util.PersistenceManager;
 
 public class BookingCheckoutService {
-
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
 
     private static final long PAYMENT_TIMEOUT_MINUTES
             = 15;
@@ -43,7 +37,7 @@ public class BookingCheckoutService {
 
         validateCart(cart);
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();

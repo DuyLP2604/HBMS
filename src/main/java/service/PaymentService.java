@@ -17,19 +17,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import util.PersistenceManager;
 
 public class PaymentService {
-
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
 
     private static final int PAYMENT_LOCK_TIMEOUT_MS
             = 10000;
 
     /**
      * Loads a booking belonging to the currently logged-in customer.
+     *
+     * @param bookingID
+     * @param userID
+     * @return
      */
     public Booking getBookingForPayment(
             String bookingID,
@@ -41,7 +41,7 @@ public class PaymentService {
             return null;
         }
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -107,7 +107,7 @@ public class PaymentService {
         String normalizedMethodID
                 = methodID.trim();
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             em.getTransaction().begin();

@@ -1,3 +1,7 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package entity;
 
 import jakarta.persistence.Basic;
@@ -10,7 +14,6 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
@@ -19,6 +22,10 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Collection;
 
+/**
+ *
+ * @author Asus
+ */
 @Entity
 @Table(name = "EMPLOYEE")
 @XmlRootElement
@@ -64,85 +71,40 @@ import java.util.Collection;
 public class Employee implements Serializable {
 
     private static final long serialVersionUID = 1L;
-
     @Id
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 6)
-    @Column(
-        name = "EmployeeID",
-        nullable = false,
-        length = 6
-    )
+    @Column(name = "EmployeeID")
     private String employeeID;
-
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 100)
-    @Column(
-        name = "FullName",
-        nullable = false,
-        length = 100
-    )
+    @Column(name = "FullName")
     private String fullName;
-
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 50)
-    @Column(
-        name = "Position",
-        nullable = false,
-        length = 50
-    )
+    @Column(name = "Position")
     private String position;
-
-    @DecimalMin(value = "0.0", inclusive = true)
-    @Column(
-        name = "Salary",
-        precision = 12,
-        scale = 2
-    )
+    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
+    @Column(name = "Salary")
     private BigDecimal salary;
-
     @Size(max = 20)
-    @Column(name = "Shift", length = 20)
+    @Column(name = "Shift")
     private String shift;
-
     @Size(max = 200)
-    @Column(name = "Address", length = 200)
+    @Column(name = "Address")
     private String address;
-
+    // @Pattern(regexp="^\\(?(\\d{3})\\)?[- ]?(\\d{3})[- ]?(\\d{4})$", message="Invalid phone/fax format, should be as xxx-xxx-xxxx")//if the field contains phone or fax number consider using this annotation to enforce field validation
     @Size(max = 20)
-    @Column(
-        name = "Phone",
-        unique = true,
-        length = 20
-    )
+    @Column(name = "Phone")
     private String phone;
-
-    /*
-     * EMPLOYEE.UserID có UNIQUE constraint,
-     * vì vậy đây là quan hệ một-một.
-     */
-    @JoinColumn(
-        name = "UserID",
-        referencedColumnName = "UserID",
-        nullable = false,
-        unique = true
-    )
+    @JoinColumn(name = "UserID", referencedColumnName = "UserID")
     @OneToOne(optional = false)
     private Users userID;
-
-    /*
-     * Không dùng CascadeType.ALL.
-     * Xóa employee không được xóa lịch sử hóa đơn.
-     */
     @OneToMany(mappedBy = "employeeID")
     private Collection<Invoice> invoiceCollection;
-
-    /*
-     * Một nhân viên có thể thực hiện nhiều lần phân phòng.
-     */
     @OneToMany(mappedBy = "employeeID")
     private Collection<RoomAssignment> roomAssignmentCollection;
 
@@ -153,24 +115,10 @@ public class Employee implements Serializable {
         this.employeeID = employeeID;
     }
 
-    public Employee(
-            String employeeID,
-            String fullName,
-            String position,
-            BigDecimal salary,
-            String shift,
-            String address,
-            String phone,
-            Users userID) {
-
+    public Employee(String employeeID, String fullName, String position) {
         this.employeeID = employeeID;
         this.fullName = fullName;
         this.position = position;
-        this.salary = salary;
-        this.shift = shift;
-        this.address = address;
-        this.phone = phone;
-        this.userID = userID;
     }
 
     public String getEmployeeID() {
@@ -242,54 +190,42 @@ public class Employee implements Serializable {
         return invoiceCollection;
     }
 
-    public void setInvoiceCollection(
-            Collection<Invoice> invoiceCollection) {
-
+    public void setInvoiceCollection(Collection<Invoice> invoiceCollection) {
         this.invoiceCollection = invoiceCollection;
     }
 
     @XmlTransient
-    public Collection<RoomAssignment>
-            getRoomAssignmentCollection() {
-
+    public Collection<RoomAssignment> getRoomAssignmentCollection() {
         return roomAssignmentCollection;
     }
 
-    public void setRoomAssignmentCollection(
-            Collection<RoomAssignment>
-                    roomAssignmentCollection) {
-
-        this.roomAssignmentCollection =
-                roomAssignmentCollection;
+    public void setRoomAssignmentCollection(Collection<RoomAssignment> roomAssignmentCollection) {
+        this.roomAssignmentCollection = roomAssignmentCollection;
     }
 
     @Override
     public int hashCode() {
-        return employeeID != null
-                ? employeeID.hashCode()
-                : 0;
+        int hash = 0;
+        hash += (employeeID != null ? employeeID.hashCode() : 0);
+        return hash;
     }
 
     @Override
     public boolean equals(Object object) {
+        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Employee)) {
             return false;
         }
-
         Employee other = (Employee) object;
-
-        if (employeeID == null
-                && other.employeeID != null) {
+        if ((this.employeeID == null && other.employeeID != null) || (this.employeeID != null && !this.employeeID.equals(other.employeeID))) {
             return false;
         }
-
-        return employeeID == null
-                || employeeID.equals(other.employeeID);
+        return true;
     }
 
     @Override
     public String toString() {
-        return "entity.Employee[employeeID="
-                + employeeID + "]";
+        return "entity.Employee[ employeeID=" + employeeID + " ]";
     }
+
 }

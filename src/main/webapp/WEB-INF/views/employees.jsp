@@ -10,9 +10,7 @@
 
             <!-- HEADER -->
             <div class="card-header employee-header text-white d-flex justify-content-between align-items-center py-3">
-                <h2 class="h4 mb-0">
-                    Employee List
-                </h2>
+                <h2 class="h4 mb-0">Employee List</h2>
 
                 <a href="${pageContext.request.contextPath}/employee?action=add"
                    class="btn btn-warning btn-sm fw-semibold">
@@ -24,7 +22,7 @@
 
                 <!-- SEARCH -->
                 <div class="row mb-4">
-                    <div class="col-12">
+                     <div class="col-12">
 
                         <form action="${pageContext.request.contextPath}/employee"
                               method="get"
@@ -221,7 +219,8 @@
 
                             <c:if test="${empty employees || matchCount == 0}">
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">
+                                    <td colspan="5"
+                                        class="text-center text-muted py-4">
                                         No employees found.
                                     </td>
                                 </tr>
@@ -233,6 +232,7 @@
                 </div>
 
             </div>
+
         </div>
     </div>
 </layout:layout>

@@ -4,13 +4,10 @@ import dto.CustomerSource;
 import dto.RevenueChart;
 import entity.Payment;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
-import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -18,13 +15,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import util.PersistenceManager;
 
 public class DashboardDAO {
-
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
 
     /*
      * Revenue is calculated from successful payments,
@@ -61,9 +54,7 @@ public class DashboardDAO {
     private BigDecimal getPaidRevenue(
             LocalDate startDate,
             LocalDate endDate) {
-
-        EntityManager em = EMF.createEntityManager();
-
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             LocalDate endExclusive = endDate.plusDays(1);
 
@@ -122,7 +113,7 @@ public class DashboardDAO {
 
         validateDateRange(startDate, endDate);
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             LocalDate endExclusive = endDate.plusDays(1);
@@ -195,7 +186,7 @@ public class DashboardDAO {
      * and inactive rooms cannot be sold.
      */
     public int getTotalRoomsCount() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -226,7 +217,7 @@ public class DashboardDAO {
     }
 
     public int getTotalCustomers() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -271,7 +262,7 @@ public class DashboardDAO {
             );
         }
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -358,7 +349,7 @@ public class DashboardDAO {
     }
 
     public List<CustomerSource> getCustomerSource() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql

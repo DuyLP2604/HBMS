@@ -19,13 +19,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import util.PersistenceManager;
 
 public class RoomAssignmentService {
-
-    private static final EntityManagerFactory EMF
-            = Persistence.createEntityManagerFactory(
-                    "my_persistence_unit"
-            );
 
     private static final List<String> BLOCKING_STATUSES
             = Arrays.asList(
@@ -33,12 +29,12 @@ public class RoomAssignmentService {
                     "ASSIGNED",
                     "CHECKED_IN"
             );
-    
+
     private final EmployeeDAO employeeDAO
-        = new EmployeeDAO();
+            = new EmployeeDAO();
 
     public List<Booking> getWaitingBookings() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -67,7 +63,7 @@ public class RoomAssignmentService {
     }
 
     public Booking getBooking(String bookingID) {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             return em.find(
@@ -84,7 +80,7 @@ public class RoomAssignmentService {
     public List<BookingDetail> getBookingDetails(
             String bookingID) {
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             String jpql
@@ -114,7 +110,7 @@ public class RoomAssignmentService {
     public List<Room> getAvailableRooms(
             Integer bookingDetailID) {
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         try {
             BookingDetail detail = em.find(
@@ -189,7 +185,7 @@ public class RoomAssignmentService {
             Map<Integer, List<String>> selectedRooms,
             int userID) {
 
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
 
         if (!employeeDAO.isReceptionistByUserId(userID)) {
             throw new SecurityException(
