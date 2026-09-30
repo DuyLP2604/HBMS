@@ -51,6 +51,14 @@ import java.util.Collection;
         name = "Employee.findByPhone",
         query = "SELECT e FROM Employee e "
               + "WHERE e.phone = :phone"
+    ),
+    @NamedQuery(
+        name = "Employee.findDistinctPositions",
+        query = "SELECT DISTINCT e.position FROM Employee e WHERE e.position IS NOT NULL ORDER BY e.position"
+    ),
+    @NamedQuery(
+        name = "Employee.findDistinctShifts",
+        query = "SELECT DISTINCT e.shift FROM Employee e WHERE e.shift IS NOT NULL ORDER BY e.shift"
     )
 })
 public class Employee implements Serializable {

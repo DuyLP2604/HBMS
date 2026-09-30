@@ -45,10 +45,9 @@ public class EmployeeServlet extends HttpServlet {
 
         switch (action) {
             case "list":
-                request.setAttribute(
-                        "employees",
-                        employeeDAO.getAllEmployees()
-                );
+                request.setAttribute("employees", employeeDAO.getAllEmployees());
+                request.setAttribute("positions", employeeDAO.getAllPositions());
+                request.setAttribute("shifts", employeeDAO.getAllShifts());
 
                 request.getRequestDispatcher(
                         "/WEB-INF/views/employees.jsp"
