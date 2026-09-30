@@ -34,10 +34,18 @@ public class RoomServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        RoomDAO dao = new RoomDAO();
-        List<Room> list = dao.getAll();
-        request.setAttribute("roomList", list);
-        request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response);
+        String action = request.getParameter("action");
+        RoomDAO roomDAO = new RoomDAO();
+
+        if ("viewDetail".equalsIgnoreCase(action)) {
+            String id = request.getParameter("id");
+            Room room = roomDAO.getById(id); //
+            request.setAttribute("room", room);
+            request.getRequestDispatcher("/WEB-INF/views/room-detail.jsp").forward(request, response);
+        } else {
+            request.setAttribute("roomList", roomDAO.getAll());
+            request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response); //[cite: 1]
+        }
     }
 
     /**
