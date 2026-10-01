@@ -5,15 +5,14 @@
 package controller;
 
 import dao.RoomDAO;
+import dao.RoomTypeDAO;
 import entity.Room;
 import java.io.IOException;
-import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
 
 /**
  *
@@ -39,12 +38,21 @@ public class RoomServlet extends HttpServlet {
 
         if ("viewDetail".equalsIgnoreCase(action)) {
             String id = request.getParameter("id");
-            Room room = roomDAO.getById(id); //
+            Room room = roomDAO.getById(id);
             request.setAttribute("room", room);
             request.getRequestDispatcher("/WEB-INF/views/room-detail.jsp").forward(request, response);
+        } else if ("update".equalsIgnoreCase(action)) {
+            String roomId = request.getParameter("id");
+            RoomTypeDAO rtDao = new RoomTypeDAO();
+            Room room = roomDAO.getById(roomId);
+            if (room != null) {
+                request.setAttribute("room", room);
+                request.setAttribute("roomTypes", rtDao.getAllRoomTypes());
+                request.getRequestDispatcher("/WEB-INF/views/update-room.jsp").forward(request, response);
+            }
         } else {
             request.setAttribute("roomList", roomDAO.getAll());
-            request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response); //[cite: 1]
+            request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response);
         }
     }
 
@@ -59,6 +67,32 @@ public class RoomServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        String action = request.getParameter("action");
+        RoomDAO roomDAO = new RoomDAO();
+        if ("update".equalsIgnoreCase(action)) {
+            String roomId = request.getParameter("id");
+            String roomNumber = request.getParameter("roomNumber");
+            String roomTypeId = request.getParameter("roomTypeID");
+            String status = request.getParameter("status");
+            RoomTypeDAO roomTypeDAO = new RoomTypeDAO();
+
+            Room room = roomDAO.getById(roomId);
+            if (room != null) {
+                room.setRoomNumber(roomNumber);
+                room.setStatus(status);
+                entity.RoomType newRoomType = roomTypeDAO.getById(roomTypeId);
+                if (newRoomType != null) {
+                    room.setRoomTypeID(newRoomType);
+                }
+
+                roomDAO.update(room);
+                util.flash.Flash.success(request, "Update success!");
+            } else {
+                util.flash.Flash.error(request, "Error! Cannot update room information.");
+            }
+
+            response.sendRedirect(request.getContextPath() + "/room?action=list");
+        }
     }
 
     /**
