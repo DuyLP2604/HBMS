@@ -352,4 +352,34 @@ public class EmployeeDAO {
             em.close();
         }
     }
+
+    public List<String> getAllPositions() {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            return em.createNamedQuery("Employee.findDistinctPositions", String.class)
+                    .getResultList();
+        } catch (Exception exception) {
+            throw new IllegalStateException(
+                    "Unable to load position list.", 
+                    exception
+            );
+        } finally {
+            close(em);
+        }
+    }
+
+    public List<String> getAllShifts() {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            return em.createNamedQuery("Employee.findDistinctShifts", String.class)
+                    .getResultList();
+        } catch (Exception exception) {
+            throw new IllegalStateException(
+                    "Unable to load shift list.", 
+                    exception
+            );
+        } finally {
+            close(em);
+        }
+    }
 }

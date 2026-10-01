@@ -30,14 +30,44 @@ import java.util.Collection;
 @Table(name = "EMPLOYEE")
 @XmlRootElement
 @NamedQueries({
-    @NamedQuery(name = "Employee.findAll", query = "SELECT e FROM Employee e"),
-    @NamedQuery(name = "Employee.findByEmployeeID", query = "SELECT e FROM Employee e WHERE e.employeeID = :employeeID"),
-    @NamedQuery(name = "Employee.findByFullName", query = "SELECT e FROM Employee e WHERE e.fullName = :fullName"),
-    @NamedQuery(name = "Employee.findByPosition", query = "SELECT e FROM Employee e WHERE e.position = :position"),
-    @NamedQuery(name = "Employee.findBySalary", query = "SELECT e FROM Employee e WHERE e.salary = :salary"),
-    @NamedQuery(name = "Employee.findByShift", query = "SELECT e FROM Employee e WHERE e.shift = :shift"),
-    @NamedQuery(name = "Employee.findByAddress", query = "SELECT e FROM Employee e WHERE e.address = :address"),
-    @NamedQuery(name = "Employee.findByPhone", query = "SELECT e FROM Employee e WHERE e.phone = :phone")})
+    @NamedQuery(
+        name = "Employee.findAll",
+        query = "SELECT e FROM Employee e"
+    ),
+    @NamedQuery(
+        name = "Employee.findByEmployeeID",
+        query = "SELECT e FROM Employee e "
+              + "WHERE e.employeeID = :employeeID"
+    ),
+    @NamedQuery(
+        name = "Employee.findByFullName",
+        query = "SELECT e FROM Employee e "
+              + "WHERE e.fullName = :fullName"
+    ),
+    @NamedQuery(
+        name = "Employee.findByPosition",
+        query = "SELECT e FROM Employee e "
+              + "WHERE e.position = :position"
+    ),
+    @NamedQuery(
+        name = "Employee.findByShift",
+        query = "SELECT e FROM Employee e "
+              + "WHERE e.shift = :shift"
+    ),
+    @NamedQuery(
+        name = "Employee.findByPhone",
+        query = "SELECT e FROM Employee e "
+              + "WHERE e.phone = :phone"
+    ),
+    @NamedQuery(
+        name = "Employee.findDistinctPositions",
+        query = "SELECT DISTINCT e.position FROM Employee e WHERE e.position IS NOT NULL ORDER BY e.position"
+    ),
+    @NamedQuery(
+        name = "Employee.findDistinctShifts",
+        query = "SELECT DISTINCT e.shift FROM Employee e WHERE e.shift IS NOT NULL ORDER BY e.shift"
+    )
+})
 public class Employee implements Serializable {
 
     @Basic(optional = false)

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package dao;
 
 import entity.Complaint;
@@ -27,18 +23,25 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
-            Complaint cp = em.find(Complaint.class, id);
-            cp.setStatus(status);
-            em.merge(cp);
+
+            Complaint complaint = em.find(Complaint.class, id);
+            if (complaint == null) {
+                throw new IllegalArgumentException(
+                        "Complaint not found: " + id
+                );
+            }
+
+            complaint.setStatus(status);
             em.getTransaction().commit();
         } catch (Exception ex) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
+            throw new IllegalStateException(
+                    "Unable to update complaint status.", ex
+            );
         } finally {
-            if (em != null && em.isOpen()) {
-                em.close();
-            }
+            em.close();
         }
     }
 
