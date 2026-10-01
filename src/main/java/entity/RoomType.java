@@ -38,13 +38,6 @@ import java.util.Collection;
     @NamedQuery(name = "RoomType.findByDescription", query = "SELECT r FROM RoomType r WHERE r.description = :description")})
 public class RoomType implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 4)
-    @Column(name = "RoomTypeID")
-    private String roomTypeID;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 50)
@@ -65,6 +58,14 @@ public class RoomType implements Serializable {
     @Size(max = 500)
     @Column(name = "Description")
     private String description;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 4)
+    @Column(name = "RoomTypeID")
+    private String roomTypeID;
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "roomTypeID")
     private Collection<BookingDetail> bookingDetailCollection;
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "roomTypeID")
@@ -92,45 +93,6 @@ public class RoomType implements Serializable {
         this.roomTypeID = roomTypeID;
     }
 
-    public String getTypeName() {
-        return typeName;
-    }
-
-    public void setTypeName(String typeName) {
-        this.typeName = typeName;
-    }
-
-    public int getCapacity() {
-        return capacity;
-    }
-
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
-
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
-
-    public String getRoomTypeImage() {
-        return roomTypeImage;
-    }
-
-    public void setRoomTypeImage(String roomTypeImage) {
-        this.roomTypeImage = roomTypeImage;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
 
     @XmlTransient
     public Collection<BookingDetail> getBookingDetailCollection() {
@@ -173,6 +135,46 @@ public class RoomType implements Serializable {
     @Override
     public String toString() {
         return "entity.RoomType[ roomTypeID=" + roomTypeID + " ]";
+    }
+
+    public String getTypeName() {
+        return typeName;
+    }
+
+    public void setTypeName(String typeName) {
+        this.typeName = typeName;
+    }
+
+    public int getCapacity() {
+        return capacity;
+    }
+
+    public void setCapacity(int capacity) {
+        this.capacity = capacity;
+    }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public String getRoomTypeImage() {
+        return roomTypeImage;
+    }
+
+    public void setRoomTypeImage(String roomTypeImage) {
+        this.roomTypeImage = roomTypeImage;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
 }

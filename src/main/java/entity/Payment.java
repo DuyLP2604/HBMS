@@ -38,16 +38,6 @@ import java.util.Date;
     @NamedQuery(name = "Payment.findByTransactionCode", query = "SELECT p FROM Payment p WHERE p.transactionCode = :transactionCode")})
 public class Payment implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 6)
-    @Column(name = "PaymentID")
-    private String paymentID;
-    @Column(name = "PaymentTime")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date paymentTime;
     // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
     @Basic(optional = false)
     @NotNull
@@ -61,6 +51,17 @@ public class Payment implements Serializable {
     @Size(max = 100)
     @Column(name = "TransactionCode")
     private String transactionCode;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 6)
+    @Column(name = "PaymentID")
+    private String paymentID;
+    @Column(name = "PaymentTime")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date paymentTime;
     @JoinColumn(name = "BookingID", referencedColumnName = "BookingID")
     @ManyToOne(optional = false)
     private Booking bookingID;
@@ -97,29 +98,6 @@ public class Payment implements Serializable {
         this.paymentTime = paymentTime;
     }
 
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getTransactionCode() {
-        return transactionCode;
-    }
-
-    public void setTransactionCode(String transactionCode) {
-        this.transactionCode = transactionCode;
-    }
 
     public Booking getBookingID() {
         return bookingID;
@@ -160,6 +138,30 @@ public class Payment implements Serializable {
     @Override
     public String toString() {
         return "entity.Payment[ paymentID=" + paymentID + " ]";
+    }
+
+    public BigDecimal getAmount() {
+        return amount;
+    }
+
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getTransactionCode() {
+        return transactionCode;
+    }
+
+    public void setTransactionCode(String transactionCode) {
+        this.transactionCode = transactionCode;
     }
 
 }

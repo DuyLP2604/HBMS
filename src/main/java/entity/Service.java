@@ -35,13 +35,6 @@ import java.util.Collection;
     @NamedQuery(name = "Service.findByUnitPrice", query = "SELECT s FROM Service s WHERE s.unitPrice = :unitPrice")})
 public class Service implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 4)
-    @Column(name = "ServiceID")
-    private String serviceID;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 60)
@@ -52,6 +45,14 @@ public class Service implements Serializable {
     @NotNull
     @Column(name = "UnitPrice")
     private BigDecimal unitPrice;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 4)
+    @Column(name = "ServiceID")
+    private String serviceID;
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "service")
     private Collection<BookingService> bookingServiceCollection;
 
@@ -76,21 +77,6 @@ public class Service implements Serializable {
         this.serviceID = serviceID;
     }
 
-    public String getServiceName() {
-        return serviceName;
-    }
-
-    public void setServiceName(String serviceName) {
-        this.serviceName = serviceName;
-    }
-
-    public BigDecimal getUnitPrice() {
-        return unitPrice;
-    }
-
-    public void setUnitPrice(BigDecimal unitPrice) {
-        this.unitPrice = unitPrice;
-    }
 
     @XmlTransient
     public Collection<BookingService> getBookingServiceCollection() {
@@ -124,6 +110,22 @@ public class Service implements Serializable {
     @Override
     public String toString() {
         return "entity.Service[ serviceID=" + serviceID + " ]";
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public void setServiceName(String serviceName) {
+        this.serviceName = serviceName;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
+    }
+
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
     }
 
 }

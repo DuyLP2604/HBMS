@@ -35,17 +35,18 @@ import java.util.Date;
     @NamedQuery(name = "RoomAssignment.findByAssignedAt", query = "SELECT r FROM RoomAssignment r WHERE r.assignedAt = :assignedAt")})
 public class RoomAssignment implements Serializable {
 
+    @Basic(optional = false)
+    @NotNull
+    @Column(name = "AssignedAt")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date assignedAt;
+
     private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Basic(optional = false)
     @Column(name = "AssignmentID")
     private Integer assignmentID;
-    @Basic(optional = false)
-    @NotNull
-    @Column(name = "AssignedAt")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date assignedAt;
     @JoinColumn(name = "BookingDetailID", referencedColumnName = "BookingDetailID")
     @ManyToOne(optional = false)
     private BookingDetail bookingDetailID;
@@ -76,13 +77,6 @@ public class RoomAssignment implements Serializable {
         this.assignmentID = assignmentID;
     }
 
-    public Date getAssignedAt() {
-        return assignedAt;
-    }
-
-    public void setAssignedAt(Date assignedAt) {
-        this.assignedAt = assignedAt;
-    }
 
     public BookingDetail getBookingDetailID() {
         return bookingDetailID;
@@ -131,6 +125,14 @@ public class RoomAssignment implements Serializable {
     @Override
     public String toString() {
         return "entity.RoomAssignment[ assignmentID=" + assignmentID + " ]";
+    }
+
+    public Date getAssignedAt() {
+        return assignedAt;
+    }
+
+    public void setAssignedAt(Date assignedAt) {
+        this.assignedAt = assignedAt;
     }
 
 }
