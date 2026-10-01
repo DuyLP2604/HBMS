@@ -110,6 +110,19 @@
                             </div>
                         </div>
                     </div>
+                                    
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card h-100 shadow-sm border-success">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3"><i class="fa-solid fa-money-check-dollar fa-2x text-success"></i></div>
+                                <h3 class="h5">Check out</h3>
+                                <p class="text-muted flex-grow-1">Manage guest check-out, and invoice.</p>
+                                <a href="${pageContext.request.contextPath}/CheckoutEmployee" class="btn btn-success">
+                                    Checkout Manager
+                                </a>
+                            </div>
+                        </div>
+                    </div>                
                 </div>
             </section>
         </c:if>

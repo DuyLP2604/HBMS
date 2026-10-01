@@ -26,7 +26,7 @@
                                 <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
                                 <input type="text" name="customerName" class="form-control" 
                                        placeholder="Tìm kiếm theo họ và tên customer..." value="${param.customerName}">
-                                <button type="submit" class="btn btn-primary">Find the customer</button>
+                                <button type="submit" class="btn btn-primary">Tìm kiếm</button>
                             </div>
                         </form>
                     </div>

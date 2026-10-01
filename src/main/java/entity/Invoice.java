@@ -33,36 +33,36 @@ import java.util.Date;
 @NamedQueries({
     @NamedQuery(name = "Invoice.findAll", query = "SELECT i FROM Invoice i"),
     @NamedQuery(name = "Invoice.findByInvoiceID", query = "SELECT i FROM Invoice i WHERE i.invoiceID = :invoiceID"),
-    @NamedQuery(name = "Invoice.findByInvoiceType", query = "SELECT i FROM Invoice i WHERE i.invoiceType = :invoiceType"),
     @NamedQuery(name = "Invoice.findByInvoiceDate", query = "SELECT i FROM Invoice i WHERE i.invoiceDate = :invoiceDate"),
     @NamedQuery(name = "Invoice.findByTotalAmount", query = "SELECT i FROM Invoice i WHERE i.totalAmount = :totalAmount")})
 public class Invoice implements Serializable {
 
     private static final long serialVersionUID = 1L;
+    
     @Id
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 6)
     @Column(name = "InvoiceID")
     private String invoiceID;
+    
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 30)
-    @Column(name = "InvoiceType")
-    private String invoiceType;
-    @Basic(optional = false)
-    @NotNull
     @Column(name = "InvoiceDate")
     @Temporal(TemporalType.DATE)
     private Date invoiceDate;
+    
     // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
     @Basic(optional = false)
     @NotNull
     @Column(name = "TotalAmount")
     private BigDecimal totalAmount;
+    
     @JoinColumn(name = "BookingID", referencedColumnName = "BookingID")
     @OneToOne(optional = false)
     private Booking bookingID;
+    
     @JoinColumn(name = "EmployeeID", referencedColumnName = "EmployeeID")
     @ManyToOne
     private Employee employeeID;
@@ -74,9 +74,8 @@ public class Invoice implements Serializable {
         this.invoiceID = invoiceID;
     }
 
-    public Invoice(String invoiceID, String invoiceType, Date invoiceDate, BigDecimal totalAmount) {
+    public Invoice(String invoiceID, Date invoiceDate, BigDecimal totalAmount) {
         this.invoiceID = invoiceID;
-        this.invoiceType = invoiceType;
         this.invoiceDate = invoiceDate;
         this.totalAmount = totalAmount;
     }
@@ -89,13 +88,6 @@ public class Invoice implements Serializable {
         this.invoiceID = invoiceID;
     }
 
-    public String getInvoiceType() {
-        return invoiceType;
-    }
-
-    public void setInvoiceType(String invoiceType) {
-        this.invoiceType = invoiceType;
-    }
 
     public Date getInvoiceDate() {
         return invoiceDate;
