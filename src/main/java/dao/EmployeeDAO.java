@@ -354,7 +354,7 @@ public class EmployeeDAO {
     }
 
     public List<String> getAllPositions() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             return em.createNamedQuery("Employee.findDistinctPositions", String.class)
                     .getResultList();
@@ -369,7 +369,7 @@ public class EmployeeDAO {
     }
 
     public List<String> getAllShifts() {
-        EntityManager em = EMF.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             return em.createNamedQuery("Employee.findDistinctShifts", String.class)
                     .getResultList();
