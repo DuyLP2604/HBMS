@@ -19,37 +19,12 @@
                 Dashboard
             </div>
 
-            <form
-                class="date-filter"
-                action="${pageContext.request.contextPath}/dashboard"
-                method="get"
-                >
-
+            <form class="date-filter" action="${pageContext.request.contextPath}/dashboard" method="get" >
                 <i class="fas fa-calendar dashboard-muted-icon"></i>
-
-                <input
-                    type="text"
-                    id="dateRange"
-                    name="dateRange"
-                    readonly
-                    >
-
-                <input
-                    type="hidden"
-                    id="from"
-                    name="from"
-                    >
-
-                <input
-                    type="hidden"
-                    id="to"
-                    name="to"
-                    >
-
-                <button
-                    type="submit"
-                    class="btn-filter"
-                    >
+                <input type="text" id="dateRange"  name="dateRange" readonly >
+                <input type="hidden"  id="from" name="from" >
+                <input type="hidden" id="to" name="to"  >
+                <button  type="submit"  class="btn-filter" >
                     <i class="fas fa-sync-alt"></i>
                     Apply
                 </button>
@@ -75,18 +50,12 @@
                     </div>
 
                 </div>
-
-                <div
-                    class="kpi-value"
-                    id="todayRevenue"
-                    >
+                <div class="kpi-value" id="todayRevenue" >
                     <c:out value="${todayRevenue}" />
                 </div>
-
                 <div class="kpi-subtitle">
                     Revenue
                 </div>
-
             </div>
 
 
@@ -104,10 +73,7 @@
 
                 </div>
 
-                <div
-                    class="kpi-value"
-                    id="occupiedRooms"
-                    >
+                <div class="kpi-value"  id="occupiedRooms" >
                     <c:out value="${occupiedRooms}" />
                     /
                     <c:out value="${totalRooms}" />

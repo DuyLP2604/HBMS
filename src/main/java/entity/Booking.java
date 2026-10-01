@@ -5,7 +5,6 @@
 package entity;
 
 import jakarta.persistence.Basic;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -13,18 +12,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
-import jakarta.xml.bind.annotation.XmlTransient;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.Date;
 
 /**
@@ -80,14 +75,6 @@ public class Booking implements Serializable {
     @NotNull
     @Column(name = "TotalAmount")
     private BigDecimal totalAmount;
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "booking")
-    private Collection<BookingService> bookingServiceCollection;
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "bookingID")
-    private Collection<Payment> paymentCollection;
-    @OneToOne(cascade = CascadeType.ALL, mappedBy = "bookingID")
-    private Invoice invoice;
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "bookingID")
-    private Collection<BookingDetail> bookingDetailCollection;
     @JoinColumn(name = "CustomerID", referencedColumnName = "CustomerID")
     @ManyToOne(optional = false)
     private Customer customerID;
@@ -162,41 +149,6 @@ public class Booking implements Serializable {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
-    }
-
-    @XmlTransient
-    public Collection<BookingService> getBookingServiceCollection() {
-        return bookingServiceCollection;
-    }
-
-    public void setBookingServiceCollection(Collection<BookingService> bookingServiceCollection) {
-        this.bookingServiceCollection = bookingServiceCollection;
-    }
-
-    @XmlTransient
-    public Collection<Payment> getPaymentCollection() {
-        return paymentCollection;
-    }
-
-    public void setPaymentCollection(Collection<Payment> paymentCollection) {
-        this.paymentCollection = paymentCollection;
-    }
-
-    public Invoice getInvoice() {
-        return invoice;
-    }
-
-    public void setInvoice(Invoice invoice) {
-        this.invoice = invoice;
-    }
-
-    @XmlTransient
-    public Collection<BookingDetail> getBookingDetailCollection() {
-        return bookingDetailCollection;
-    }
-
-    public void setBookingDetailCollection(Collection<BookingDetail> bookingDetailCollection) {
-        this.bookingDetailCollection = bookingDetailCollection;
     }
 
     public Customer getCustomerID() {

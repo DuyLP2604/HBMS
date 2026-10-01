@@ -6,19 +6,10 @@ import jakarta.persistence.TypedQuery;
 import java.util.List;
 import util.PersistenceManager;
 
-public class BookingDAO {
+public class BookingDAO extends DAOFramework<Booking> {
 
-    public List<Booking> getAll() {
-        return new DAOFramework<>(Booking.class).getAll().reversed();
-    }
-
-    public Booking getById(String bookingID) {
-        if (bookingID == null
-                || bookingID.trim().isEmpty()) {
-
-            return null;
-        }
-        return new DAOFramework<>(Booking.class).findById(bookingID);
+    public BookingDAO() {
+        super(Booking.class);
     }
 
     /*
@@ -80,12 +71,10 @@ public class BookingDAO {
      */
     public List<Booking> getByUserId(
             String customerID) {
-
         return getByCustomerId(customerID);
     }
 
-    public List<Booking> getByCustomerId(
-            String customerID) {
+    public List<Booking> getByCustomerId(String customerID) {
 
         if (customerID == null
                 || customerID.trim().isEmpty()) {
@@ -130,8 +119,7 @@ public class BookingDAO {
      * Finds bookings by account UserID.
      * This is different from CustomerID.
      */
-    public List<Booking> getByAccountUserId(
-            int userID) {
+    public List<Booking> getByAccountUserId(int userID) {
 
         EntityManager em = PersistenceManager.createEntityManager();
         try {
@@ -160,8 +148,7 @@ public class BookingDAO {
         }
     }
 
-    public Booking getLatestBookingByUserId(
-            int userID) {
+    public Booking getLatestBookingByUserId(int userID) {
 
         EntityManager em = PersistenceManager.createEntityManager();
         try {
@@ -172,25 +159,16 @@ public class BookingDAO {
                     + "= :userID "
                     + "ORDER BY b.bookingDate DESC";
 
-            TypedQuery<Booking> query = em.createQuery(
-                    jpql,
-                    Booking.class
-            );
+            TypedQuery<Booking> query = em.createQuery(jpql, Booking.class);
 
             query.setParameter("userID", userID);
             query.setMaxResults(1);
 
-            List<Booking> results
-                    = query.getResultList();
+            List<Booking> results = query.getResultList();
 
-            return results.isEmpty()
-                    ? null
-                    : results.get(0);
+            return results.isEmpty() ? null : results.get(0);
         } catch (Exception exception) {
-            throw new IllegalStateException(
-                    "Unable to find the latest booking.",
-                    exception
-            );
+            throw new IllegalStateException("Unable to find the latest booking.", exception);
         } finally {
             em.close();
         }
@@ -200,8 +178,7 @@ public class BookingDAO {
      * Used while the customer is selecting services
      * before payment.
      */
-    public Booking getLatestPendingBookingByUserId(
-            int userID) {
+    public Booking getLatestPendingBookingByUserId(int userID) {
 
         EntityManager em = PersistenceManager.createEntityManager();
         try {

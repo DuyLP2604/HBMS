@@ -100,8 +100,6 @@
                                 <th>Room ID</th>
                                 <th>Room Number</th>
                                 <th>Image</th>
-                                <th>Price (VND/night)</th>
-                                <th>Hotel Name</th>
                                 <th>Status</th>
                                 <th class="text-center">
                                     Action
@@ -128,13 +126,6 @@
                                             <img class="room-thumbnail"
                                                  src="${pageContext.request.contextPath}/assets/images/room/${c.roomImage}"
                                                  alt="Room ${c.roomNumber}" >
-                                        </td>
-                                        <td>
-                                            <c:out value="${c.price}" />
-                                            VND
-                                        </td>
-                                        <td>
-                                            <c:out value="${c.hotelID.hotelName}" />
                                         </td>
                                         <td>
                                             <c:choose>

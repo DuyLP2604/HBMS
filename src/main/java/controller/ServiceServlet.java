@@ -21,32 +21,22 @@ import java.util.List;
 public class ServiceServlet extends HttpServlet {
 
     @Override
-    protected void doGet(
-            HttpServletRequest request,
-            HttpServletResponse response)
-            throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
         Users currentUser = getCurrentUser(request);
 
         if (currentUser == null) {
-            response.sendRedirect(
-                    request.getContextPath() + "/login"
-            );
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
         try {
             ServiceDAO serviceDAO = new ServiceDAO();
+            request.setAttribute("list", serviceDAO.getAllServices());
 
-            List<Service> services
-                    = serviceDAO.getAllServices();
-
-            request.setAttribute("list", services);
-
-            request.getRequestDispatcher(
-                    "/WEB-INF/views/service.jsp"
+            request.getRequestDispatcher("/WEB-INF/views/service.jsp"
             ).forward(request, response);
-        } catch (Exception exception) {
+        } catch (ServletException | IOException exception) {
             throw new ServletException(
                     "Unable to load the service list.",
                     exception
@@ -55,92 +45,63 @@ public class ServiceServlet extends HttpServlet {
     }
 
     @Override
-    protected void doPost(
-            HttpServletRequest request,
-            HttpServletResponse response)
-            throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
         Users currentUser = getCurrentUser(request);
-
         if (currentUser == null) {
-            response.sendRedirect(
-                    request.getContextPath() + "/login"
-            );
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
         HttpSession session = request.getSession();
+        String selectedServiceID = request.getParameter("selectedService");
+        String quantityValue = request.getParameter("quantity");
 
-        String selectedServiceID
-                = request.getParameter(
-                        "selectedService"
-                );
-
-        String quantityValue
-                = request.getParameter("quantity");
+        String inputBookingID = request.getParameter("bookingID");
 
         try {
-            if (selectedServiceID == null
-                    || selectedServiceID.trim().isEmpty()) {
-
-                throw new IllegalArgumentException(
-                        "Please select a service."
-                );
+            if (selectedServiceID == null || selectedServiceID.trim().isEmpty()) {
+                throw new IllegalArgumentException("Please select a service.");
             }
-
             int quantity = parseQuantity(quantityValue);
-
             BookingDAO bookingDAO = new BookingDAO();
+            String targetBookingID = null;
 
-            Booking latestBooking
-                    = bookingDAO.getLatestPendingBookingByUserId(
-                            currentUser.getUserID()
-                    );
+            if ("Staff".equalsIgnoreCase(currentUser.getRole()) || "Admin".equalsIgnoreCase(currentUser.getRole())) {
+                if (inputBookingID == null || inputBookingID.trim().isEmpty()) {
+                    throw new IllegalArgumentException("Staff must select a target booking/room.");
+                }
+                Booking staffSelectedBooking = bookingDAO.getById(inputBookingID);
+                if (staffSelectedBooking == null || !"CHECKED_IN".equals(staffSelectedBooking.getBookingStatus())) {
+                    throw new IllegalStateException("Services can only be added to currently checked-in rooms.");
+                }
+                targetBookingID = staffSelectedBooking.getBookingID();
 
-            if (latestBooking == null) {
-                throw new IllegalStateException(
-                        "No booking was found "
-                        + "for the current user."
-                );
-            }
-
-            /*
-             * Services are added before final payment.
-             * Adding a service changes Booking.TotalAmount.
-             */
-            if (!"PENDING_PAYMENT".equals(
-                    latestBooking.getBookingStatus())) {
-
-                throw new IllegalStateException(
-                        "Services can only be added "
-                        + "before the booking is paid."
-                );
+            } else {
+                Booking latestBooking = bookingDAO.getLatestPendingBookingByUserId(currentUser.getUserID());
+                if (latestBooking == null) {
+                    throw new IllegalStateException("No booking was found for the current user.");
+                }
+                if (!"PENDING_PAYMENT".equals(latestBooking.getBookingStatus())) {
+                    throw new IllegalStateException("Services can only be added before the booking is paid.");
+                }
+                targetBookingID = latestBooking.getBookingID();
             }
 
             ServiceDAO serviceDAO = new ServiceDAO();
+            serviceDAO.insertBookingService(targetBookingID, selectedServiceID.trim(), quantity);
 
-            serviceDAO.insertBookingService(
-                    latestBooking.getBookingID(),
-                    selectedServiceID.trim(),
-                    quantity
-            );
-
-            session.setAttribute(
-                    "successMessage",
-                    "The service was added successfully."
-            );
-        } catch (Exception exception) {
-            session.setAttribute(
-                    "errorMessage",
-                    exception.getMessage() != null
-                            ? exception.getMessage()
-                            : "Unable to add the service."
-            );
+            session.setAttribute("successMessage", "The service was added successfully.");
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            session.setAttribute("errorMessage", exception.getMessage() != null ? exception.getMessage() : "Unable to add the service.");
         }
 
-        response.sendRedirect(
-                request.getContextPath() + "/service"
-        );
+        // Xử lý redirect tuỳ theo role
+        if ("Staff".equalsIgnoreCase(currentUser.getRole()) || "Admin".equalsIgnoreCase(currentUser.getRole())) {
+            response.sendRedirect(request.getContextPath() + "/checkout"); // Hoặc redirect về trang quản lý của staff
+        } else {
+            response.sendRedirect(request.getContextPath() + "/service"); //[cite: 3]
+        }
     }
 
     private Users getCurrentUser(

@@ -18,6 +18,8 @@ import java.io.Serializable;
 @Embeddable
 public class BookingServicePK implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 6)

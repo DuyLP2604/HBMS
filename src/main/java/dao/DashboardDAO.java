@@ -251,70 +251,36 @@ public class DashboardDAO {
     public List<RevenueChart> getRevenueLastTenDays() {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(9);
-
-        Map<LocalDate, BigDecimal> revenueByDate
-                = new LinkedHashMap<>();
-
+        Map<LocalDate, BigDecimal> revenueByDate = new LinkedHashMap<>();
         for (int index = 0; index < 10; index++) {
-            revenueByDate.put(
-                    startDate.plusDays(index),
-                    BigDecimal.ZERO
-            );
+            revenueByDate.put(startDate.plusDays(index), BigDecimal.ZERO);
         }
 
         EntityManager em = PersistenceManager.createEntityManager();
 
         try {
-            String jpql
-                    = "SELECT p "
+            String jpql = "SELECT p "
                     + "FROM Payment p "
                     + "WHERE p.status = :status "
                     + "AND p.paymentTime >= :startTime "
                     + "AND p.paymentTime < :endTime "
                     + "ORDER BY p.paymentTime";
 
-            TypedQuery<Payment> query = em.createQuery(
-                    jpql,
-                    Payment.class
-            );
-
+            TypedQuery<Payment> query = em.createQuery(jpql, Payment.class);
             query.setParameter("status", "PAID");
-
-            query.setParameter(
-                    "startTime",
-                    Timestamp.valueOf(
-                            startDate.atStartOfDay()
-                    )
-            );
-
-            query.setParameter(
-                    "endTime",
-                    Timestamp.valueOf(
-                            endDate.plusDays(1)
-                                    .atStartOfDay()
-                    )
-            );
+            query.setParameter("startTime", Timestamp.valueOf(startDate.atStartOfDay()));
+            query.setParameter("endTime", Timestamp.valueOf(endDate.plusDays(1).atStartOfDay()));
 
             for (Payment payment : query.getResultList()) {
                 if (payment.getPaymentTime() == null
                         || payment.getAmount() == null) {
                     continue;
                 }
-
-                LocalDate paymentDate = toLocalDate(
-                        payment.getPaymentTime()
-                );
-
-                BigDecimal oldRevenue
-                        = revenueByDate.get(paymentDate);
+                LocalDate paymentDate = toLocalDate(payment.getPaymentTime());
+                BigDecimal oldRevenue = revenueByDate.get(paymentDate);
 
                 if (oldRevenue != null) {
-                    revenueByDate.put(
-                            paymentDate,
-                            oldRevenue.add(
-                                    payment.getAmount()
-                            )
-                    );
+                    revenueByDate.put(paymentDate, oldRevenue.add(payment.getAmount()));
                 }
             }
         } catch (Exception exception) {
@@ -326,23 +292,12 @@ public class DashboardDAO {
             close(em);
         }
 
-        DateTimeFormatter formatter
-                = DateTimeFormatter.ofPattern(
-                        "dd/MM/yyyy"
-                );
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        List<RevenueChart> result
-                = new ArrayList<>();
+        List<RevenueChart> result = new ArrayList<>();
 
-        for (Map.Entry<LocalDate, BigDecimal> entry
-                : revenueByDate.entrySet()) {
-
-            result.add(
-                    new RevenueChart(
-                            entry.getKey().format(formatter),
-                            entry.getValue()
-                    )
-            );
+        for (Map.Entry<LocalDate, BigDecimal> entry : revenueByDate.entrySet()) {
+            result.add(new RevenueChart(entry.getKey().format(formatter), entry.getValue()));
         }
 
         return result;

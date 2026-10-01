@@ -58,7 +58,7 @@ public class ComplaintServlet extends HttpServlet {
                 );
                 return;
             }
-            List<Complaint> list = daoCp.getAllComplaints();
+            List<Complaint> list = daoCp.getAll();
             request.setAttribute("complaints", list);
             request.getRequestDispatcher("/WEB-INF/views/complaints.jsp").forward(request, response);
 
@@ -100,7 +100,7 @@ public class ComplaintServlet extends HttpServlet {
             cp.setContent(content);
             cp.setCustomerID(customer);
 
-            daoCp.insertComplaint(cp);
+            daoCp.insert(cp);
             Flash.success(
                     request,
                     "Complaint added successfully."
