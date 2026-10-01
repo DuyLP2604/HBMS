@@ -75,8 +75,7 @@ public class CheckoutServlet extends HttpServlet {
             HttpServletResponse response)
             throws ServletException, IOException {
 
-        HttpSession session
-                = request.getSession();
+        HttpSession session = request.getSession();
 
         Users user = (Users) session.getAttribute("user");
 
