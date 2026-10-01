@@ -5,7 +5,6 @@
 package dao;
 
 import entity.Room;
-import java.util.List;
 
 /**
  *
