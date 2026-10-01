@@ -1,77 +1,224 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package controller;
 
 import dao.UserDAO;
+import entity.Users;
 import java.io.IOException;
-import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import model.User;
+import util.flash.Flash;
 
-/**
- *
- * @author default
- */
-@WebServlet(name = "LoginServlet", urlPatterns = {"/login"})
+@WebServlet(
+        name = "LoginServlet",
+        urlPatterns = {"/login"}
+)
 public class LoginServlet extends HttpServlet {
 
-    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
-    /**
-     * Handles the HTTP <code>GET</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
+    private final UserDAO userDAO = new UserDAO();
+
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+    protected void doGet(
+            HttpServletRequest request,
+            HttpServletResponse response)
             throws ServletException, IOException {
 
-    }
+        HttpSession session = request.getSession(false);
 
-    /**
-     * Handles the HTTP <code>POST</code> method.
-     *
-     * @param request servlet request
-     * @param response servlet response
-     * @throws ServletException if a servlet-specific error occurs
-     * @throws IOException if an I/O error occurs
-     */
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        String user = request.getParameter("username");
-        String pass = request.getParameter("password");
-        UserDAO udao = new UserDAO();
+        if (session != null) {
+            Users loggedInUser
+                    = (Users) session.getAttribute("user");
 
-        User u = udao.login(user, pass);
-        if (u.getId() == 0) {
-            request.setAttribute("error", "Username or Password invalid!");
-            request.getRequestDispatcher("login.jsp").forward(request, response);
-        } else {
-            HttpSession session = request.getSession();
-            session.setAttribute("user", u);
-            session.setAttribute("role", u.getRole());
-            response.sendRedirect("index.jsp");
+            if (loggedInUser != null) {
+                redirectByRole(
+                        loggedInUser,
+                        request,
+                        response
+                );
+                return;
+            }
         }
+
+        request.getRequestDispatcher(
+                "/WEB-INF/views/login.jsp"
+        ).forward(request, response);
+    }
+
+    @Override
+    protected void doPost(
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        request.setCharacterEncoding("UTF-8");
+
+        String username = trimParameter(
+                request.getParameter("username")
+        );
+
+        String password
+                = request.getParameter("password");
+
+        if (username == null
+                || username.isEmpty()
+                || password == null
+                || password.isEmpty()) {
+
+            Flash.error(
+                    request,
+                    "Username and password are required."
+            );
+
+            response.sendRedirect(
+                    request.getContextPath() + "/login"
+            );
+            return;
+        }
+
+        Users user;
+
+        try {
+            user = userDAO.login(
+                    username,
+                    password
+            );
+        } catch (Exception ex) {
+            ex.printStackTrace();
+
+            Flash.error(
+                    request,
+                    "Unable to log in. Please try again."
+            );
+
+            response.sendRedirect(
+                    request.getContextPath() + "/login"
+            );
+            return;
+        }
+
+        if (user == null || user.getUserID() == 0) {
+            Flash.error(
+                    request,
+                    "Invalid username or password."
+            );
+
+            response.sendRedirect(
+                    request.getContextPath() + "/login"
+            );
+            return;
+        }
+
+        /*
+         * Delete the old session to prevent session fixation.
+         */
+        HttpSession oldSession
+                = request.getSession(false);
+
+        if (oldSession != null) {
+            oldSession.invalidate();
+        }
+
+        /*
+         * Create a new authenticated session.
+         */
+        HttpSession session
+                = request.getSession(true);
+
+        session.setAttribute("user", user);
+        session.setAttribute(
+                "role",
+                user.getRole()
+        );
+        session.setAttribute(
+                "userId",
+                user.getUserID()
+        );
+
+        /*
+         * Session expires after 30 minutes of inactivity.
+         * Unit: seconds.
+         */
+        session.setMaxInactiveInterval(30 * 60);
+
+        Flash.success(
+                request,
+                "Login successful. Welcome back!"
+        );
+
+        redirectByRole(
+                user,
+                request,
+                response
+        );
     }
 
     /**
-     * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
+     * Redirects the logged-in user according to their role.
      */
+    private void redirectByRole(
+            Users user,
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws IOException {
+
+        String contextPath
+                = request.getContextPath();
+
+        String role = user.getRole();
+
+        if ("Customer".equalsIgnoreCase(role)) {
+            response.sendRedirect(
+                    contextPath + "/home"
+            );
+            return;
+        }
+
+        if ("Staff".equalsIgnoreCase(role)) {
+            /*
+             * Receptionist and other staff first enter
+             * the same staff dashboard.
+             *
+             * StaffDashboardServlet will load Employee
+             * and display menus based on Position.
+             */
+            response.sendRedirect(
+                    contextPath + "/staff/dashboard"
+            );
+            return;
+        }
+
+        if ("Admin".equalsIgnoreCase(role)) {
+            response.sendRedirect(
+                    contextPath + "/dashboard"
+            );
+            return;
+        }
+
+        /*
+         * Reject accounts with an unsupported role.
+         */
+        HttpSession session
+                = request.getSession(false);
+
+        if (session != null) {
+            session.invalidate();
+        }
+
+        response.sendRedirect(
+                contextPath + "/login"
+        );
+    }
+
+    private String trimParameter(String value) {
+        return value == null
+                ? null
+                : value.trim();
+    }
+
     @Override
     public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
-
+        return "Authenticates users and redirects them by role.";
+    }
 }

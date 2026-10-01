@@ -1,67 +1,135 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package controller;
 
 import dao.CustomerDAO;
 import dao.NationalityDAO;
-import java.io.IOException;
+import dao.UserDAO;
+import entity.Customer;
+import entity.Nationality;
+import entity.Users;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import java.util.List;
-import model.Customer;
-import model.Nationality;
+import util.flash.Flash;
 
-/**
- *
- * @author TAN LOI
- */
 @WebServlet(name = "CustomerServlet", urlPatterns = {"/customer"})
 public class CustomerServlet extends HttpServlet {
 
-    /**
-     * Handles the HTTP <code>GET</code> method.
-     */
+    private boolean isAdmin(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return false;
+        }
+
+        Object sessionUser = session.getAttribute("user");
+        if (!(sessionUser instanceof Users)) {
+            return false;
+        }
+
+        Users user = (Users) sessionUser;
+        return "Admin".equalsIgnoreCase(user.getRole());
+    }
+
+    private boolean isWriteAction(String action) {
+        return "add".equalsIgnoreCase(action)
+                || "update".equalsIgnoreCase(action);
+    }
+
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
         String action = request.getParameter("action");
+        if (action == null || action.isBlank()) {
+            action = "list";
+        }
+
+        if (isWriteAction(action) && isAdmin(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                    "Admin cannot add or edit customers.");
+            return;
+        }
+
         CustomerDAO daoCus = new CustomerDAO();
         NationalityDAO daoNat = new NationalityDAO();
-        if (action.equalsIgnoreCase("list")) {
-            List<Customer> list = daoCus.getAllCustomers();
-            request.setAttribute("customers", list);
-            request.getRequestDispatcher("customers.jsp").forward(request, response);
-        } else if (action.equalsIgnoreCase("add")) {
+
+        if ("list".equalsIgnoreCase(action)) {
+            String keyword = request.getParameter("keyword");
+            List<Customer> customerList;
+            // tim theo name
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                customerList = daoCus.searchCustomerByKeyword(keyword.trim());
+            } else {
+                customerList = daoCus.getAllCustomers();
+            }
+            request.setAttribute("customers", customerList);
+            request.getRequestDispatcher("/WEB-INF/views/customers.jsp")
+                    .forward(request, response);
+
+        } else if ("add".equalsIgnoreCase(action)) {
             List<Nationality> listNat = daoNat.getAll();
             request.setAttribute("listNat", listNat);
-            request.getRequestDispatcher("add-customer.jsp").forward(request, response);
-        } else if (action.equalsIgnoreCase("update")) {
+
+            request.getRequestDispatcher("/WEB-INF/views/add-customer.jsp")
+                    .forward(request, response);
+
+        } else if ("update".equalsIgnoreCase(action)) {
             String id = request.getParameter("id");
-            Customer cus = daoCus.getCustomerById(id);
-            request.setAttribute("customer", cus);
-            List<Nationality> listNat = daoNat.getAll();
-            request.setAttribute("listNat", listNat);
-            request.getRequestDispatcher("update-customer-info.jsp").forward(request, response);
-        } else if (action.equalsIgnoreCase("viewDetail")) {
+            Customer customer = daoCus.getCustomerById(id);
+
+            if (customer == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            request.setAttribute("customer", customer);
+            request.setAttribute("listNat", daoNat.getAll());
+
+            request.getRequestDispatcher("/WEB-INF/views/update-customer-info.jsp")
+                    .forward(request, response);
+
+        } else if ("viewDetail".equalsIgnoreCase(action)) {
             String id = request.getParameter("id");
-            Customer cus = daoCus.getCustomerById(id);
-            request.setAttribute("customer", cus);
-            request.getRequestDispatcher("customer-detail.jsp").forward(request, response);
+            Customer customer = daoCus.getCustomerById(id);
+
+            if (customer == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
+
+            request.setAttribute("customer", customer);
+
+            request.getRequestDispatcher("/WEB-INF/views/customer-detail.jsp")
+                    .forward(request, response);
+
+        } else {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
         }
     }
 
-    /**
-     * Handles the HTTP <code>POST</code> method.
-     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+
         request.setCharacterEncoding("UTF-8");
         String action = request.getParameter("action");
+
+        if (!isWriteAction(action)) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
+
+        // Kiểm tra trước khi đọc dữ liệu và ghi vào database.
+        if (isAdmin(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                    "Admin cannot add or edit customers.");
+            return;
+        }
+
         CustomerDAO daoCus = new CustomerDAO();
 
         String name = request.getParameter("name");
@@ -72,37 +140,72 @@ public class CustomerServlet extends HttpServlet {
         String passport = request.getParameter("passport");
         String nationalityId = request.getParameter("nation");
 
-        if (action.equalsIgnoreCase("add")) {
-            // TODO: nếu sau này add-customer.jsp có form tạo tài khoản đăng nhập
-            // (username/password) thì gọi UserDAO.insertUser(...) trước để lấy userId,
-            // rồi truyền userId đó vào thay vì null.
-            String newId = daoCus.generateCustomerID();
-            daoCus.insertCustomer(newId, name, phone, email, address, cccd, passport, nationalityId, null);
-            response.sendRedirect("customer?action=list");
+        if ("add".equalsIgnoreCase(action)) {
+            String createAccount = request.getParameter("createAccount");
 
-        } else if (action.equalsIgnoreCase("update")) {
+            if (createAccount != null) {
+                String username = request.getParameter("username");
+                String password = request.getParameter("password");
+                UserDAO userDAO = new UserDAO();
+
+                if (userDAO.isUsernameExists(username)) {
+                    Flash.error(request, "Username already exists.");
+                    response.sendRedirect(
+                            request.getContextPath() + "/customer?action=add");
+                    return;
+                }
+
+                userDAO.insertUser(username, password, "Customer");
+            }
+
+            Customer customer = new Customer();
+            customer.setCustomerID(daoCus.generateCustomerID());
+            customer.setFullName(name);
+            customer.setPhone(phone);
+            customer.setEmail(email);
+            customer.setAddress(address);
+            customer.setCccd(cccd);
+            customer.setPassportNumber(passport);
+            customer.setNationalityID(
+                    new Nationality(nationalityId, null));
+
+            daoCus.insertCustomer(customer);
+
+            Flash.success(request, "Customer added successfully.");
+            response.sendRedirect(
+                    request.getContextPath() + "/customer?action=list");
+
+        } else if ("update".equalsIgnoreCase(action)) {
             String id = request.getParameter("id");
 
-            Customer c = new Customer();
-            c.setId(id);
-            c.setFullname(name);
-            c.setPhone(phone);
-            c.setEmail(email);
-            c.setAddress(address);
-            c.setCccd(cccd);
-            c.setPassportNumber(passport);
-            c.setNationality(new Nationality(nationalityId, null));
+            if (daoCus.getCustomerById(id) == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                return;
+            }
 
-            daoCus.updateCustomer(c);
-            response.sendRedirect("customer?action=list");
+            Customer customer = new Customer();
+
+            // Giữ ID hiện tại, không tạo CustomerID mới khi cập nhật.
+            customer.setCustomerID(id);
+            customer.setFullName(name);
+            customer.setPhone(phone);
+            customer.setEmail(email);
+            customer.setAddress(address);
+            customer.setCccd(cccd);
+            customer.setPassportNumber(passport);
+            customer.setNationalityID(
+                    new Nationality(nationalityId, null));
+
+            daoCus.updateCustomer(customer);
+
+            Flash.success(request, "Customer information updated successfully.");
+            response.sendRedirect(
+                    request.getContextPath() + "/customer?action=list");
         }
     }
 
-    /**
-     * Returns a short description of the servlet.
-     */
     @Override
     public String getServletInfo() {
-        return "Short description";
+        return "Customer management servlet";
     }
 }

@@ -3,7 +3,6 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Filter.java to edit this template
  */
 package filter;
-
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
@@ -18,25 +17,59 @@ import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import model.User;
+import entity.Users;
+
 
 /**
  *
  * @author default
  */
-@WebFilter(filterName = "CheckLoginFilter", urlPatterns = {"/addServletFilterHere"})
+@WebFilter(
+        filterName = "CheckLoginFilter",
+        urlPatterns = {
+            /*
+             * Customer booking actions.
+             * /room-types is intentionally NOT included
+             * because guests may search and view room types.
+             */
+            "/booking-cart",
+            "/booking-cart/*",
+            "/checkout",
+            "/payment",
+            "/my-bookings",
+            "/my-bookings/*",
+
+            /*
+             * Existing protected pages.
+             */
+            "/customer",
+            "/complaint",
+            "/employee",
+            "/profile",
+            "/booking",
+            "/dashboard",
+            "/invoice",
+            "/room",
+            "/service",
+
+            /*
+             * Staff pages.
+             */
+            "/staff/*"
+        }
+)
 public class CheckLoginFilter implements Filter {
-    
+
     private static final boolean debug = true;
 
     // The filter configuration object we are associated with.  If
     // this value is null, this filter instance is not currently
     // configured.
     private FilterConfig filterConfig = null;
-    
+
     public CheckLoginFilter() {
     }
-    
+
     private void doBeforeProcessing(ServletRequest request, ServletResponse response)
             throws IOException, ServletException {
         if (debug) {
@@ -64,7 +97,7 @@ public class CheckLoginFilter implements Filter {
 	}
          */
     }
-    
+
     private void doAfterProcessing(ServletRequest request, ServletResponse response)
             throws IOException, ServletException {
         if (debug) {
@@ -99,20 +132,37 @@ public class CheckLoginFilter implements Filter {
      * @exception IOException if an input/output error occurs
      * @exception ServletException if a servlet error occurs
      */
-    public void doFilter(ServletRequest request, ServletResponse response,
+    public void doFilter(
+            ServletRequest servletRequest,
+            ServletResponse servletResponse,
             FilterChain chain)
             throws IOException, ServletException {
-        
-        HttpServletRequest req = (HttpServletRequest) request;
-        HttpServletResponse res = (HttpServletResponse) response;
-        HttpSession session = req.getSession();
-        
-        User u = (User) session.getAttribute("user");
-        if(u == null){
-            res.sendRedirect("login.jsp");
-        } else {
-            chain.doFilter(request, response);
+
+        HttpServletRequest request
+                = (HttpServletRequest) servletRequest;
+
+        HttpServletResponse response
+                = (HttpServletResponse) servletResponse;
+
+        HttpSession session
+                = request.getSession(false);
+
+        Users user = session == null
+                ? null
+                : (Users) session.getAttribute("user");
+
+        if (user == null) {
+            response.sendRedirect(
+                    request.getContextPath() + "/login"
+            );
+
+            return;
         }
+
+        chain.doFilter(
+                servletRequest,
+                servletResponse
+        );
     }
 
     /**
@@ -162,10 +212,10 @@ public class CheckLoginFilter implements Filter {
         sb.append(")");
         return (sb.toString());
     }
-    
+
     private void sendProcessingError(Throwable t, ServletResponse response) {
         String stackTrace = getStackTrace(t);
-        
+
         if (stackTrace != null && !stackTrace.equals("")) {
             try {
                 response.setContentType("text/html");
@@ -192,7 +242,7 @@ public class CheckLoginFilter implements Filter {
             }
         }
     }
-    
+
     public static String getStackTrace(Throwable t) {
         String stackTrace = null;
         try {
@@ -206,9 +256,9 @@ public class CheckLoginFilter implements Filter {
         }
         return stackTrace;
     }
-    
+
     public void log(String msg) {
         filterConfig.getServletContext().log(msg);
     }
-    
+
 }

@@ -1,68 +1,52 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package dao;
-import util.DBContext;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import model.Complaint;
 
-/**
- *
- * @author TAN LOI
- */
-public class ComplaintDAO extends DBContext {
+import entity.Complaint;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import java.util.List;
+import util.PersistenceManager;
+
+public class ComplaintDAO {
 
     public List<Complaint> getAllComplaints() {
-        List<Complaint> list = new ArrayList<>();
-        String sql = "SELECT c.*, cust.FullName FROM COMPLAINT c LEFT JOIN CUSTOMER cust ON c.CustomerID = cust.CustomerID ORDER BY c.CreatedAt DESC";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                list.add(new Complaint(rs.getInt("ComplaintID"), rs.getString("Title"),
-                    rs.getString("Content"), rs.getTimestamp("CreatedAt"),
-                    rs.getString("Status"), rs.getString("FullName")));
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
-        return list;
+        return new DAOFramework<>(Complaint.class).getAll();
     }
 
     public Complaint getComplaintById(int id) {
-        String sql = "SELECT c.*, cust.FullName FROM COMPLAINT c LEFT JOIN CUSTOMER cust ON c.CustomerID = cust.CustomerID WHERE c.ComplaintID = ?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return new Complaint(rs.getInt("ComplaintID"), rs.getString("Title"),
-                    rs.getString("Content"), rs.getTimestamp("CreatedAt"),
-                    rs.getString("Status"), rs.getString("FullName"));
-            }
-        } catch (SQLException e) { e.printStackTrace(); }
-        return null;
+        return new DAOFramework<>(Complaint.class).findById("" + id);
     }
 
-    public void insertComplaint(Complaint cp, String customerId) {
-        String sql = "INSERT INTO COMPLAINT (Title, Content, CustomerID) VALUES (?, ?, ?)";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, cp.getTitle());
-            ps.setString(2, cp.getContent());
-            ps.setString(3, (customerId == null || customerId.isEmpty()) ? null : customerId);
-            ps.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+    public void insertComplaint(Complaint cp) {
+        new DAOFramework<>(Complaint.class).insert(cp);
     }
 
     public void updateStatus(int id, String status) {
-        String sql = "UPDATE COMPLAINT SET Status = ? WHERE ComplaintID = ?";
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, status);
-            ps.setInt(2, id);
-            ps.executeUpdate();
-        } catch (SQLException e) { e.printStackTrace(); }
+            em.getTransaction().begin();
+
+            Complaint complaint = em.find(Complaint.class, id);
+            if (complaint == null) {
+                throw new IllegalArgumentException(
+                        "Complaint not found: " + id
+                );
+            }
+
+            complaint.setStatus(status);
+            em.getTransaction().commit();
+        } catch (Exception ex) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            throw new IllegalStateException(
+                    "Unable to update complaint status.", ex
+            );
+        } finally {
+            em.close();
+        }
+    }
+
+    public static void main(String[] args) {
+        System.out.println(new ComplaintDAO().getAllComplaints());
     }
 }

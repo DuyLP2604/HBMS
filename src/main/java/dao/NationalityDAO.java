@@ -4,31 +4,39 @@
  */
 package dao;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.ArrayList;
+import entity.Nationality;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import model.Nationality;
-import util.DBContext;
+import util.PersistenceManager;
 
 /**
  *
  * @author default
  */
-public class NationalityDAO extends DBContext{
+public class NationalityDAO {
+
     public List<Nationality> getAll() {
-        List<Nationality> list = new ArrayList<>();
-        String sql = "SELECT * FROM Nationality";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery();
-            while(rs.next()){
-                String id = rs.getString("NationalityID");
-                String name = rs.getString("NationalityName");
-                list.add(new Nationality(id, name));
-            }
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            String jpql = "SELECT n FROM Nationality n";
+            TypedQuery<Nationality> query = em.createQuery(jpql, Nationality.class);
+            return query.getResultList();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+        return null;
+    }
+
+    public Nationality getNationalityById(String nationalityId) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            return em.find(Nationality.class, nationalityId);
         } catch (Exception e) {
         }
-        return list;
+        return null;
+    }
+
+    public static void main(String[] args) {
+        NationalityDAO dao = new NationalityDAO();
+        System.out.println(dao.getAll());
     }
 }

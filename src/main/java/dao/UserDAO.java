@@ -1,107 +1,293 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package dao;
 
-import java.security.MessageDigest;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import model.User;
-import util.DBContext;
+import entity.Users;
 
-/**
- *
- * @author default
- */
-public class UserDAO extends DBContext {
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import util.PersistenceManager;
+
+public class UserDAO {
 
     public String hashMD5(String password) {
-        String hash = "";
+
+        StringBuilder hash
+                = new StringBuilder();
+
         try {
-            MessageDigest md = MessageDigest.getInstance("md5");
-            byte[] bytes = md.digest(password.getBytes());
+
+            MessageDigest md
+                    = MessageDigest.getInstance("MD5");
+
+            byte[] bytes
+                    = md.digest(password.getBytes());
+
             for (byte b : bytes) {
-                hash += String.format("%02x", b);
+
+                hash.append(
+                        String.format("%02x", b)
+                );
             }
-        } catch (Exception e) {
+
+        } catch (NoSuchAlgorithmException e) {
+
+            e.printStackTrace();
         }
-        return hash;
+
+        return hash.toString();
     }
 
-    public User login(String username, String password) {
-        User user = new User();
-        String sql = "SELECT * FROM USERS WHERE username = ? AND password = ?";
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, username);
-            ps.setString(2, hashMD5(password));
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                user.setId(rs.getInt("UserID"));
-                user.setUsername(rs.getString("Username"));
-                user.setPassword(rs.getString("Password"));
-                user.setRole(rs.getString("Role"));
+    public Users login(
+            String username,
+            String password
+    ) {
+
+        try (EntityManager em
+                = PersistenceManager.createEntityManager()) {
+
+            String jpql
+                    = "SELECT u "
+                    + "FROM Users u "
+                    + "WHERE u.username = :username "
+                    + "AND u.password = :password";
+
+            TypedQuery<Users> query
+                    = em.createQuery(
+                            jpql,
+                            Users.class
+                    );
+
+            query.setParameter(
+                    "username",
+                    username
+            );
+
+            query.setParameter(
+                    "password",
+                    hashMD5(password)
+            );
+
+            List<Users> users
+                    = query.setMaxResults(1)
+                            .getResultList();
+
+            if (!users.isEmpty()) {
+                return users.get(0);
             }
+
         } catch (Exception e) {
+
+            e.printStackTrace();
         }
-        return user;
+
+        return null;
     }
 
-    public boolean isUsernameExists(String username) {
-        String sql = "SELECT * FROM USERS WHERE Username = ?";
+    public boolean isUsernameExists(
+            String username
+    ) {
 
-        try {
-            PreparedStatement ps = conn.prepareStatement(sql);
+        try (EntityManager em
+                = PersistenceManager.createEntityManager()) {
 
-            ps.setString(1, username);
+            String jpql
+                    = "SELECT COUNT(u) "
+                    + "FROM Users u "
+                    + "WHERE u.username = :username";
 
-            ResultSet rs = ps.executeQuery();
+            TypedQuery<Long> query
+                    = em.createQuery(
+                            jpql,
+                            Long.class
+                    );
 
-            return rs.next();
+            query.setParameter(
+                    "username",
+                    username
+            );
+
+            Long count
+                    = query.getSingleResult();
+
+            return count > 0;
 
         } catch (Exception e) {
+
             e.printStackTrace();
         }
 
         return false;
     }
 
-    public int insertUser(String username,
+    public int insertUser(
+            String username,
             String password,
-            String role) {
+            String role
+    ) {
 
-        String sql = "INSERT INTO USERS\n"
-                + "                 (Username, Password, Role)\n"
-                + "                 VALUES (?, ?, ?)";
+        EntityManager em
+                = PersistenceManager.createEntityManager();
 
         try {
-            PreparedStatement ps = conn.prepareStatement(
-                    sql,
-                    Statement.RETURN_GENERATED_KEYS);
 
-            ps.setString(1, username);
-            ps.setString(2, hashMD5(password));
-            ps.setString(3, role);
+            Users newUser
+                    = new Users();
 
-            int affectedRows = ps.executeUpdate();
+            newUser.setUsername(
+                    username
+            );
 
-            if (affectedRows > 0) {
+            newUser.setPassword(
+                    hashMD5(password)
+            );
 
-                ResultSet rs = ps.getGeneratedKeys();
+            newUser.setRole(
+                    role
+            );
 
-                if (rs.next()) {
-                    return rs.getInt(1); // UserID vừa tạo
-                }
+            em.getTransaction().begin();
+
+            em.persist(newUser);
+
+            em.getTransaction().commit();
+
+            return newUser.getUserID();
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
             }
 
-        } catch (SQLException e) {
-            e.printStackTrace();
+        } finally {
+
+            if (em.isOpen()) {
+                em.close();
+            }
         }
 
         return -1;
     }
-    
+
+    public boolean deleteUser(
+            int userId
+    ) {
+
+        EntityManager em
+                = PersistenceManager.createEntityManager();
+
+        try {
+
+            em.getTransaction().begin();
+
+            Users user
+                    = em.find(
+                            Users.class,
+                            userId
+                    );
+
+            if (user == null) {
+
+                em.getTransaction().rollback();
+
+                return false;
+            }
+
+            em.remove(user);
+
+            em.getTransaction().commit();
+
+            return true;
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+
+        } finally {
+
+            if (em.isOpen()) {
+                em.close();
+            }
+        }
+
+        return false;
+    }
+
+
+    /*
+     * Update user's password
+     */
+    public boolean updatePassword(
+            int userId,
+            String newPassword
+    ) {
+
+        EntityManager em
+                = PersistenceManager.createEntityManager();
+
+        try {
+
+            em.getTransaction().begin();
+
+            Users user
+                    = em.find(
+                            Users.class,
+                            userId
+                    );
+
+
+            /*
+             * User does not exist
+             */
+            if (user == null) {
+
+                em.getTransaction().rollback();
+
+                return false;
+            }
+
+
+            /*
+             * Update hashed password
+             */
+            user.setPassword(
+                    hashMD5(newPassword)
+            );
+
+
+            /*
+             * user is already managed by EntityManager,
+             * so merge() is not required.
+             */
+            em.getTransaction().commit();
+
+            return true;
+
+        } catch (Exception e) {
+
+            e.printStackTrace();
+
+            if (em.getTransaction().isActive()) {
+
+                em.getTransaction().rollback();
+            }
+
+        } finally {
+
+            if (em.isOpen()) {
+                em.close();
+            }
+        }
+
+        return false;
+    }
 }
