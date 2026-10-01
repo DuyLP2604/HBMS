@@ -1,6 +1,7 @@
-<%@ page contentType="text/html" pageEncoding="UTF-8" %>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@page contentType="text/html" pageEncoding="UTF-8" %>
+<%@taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
+<%@taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 
 <layout:layout
     title="Customer List"
@@ -40,20 +41,19 @@
                             <input type="hidden" name="action" value="list">
 
                             <div class="input-group">
-                                <span class="input-group-text bg-white">ID</span>
-
-                                <input type="text" name="keyword" class="form-control"value="<c:out value='${param.keyword}' />"
-                                       placeholder="Enter Customer ID or Name...">
+                                <span class="input-group-text bg-white">
+                                    Name
+                                </span>
+                                <input type="text" name="searchName" class="form-control"
+                                       value="<c:out value='${param.searchName}' />"
+                                       placeholder="Enter customer name..." >
 
                                 <button type="submit" class="btn btn-primary">
                                     Search
                                 </button>
 
-                                <c:if test="${not empty param.searchId}">
-                                    <a href="${pageContext.request.contextPath}/customer?action=list"
-                                       class="btn btn-secondary">
-                                        Clear Filter
-                                    </a>
+                                <c:if test="${not empty param.searchName}">
+                                    <a href="${pageContext.request.contextPath}/customer?action=list" class="btn btn-secondary" >Clear Filter</a>
                                 </c:if>
                             </div>
                         </form>
@@ -73,48 +73,34 @@
                         </thead>
 
                         <tbody>
-                            <c:forEach var="c" items="${customers}">
-                                <tr>
-                                    <td class="fw-bold text-secondary">
-                                        <c:out value="${c.customerID}" />
-                                    </td>
+                            <c:forEach var="c" items="${customers}" >
+                                <c:if test="${empty param.searchName or fn:contains(fn:toLowerCase(c.fullName), fn:toLowerCase(param.searchName.trim()))}">
 
-                                    <td>
-                                        <c:out value="${c.fullName}" />
-                                    </td>
-
-                                    <td>
-                                        <c:out value="${c.phone}" />
-                                    </td>
-
-                                    <td>
-                                        <c:out value="${c.nationalityID.nationalityName}" />
-                                    </td>
-
-                                    <td class="text-center">
-                                        <a href="${pageContext.request.contextPath}/customer?action=viewDetail&amp;id=${c.customerID}"
-                                           class="btn btn-outline-info btn-sm me-1">
-                                            View Details
-                                        </a>
-
-                                        <c:choose>
-                                            <c:when test="${sessionScope.user.role eq 'Admin'}">
-                                                <span class="btn btn-outline-warning btn-sm disabled"
-                                                      aria-disabled="true"
-                                                      title="Admin cannot edit customers">
-                                                    Edit
-                                                </span>
-                                            </c:when>
-                                            <c:otherwise>
-                                                <a href="${pageContext.request.contextPath}/customer?action=update&amp;id=${c.customerID}"
-                                                   class="btn btn-outline-warning btn-sm">
-                                                    Edit
-                                                </a>
-                                            </c:otherwise>
-                                        </c:choose>
-                                    </td>
-                                </tr>
-
+                                    <tr>
+                                        <td class="fw-bold text-secondary">
+                                            <c:out value="${c.customerID}" />
+                                        </td>
+                                        <td>
+                                            <c:out value="${c.fullName}" />
+                                        </td>
+                                        <td>
+                                            <c:out value="${c.phone}" />
+                                        </td>
+                                        <td>
+                                            <c:out value="${c.nationalityID.nationalityName}" />
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="${pageContext.request.contextPath}/customer?action=viewDetail&id=${c.customerID}"
+                                               class="btn btn-outline-info btn-sm me-1" >
+                                                View Details
+                                            </a>
+                                            <a href="${pageContext.request.contextPath}/customer?action=update&id=${c.customerID}"
+                                               class="btn btn-outline-warning btn-sm">
+                                                Edit
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </c:if>
                             </c:forEach>
 
                             <c:if test="${empty customers}">
