@@ -1,6 +1,6 @@
 package controller;
 
-import dto.BookingCart;
+import dto.BookingWishList;
 import dto.BookingCartItem;
 import entity.Users;
 import jakarta.servlet.ServletException;
@@ -13,13 +13,13 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
-import util.BookingCartSession;
+import util.BookingWishListSession;
 
 @WebServlet(
         name = "BookingCartServlet",
-        urlPatterns = {"/booking-cart"}
+        urlPatterns = {"/booking-wish-list"}
 )
-public class BookingCartServlet extends HttpServlet {
+public class BookingWishListServlet extends HttpServlet {
 
     @Override
     protected void doGet(
@@ -41,8 +41,8 @@ public class BookingCartServlet extends HttpServlet {
 
         moveFlashMessage(request);
 
-        BookingCart cart
-                = BookingCartSession.getOrCreate(session);
+        BookingWishList cart
+                = BookingWishListSession.getOrCreate(session);
 
         Map<String, BigDecimal> subtotals
                 = new HashMap<>();
@@ -60,7 +60,7 @@ public class BookingCartServlet extends HttpServlet {
         request.setAttribute("subtotals", subtotals);
 
         request.getRequestDispatcher(
-                "/WEB-INF/views/booking-cart.jsp"
+                "/WEB-INF/views/booking-wish-list.jsp"
         ).forward(request, response);
     }
 
@@ -84,8 +84,8 @@ public class BookingCartServlet extends HttpServlet {
             return;
         }
 
-        BookingCart cart
-                = BookingCartSession.getOrCreate(session);
+        BookingWishList cart
+                = BookingWishListSession.getOrCreate(session);
 
         String action = request.getParameter("action");
 
@@ -121,10 +121,10 @@ public class BookingCartServlet extends HttpServlet {
             );
         }
 
-        BookingCartSession.save(session, cart);
+        BookingWishListSession.save(session, cart);
 
         response.sendRedirect(
-                request.getContextPath() + "/booking-cart"
+                request.getContextPath() + "/booking-wish-list"
         );
     }
 

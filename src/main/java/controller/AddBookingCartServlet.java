@@ -1,7 +1,7 @@
 package controller;
 
 import dao.RoomTypeDAO;
-import dto.BookingCart;
+import dto.BookingWishList;
 import dto.BookingCartItem;
 import dto.RoomTypeAvailability;
 import entity.RoomType;
@@ -15,7 +15,7 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
-import util.BookingCartSession;
+import util.BookingWishListSession;
 
 @WebServlet(
         name = "AddBookingCartServlet",
@@ -154,8 +154,8 @@ public class AddBookingCartServlet extends HttpServlet {
                 );
             }
 
-            BookingCart cart
-                    = BookingCartSession.getOrCreate(session);
+            BookingWishList cart
+                    = BookingWishListSession.getOrCreate(session);
 
             if (!cart.isEmpty()) {
                 boolean sameDates
@@ -191,7 +191,7 @@ public class AddBookingCartServlet extends HttpServlet {
 
             cart.addOrUpdateItem(item);
 
-            BookingCartSession.save(
+            BookingWishListSession.save(
                     session,
                     cart
             );

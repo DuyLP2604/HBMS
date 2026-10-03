@@ -132,7 +132,7 @@
                                     <td>
 
                                         <form
-                                            action="${pageContext.request.contextPath}/booking-cart"
+                                            action="${pageContext.request.contextPath}/booking-wish-list"
                                             method="post"
                                             >
 
@@ -202,7 +202,7 @@
                 <div class="d-flex justify-content-between mt-4">
 
                     <form
-                        action="${pageContext.request.contextPath}/booking-cart"
+                        action="${pageContext.request.contextPath}/booking-wish-list"
                         method="post"
                         >
 

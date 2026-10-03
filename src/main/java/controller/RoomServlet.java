@@ -102,7 +102,7 @@ public class RoomServlet extends HttpServlet {
      */
     @Override
     public String getServletInfo() {
-        return "Short description";
+        return "Room controller";
     }// </editor-fold>
 
 }

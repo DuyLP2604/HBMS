@@ -1,6 +1,6 @@
 package controller;
 
-import dto.BookingCart;
+import dto.BookingWishList;
 import entity.Booking;
 import entity.Users;
 import jakarta.servlet.ServletException;
@@ -11,7 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import service.BookingCheckoutService;
-import util.BookingCartSession;
+import util.BookingWishListSession;
 
 @WebServlet(
         name = "CheckoutServlet",
@@ -87,8 +87,8 @@ public class CheckoutServlet extends HttpServlet {
             return;
         }
 
-        BookingCart cart
-                = BookingCartSession.get(session);
+        BookingWishList cart
+                = BookingWishListSession.get(session);
 
         if (cart == null || cart.isEmpty()) {
             session.setAttribute(
@@ -114,7 +114,7 @@ public class CheckoutServlet extends HttpServlet {
             /*
              * Only clear the cart after the transaction succeeds.
              */
-            BookingCartSession.remove(session);
+            BookingWishListSession.remove(session);
 
             session.setAttribute(
                     "pendingBookingID",
