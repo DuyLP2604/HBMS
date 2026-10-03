@@ -60,6 +60,10 @@
                             View complaints
                         </a>
 
+                        <a href="${pageContext.request.contextPath}/hotel">
+                            Hotel information
+                        </a>
+
                     </c:if>
 
                     <div class="dropdown-divider"></div>

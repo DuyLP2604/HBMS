@@ -18,18 +18,25 @@ public class HotelDAO {
 
     public List<Hotel> getAllHotels() {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
-            String jpql = "SELECT h FROM HOTEL h";
+            String jpql = "SELECT h FROM Hotel h";
             TypedQuery<Hotel> query = em.createQuery(jpql, Hotel.class);
             return query.getResultList();
         } catch (Exception e) {
+            e.printStackTrace();
         }
         return null;
     }
 
-    public Hotel getHotelById(String id) {
+    /**
+     * The project manages exactly one hotel.
+     *
+     * @return the hotel, or null if the row is missing or cannot be read
+     */
+    public Hotel getHotel() {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
-            return em.find(Hotel.class, id);
+            return em.find(Hotel.class, Hotel.FIXED_NAME);
         } catch (Exception e) {
+            e.printStackTrace();
         }
         return null;
     }
@@ -51,16 +58,22 @@ public class HotelDAO {
         }
     }
 
-    public void updateHotel(Hotel h) {
+    /**
+     * @return true if the hotel was saved, false if the update failed.
+     */
+    public boolean updateHotel(Hotel h) {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
             em.merge(h);
             em.getTransaction().commit();
+            return true;
         } catch (Exception e) {
+            e.printStackTrace();
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
+            return false;
         } finally {
             if (em != null && em.isOpen()) {
                 em.close();
