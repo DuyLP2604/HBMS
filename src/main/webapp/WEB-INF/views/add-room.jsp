@@ -19,7 +19,7 @@
                         </h2>
                     </div>
                     <div class="card-body p-4">
-                        <form action="${pageContext.request.contextPath}/room" method="post">
+                        <form action="${pageContext.request.contextPath}/room" method="post" enctype="multipart/form-data">
                             <input type="hidden" name="action" value="create">
 
                             <div class="row g-3">
@@ -30,7 +30,6 @@
 
                                 <div class="col-md-6">
                                     <label class="form-label fw-semibold">Room Type<span class="text-danger">*</span></label>
-                                    <!-- Iterating qua attribute 'roomType' đã set ở doGet -->
                                     <select name="roomTypeID" class="form-select" required>
                                         <option value="" disabled selected>-- Select room type --</option>
                                         <c:forEach var="rt" items="${roomType}">
