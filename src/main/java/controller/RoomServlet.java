@@ -45,7 +45,10 @@ public class RoomServlet extends HttpServlet {
         String action = request.getParameter("action");
         RoomDAO roomDAO = new RoomDAO();
         RoomTypeDAO rtDao = new RoomTypeDAO();
-
+        if (action == null) {
+            request.setAttribute("roomList", roomDAO.getAll());
+            request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response);
+        }
         if ("viewDetail".equalsIgnoreCase(action)) {
             String id = request.getParameter("id");
             Room room = roomDAO.getById(id);
