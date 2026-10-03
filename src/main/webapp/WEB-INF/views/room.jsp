@@ -20,7 +20,7 @@
                 </h2>
 
                 <a
-                    href="${pageContext.request.contextPath}/room?action=add"
+                    href="${pageContext.request.contextPath}/room?action=create"
                     class="btn btn-success btn-sm"
                     >
                     + Add New Room
