@@ -12,64 +12,32 @@ import jakarta.servlet.http.HttpSession;
  * @author default
  */
 public class Flash {
+
     private static final String FLASH_KEY = "flashMessage";
 
     private Flash() {
     }
 
-    public static void success(
-            HttpServletRequest request,
-            String message) {
-
-        set(
-            request.getSession(),
-            FlashType.SUCCESS,
-            message
-        );
+    public static void success(HttpServletRequest request, String message) {
+        set(request.getSession(), FlashType.SUCCESS, message);
     }
 
-    public static void error(
-            HttpServletRequest request,
-            String message) {
+    public static void error(HttpServletRequest request, String message) {
 
-        set(
-            request.getSession(),
-            FlashType.ERROR,
-            message
-        );
+        set(request.getSession(), FlashType.ERROR, message);
     }
 
-    public static void warning(
-            HttpServletRequest request,
-            String message) {
+    public static void warning(HttpServletRequest request, String message) {
 
-        set(
-            request.getSession(),
-            FlashType.WARNING,
-            message
-        );
+        set(request.getSession(), FlashType.WARNING, message);
     }
 
-    public static void info(
-            HttpServletRequest request,
-            String message) {
-
-        set(
-            request.getSession(),
-            FlashType.INFO,
-            message
-        );
+    public static void info(HttpServletRequest request, String message) {
+        set(request.getSession(), FlashType.INFO, message);
     }
 
-    private static void set(
-            HttpSession session,
-            FlashType type,
-            String message) {
-
-        session.setAttribute(
-            FLASH_KEY,
-            new FlashMessage(type, message)
-        );
+    private static void set(HttpSession session, FlashType type, String message) {
+        session.setAttribute(FLASH_KEY, new FlashMessage(type, message));
     }
 
     public static String getSessionKey() {
