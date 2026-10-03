@@ -110,7 +110,7 @@
                             </div>
                         </div>
                     </div>
-                                    
+
                     <div class="col-md-6 col-xl-4">
                         <div class="card h-100 shadow-sm border-success">
                             <div class="card-body d-flex flex-column">
@@ -122,7 +122,7 @@
                                 </a>
                             </div>
                         </div>
-                    </div>                
+                    </div>
                 </div>
             </section>
         </c:if>
