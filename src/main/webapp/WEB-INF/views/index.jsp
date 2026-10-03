@@ -1,5 +1,6 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 
 <layout:layout
@@ -37,8 +38,8 @@
     <section class="hero">
 
         <img
-            src="${pageContext.request.contextPath}/assets/images/hotel/hotel2.jpg"
-            alt="Simple Bear Hotel"
+            src="${pageContext.request.contextPath}/assets/images/hotel/${fn:escapeXml(heroImage)}"
+            alt="${fn:escapeXml(hotelName)}"
             >
 
         <div class="overlay"></div>
@@ -46,7 +47,7 @@
         <div class="hero-content">
 
             <h1>
-                Simple Bear Hotel
+                <c:out value="${hotelName}" />
             </h1>
 
             <p>
@@ -75,41 +76,22 @@
                 <div class="col-lg-8">
 
                     <h2 class="fw-bold mb-4">
-                        Simple Bear Hotel
+                        <c:out value="${hotelName}" />
                     </h2>
 
 
-                    <div class="info-item">
+                    <%-- One block per address stored in the database --%>
+                    <c:forEach var="line" items="${hotelAddresses}">
 
-                        <i class="bi bi-geo-alt-fill"></i>
+                        <div class="info-item">
 
-                        600 Nguyen Van Cu Street (Extended),
-                        An Binh Ward, Can Tho City
+                            <i class="bi bi-geo-alt-fill"></i>
 
-                    </div>
+                            <c:out value="${line}" />
 
+                        </div>
 
-                    <div class="info-item">
-
-                        <i class="bi bi-geo-alt-fill"></i>
-
-                        Lot E2a-7, D1 Street, High-Tech Park,
-                        Tang Nhon Phu Ward, Ho Chi Minh City,
-                        Vietnam
-
-                    </div>
-
-
-                    <div class="info-item">
-
-                        <i class="bi bi-geo-alt-fill"></i>
-
-                        Area K, FPT University,
-                        FPT Technology Urban Area,
-                        Ngu Hanh Son Ward, Da Nang City,
-                        Vietnam
-
-                    </div>
+                    </c:forEach>
 
                 </div>
 
@@ -161,7 +143,7 @@
                     <div class="card border-0 shadow-sm h-100">
 
                         <img
-                            src="${pageContext.request.contextPath}/assets/images/hotel/hotel3.jpg"
+                            src="${pageContext.request.contextPath}/assets/images/hotel/${fn:escapeXml(roomImage)}"
                             class="card-img-top"
                             alt="Luxury hotel room"
                             >
@@ -189,7 +171,7 @@
                     <div class="card border-0 shadow-sm h-100">
 
                         <img
-                            src="${pageContext.request.contextPath}/assets/images/hotel/hotel.jpg"
+                            src="${pageContext.request.contextPath}/assets/images/hotel/${fn:escapeXml(poolImage)}"
                             class="card-img-top"
                             alt="Hotel swimming pool"
                             >
@@ -217,7 +199,7 @@
                     <div class="card border-0 shadow-sm h-100">
 
                         <img
-                            src="${pageContext.request.contextPath}/assets/images/hotel/hotel4.jpg"
+                            src="${pageContext.request.contextPath}/assets/images/hotel/${fn:escapeXml(restaurantImage)}"
                             class="card-img-top"
                             alt="Hotel restaurant"
                             >
