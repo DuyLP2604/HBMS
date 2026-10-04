@@ -394,7 +394,7 @@ public class BookingCheckoutService {
 
         Hotel hotel = em.find(
                 Hotel.class,
-                "H01",
+                Hotel.FIXED_NAME,
                 LockModeType.PESSIMISTIC_WRITE,
                 lockProperties
         );
