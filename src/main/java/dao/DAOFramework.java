@@ -61,7 +61,9 @@ public class DAOFramework<entity> {
             em.getTransaction().commit();
             return true;
         } catch (Exception ex) {
-            em.getTransaction().rollback();
+            if (em.getTransaction() != null && em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
             return false;
         } finally {
             em.close();
@@ -83,11 +85,13 @@ public class DAOFramework<entity> {
             em.getTransaction().commit();
             return true;
         } catch (Exception ex) {
-            em.getTransaction().rollback();
+            if (em.getTransaction() != null && em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            return false;
         } finally {
             em.close();
         }
-        return false;
     }
 
     public static void main(String[] args) {

@@ -33,7 +33,7 @@
                             Profile
                         </a>
 
-                        <a href="${pageContext.request.contextPath}/my-bookings">                   
+                        <a href="${pageContext.request.contextPath}/my-bookings">
                             My Bookings
                         </a>
 
@@ -54,6 +54,10 @@
 
                         <a href="${pageContext.request.contextPath}/customer?action=list">
                             View customers
+                        </a>
+
+                        <a href="${pageContext.request.contextPath}/room?action=list">
+                            View rooms
                         </a>
 
                         <a href="${pageContext.request.contextPath}/complaint?action=list">
