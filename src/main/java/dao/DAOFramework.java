@@ -4,8 +4,7 @@
  */
 package dao;
 
-import entity.Booking;
-import entity.Room;
+import entity.Invoice;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import util.PersistenceManager;
@@ -47,7 +46,9 @@ public class DAOFramework<entity> {
     }
 
     public boolean deleteById(String id) {
-
+        if (this.e == Invoice.class) {
+            return false;
+        }
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
@@ -61,7 +62,9 @@ public class DAOFramework<entity> {
             em.getTransaction().commit();
             return true;
         } catch (Exception ex) {
-            em.getTransaction().rollback();
+            if (em.getTransaction() != null && em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
             return false;
         } finally {
             em.close();
@@ -83,15 +86,12 @@ public class DAOFramework<entity> {
             em.getTransaction().commit();
             return true;
         } catch (Exception ex) {
-            em.getTransaction().rollback();
+            if (em.getTransaction() != null && em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            return false;
         } finally {
             em.close();
         }
-        return false;
-    }
-
-    public static void main(String[] args) {
-        System.out.println(new DAOFramework<>(Booking.class).getAll());
-        System.out.println(new DAOFramework<>(Room.class).getAll());
     }
 }
