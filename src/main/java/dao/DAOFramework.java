@@ -94,9 +94,4 @@ public class DAOFramework<entity> {
             em.close();
         }
     }
-
-    public static void main(String[] args) {
-        System.out.println(new DAOFramework<>(Booking.class).getAll());
-        System.out.println(new DAOFramework<>(Room.class).getAll());
-    }
 }
