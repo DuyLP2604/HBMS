@@ -44,9 +44,9 @@
                                 <span class="input-group-text bg-white">
                                     Name
                                 </span>
-                                <input type="text" name="searchName" class="form-control"
-                                       value="<c:out value='${param.searchName}' />"
-                                       placeholder="Enter customer name..." >
+                                <input type="text" name="keyword" class="form-control"
+                                       value="<c:out value='${param.keyword}' />"
+                                       placeholder="Enter customer name or phone number...">
 
                                 <button type="submit" class="btn btn-primary">
                                     Search

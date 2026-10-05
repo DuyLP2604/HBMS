@@ -48,14 +48,8 @@ public class ComplaintServlet extends HttpServlet {
             // Chỉ Admin/Staff mới được xem danh sách khiếu nại
             HttpSession session = request.getSession();
             String role = (String) session.getAttribute("role");
-            if (role == null
-                    || (!role.equalsIgnoreCase("Admin")
-                    && !role.equalsIgnoreCase("Staff"))) {
-
-                response.sendError(
-                        HttpServletResponse.SC_FORBIDDEN,
-                        "You do not have permission to access this page!"
-                );
+            if (role == null || (!role.equalsIgnoreCase("Admin") && !role.equalsIgnoreCase("Staff"))) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page!");
                 return;
             }
             List<Complaint> list = daoCp.getAll();
@@ -124,6 +118,20 @@ public class ComplaintServlet extends HttpServlet {
                     + "/complaint?action=list"
             );
             return;
+        } else if ("reply".equalsIgnoreCase(action)) {
+            String idStr = request.getParameter("id");
+            String status = request.getParameter("status");
+            String replyMessage = request.getParameter("replyMessage");
+            if (idStr != null && !idStr.trim().isEmpty()) {
+                int id = Integer.parseInt(idStr);
+                daoCp.updateReply(id, replyMessage, status);
+                Flash.success(request, "Đã lưu phản hồi khách hàng thành công.");
+                response.sendRedirect(request.getContextPath() + "/complaint?action=viewDetail&id=" + id);
+                return;
+            } else {
+                response.sendRedirect(request.getContextPath() + "/complaint?action=list");
+                return;
+            }
         }
     }
 

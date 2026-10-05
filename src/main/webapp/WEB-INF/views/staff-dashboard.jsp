@@ -45,27 +45,27 @@
                     </div>
                 </div>
 
-                <div class="col-md-6">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body d-flex flex-column">
-                            <div class="mb-3">
-                                <i class="fa-solid fa-file-invoice-dollar fa-2x text-primary"></i>
+                <c:if test="${employee.employeeID != 'NV05' && employee.employeeID != 'NV06' && employee.employeeID != 'NV07' && employee.position != 'Customer service staff'}">
+                    <div class="col-md-6">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3">
+                                    <i class="fa-solid fa-file-invoice-dollar fa-2x text-primary"></i>
+                                </div>
+                                <h3 class="h5">Invoice</h3>
+                                <p class="text-muted flex-grow-1">
+                                    View and manage customer invoices.
+                                </p>
+                                <a href="${pageContext.request.contextPath}/invoice" class="btn btn-primary">
+                                    Manage Invoices
+                                </a>
                             </div>
-                            <h3 class="h5">Invoice</h3>
-                            <p class="text-muted flex-grow-1">
-                                View and manage customer invoices.
-                            </p>
-                            <a href="${pageContext.request.contextPath}/invoice"
-                               class="btn btn-primary">
-                                Manage Invoices
-                            </a>
                         </div>
                     </div>
-                </div>
-            </div>
+                </c:if>
         </section>
 
-        <c:if test="${isReceptionist}">
+        <c:if test="${isReceptionist && employee.employeeID != 'NV05' && employee.employeeID != 'NV06' && employee.employeeID != 'NV07'}">
             <section class="mb-4" aria-labelledby="receptionist-menu-title">
                 <div class="d-flex align-items-center justify-content-between mb-4">
                     <h2 id="receptionist-menu-title" class="h4 mb-0">Receptionist Menu</h2>
@@ -110,7 +110,7 @@
                             </div>
                         </div>
                     </div>
-                                    
+
                     <div class="col-md-6 col-xl-4">
                         <div class="card h-100 shadow-sm border-success">
                             <div class="card-body d-flex flex-column">
@@ -122,7 +122,44 @@
                                 </a>
                             </div>
                         </div>
-                    </div>                
+                    </div>
+                </div>
+            </section>
+        </c:if>
+
+        <c:if test="${employee.employeeID == 'NV05' || employee.employeeID == 'NV06' || employee.employeeID == 'NV07' || employee.position == 'Customer service staff'}">
+            <section class="mb-4" aria-labelledby="cs-menu-title">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h2 id="cs-menu-title" class="h4 mb-0">Customer Service Menu</h2>
+                    <span class="badge bg-info text-dark">Customer Service </span>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card h-100 shadow-sm border-info">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3"><i class="fa-solid fa-comments fa-2x text-info"></i></div>
+                                <h3 class="h5">Review & Reply</h3>
+                                <p class="text-muted flex-grow-1">View customer information and reply to their complaints.</p>
+                                <a href="${pageContext.request.contextPath}/complaint?action=list" class="btn btn-info text-white">
+                                    Manage Complaints
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card h-100 shadow-sm border-info">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3"><i class="fa-solid fa-file-signature fa-2x text-info"></i></div>
+                                <h3 class="h5">Create Ticket</h3>
+                                <p class="text-muted flex-grow-1">Create a new complaint ticket on behalf of a guest.</p>
+                                <a href="${pageContext.request.contextPath}/complaint?action=add" class="btn btn-info text-white">
+                                    Create Complaint
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </c:if>

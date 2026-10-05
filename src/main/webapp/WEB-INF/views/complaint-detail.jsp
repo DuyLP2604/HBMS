@@ -71,54 +71,42 @@
                             </c:otherwise>
                         </c:choose>
                     </dd>
+                    <c:if test="${not empty complaint.replyMessage}">
+                        <dt class="col-sm-3 text-danger mt-3">Staff Reply</dt>
+                        <dd class="col-sm-9 mt-3" style="white-space: pre-line; background-color: #f8d7da; color: #842029; padding: 12px; border-radius: 8px; border: 1px solid #f5c2c7;">
+                            <strong><c:out value="${complaint.replyMessage}" /></strong>
+                        </dd>
+                    </c:if>
                 </dl>
 
                 <hr>
+                <form action="${pageContext.request.contextPath}/complaint" method="post" class="mt-4">
 
-                <form action="${pageContext.request.contextPath}/complaint"
-                      method="post"
-                      class="d-flex gap-2 align-items-end">
+                    <input type="hidden" name="action" value="reply">
+                    <input type="hidden" name="id" value="${complaint.complaintID}">
 
-                    <input type="hidden"
-                           name="action"
-                           value="updateStatus">
+                    <div class="mb-3">
+                        <label for="complaintStatus" class="form-label fw-bold">Update Status</label>
 
-                    <input type="hidden"
-                           name="id"
-                           value="${complaint.complaintID}">
-
-                    <div class="flex-grow-1">
-                        <label for="complaintStatus" class="form-label">
-                            Update Status
-                        </label>
-
-                        <select id="complaintStatus"
-                                name="status"
-                                class="form-select"
-                                required>
-                            <option value="Chưa xử lý"
-                                    ${complaint.status eq 'Chưa xử lý' ? 'selected' : ''}>
-                                Pending
-                            </option>
-
-                            <option value="Đang xử lý"
-                                    ${complaint.status eq 'Đang xử lý' ? 'selected' : ''}>
-                                In Progress
-                            </option>
-
-                            <option value="Đã xử lý"
-                                    ${complaint.status eq 'Đã xử lý' ? 'selected' : ''}>
-                                Resolved
-                            </option>
+                        <select id="complaintStatus" name="status" class="form-select w-25" required>
+                            <option value="Chưa xử lý" ${complaint.status eq 'Chưa xử lý' ? 'selected' : ''}>Pending</option>
+                            <option value="Đang xử lý" ${complaint.status eq 'Đang xử lý' ? 'selected' : ''}>In Progress</option>
+                            <option value="Đã xử lý" ${complaint.status eq 'Đã xử lý' ? 'selected' : ''}>Resolved</option>
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-danger">
-                        Update
+                    <div class="mb-3">
+                        <label for="replyMessage" class="form-label fw-bold">Reply Message</label>
+                        <textarea id="replyMessage" name="replyMessage" class="form-control" rows="5"
+                                  placeholder="Nhập nội dung giải thích, hỗ trợ khách hàng vào đây..." required><c:out value="${complaint.replyMessage}" /></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-danger px-4">
+                        Update & Reply
                     </button>
                 </form>
-            </div>
 
+            </div>
         </div>
     </div>
 </layout:layout>

@@ -157,21 +157,11 @@ public class LoginServlet extends HttpServlet {
     /**
      * Redirects the logged-in user according to their role.
      */
-    private void redirectByRole(
-            Users user,
-            HttpServletRequest request,
-            HttpServletResponse response)
-            throws IOException {
-
-        String contextPath
-                = request.getContextPath();
-
+    private void redirectByRole(Users user, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String contextPath = request.getContextPath();
         String role = user.getRole();
-
         if ("Customer".equalsIgnoreCase(role)) {
-            response.sendRedirect(
-                    contextPath + "/home"
-            );
+            response.sendRedirect(contextPath + "/home");
             return;
         }
 
@@ -183,38 +173,29 @@ public class LoginServlet extends HttpServlet {
              * StaffDashboardServlet will load Employee
              * and display menus based on Position.
              */
-            response.sendRedirect(
-                    contextPath + "/staff/dashboard"
-            );
+            response.sendRedirect(contextPath + "/staff/dashboard");
             return;
         }
 
         if ("Admin".equalsIgnoreCase(role)) {
-            response.sendRedirect(
-                    contextPath + "/dashboard"
-            );
+            response.sendRedirect(contextPath + "/dashboard");
             return;
         }
 
         /*
          * Reject accounts with an unsupported role.
          */
-        HttpSession session
-                = request.getSession(false);
+        HttpSession session = request.getSession(false);
 
         if (session != null) {
             session.invalidate();
         }
 
-        response.sendRedirect(
-                contextPath + "/login"
-        );
+        response.sendRedirect(contextPath + "/login");
     }
 
     private String trimParameter(String value) {
-        return value == null
-                ? null
-                : value.trim();
+        return value == null ? null : value.trim();
     }
 
     @Override

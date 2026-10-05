@@ -83,9 +83,11 @@
 
                                     <td class="text-center">
                                         <a href="${pageContext.request.contextPath}/complaint?action=viewDetail&amp;id=${cp.complaintID}"
-                                           class="btn btn-outline-info btn-sm">
-                                            View Details
+                                           class="btn btn-outline-info btn-sm me-1">
+                                            <i class="fa-solid fa-eye"></i> View
                                         </a>
+
+
                                     </td>
                                 </tr>
                             </c:forEach>
@@ -99,11 +101,9 @@
                                 </tr>
                             </c:if>
                         </tbody>
-
                     </table>
                 </div>
             </div>
-
         </div>
     </div>
 </layout:layout>
