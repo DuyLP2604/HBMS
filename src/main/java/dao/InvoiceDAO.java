@@ -41,8 +41,8 @@ public class InvoiceDAO {
             query.setParameter("status", "CHECKED_IN");
             List<RoomAssignment> assignments = query.getResultList();
 
-            // ĐÃ FIX: Đổi từ "H01" sang entity.Hotel.FIXED_NAME để tránh crash do DB đổi khóa chính
-            Hotel hotel = em.find(Hotel.class, entity.Hotel.FIXED_NAME);
+            // ĐÃ FIX: Đổi từ "H01" sang Hotel.FIXED_NAME để tránh crash do DB đổi khóa chính
+            Hotel hotel = em.find(Hotel.class, Hotel.FIXED_NAME);
             String hotelName = hotel != null ? hotel.getHotelName() : "";
 
             for (RoomAssignment assignment : assignments) {
@@ -90,8 +90,8 @@ public class InvoiceDAO {
             query.setParameter("paymentStatus", "PAID");
             query.setMaxResults(10);
 
-            // ĐÃ FIX: Đổi từ "H01" sang entity.Hotel.FIXED_NAME
-            Hotel hotel = em.find(Hotel.class, entity.Hotel.FIXED_NAME);
+            // ĐÃ FIX: Đổi từ "H01" sang Hotel.FIXED_NAME
+            Hotel hotel = em.find(Hotel.class, Hotel.FIXED_NAME);
             String hotelName = hotel != null ? hotel.getHotelName() : "";
 
             for (Invoice invoiceEntity : query.getResultList()) {
