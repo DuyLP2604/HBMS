@@ -1,14 +1,7 @@
 package dao;
-
 import entity.Complaint;
 import jakarta.persistence.EntityManager;
-import java.util.List;
 import util.PersistenceManager;
-
-/**
- *
- * @author TAN LOI
- */
 public class ComplaintDAO extends DAOFramework<Complaint> {
 
     public ComplaintDAO() {
@@ -28,7 +21,6 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
-
             Complaint complaint = em.find(Complaint.class, id);
             if (complaint == null) {
                 throw new IllegalArgumentException("Complaint not found: " + id);
@@ -46,7 +38,7 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
     }
 
     public void updateReply(int id, String replyMessage, String status) {
-        EntityManager em = util.PersistenceManager.createEntityManager();
+        EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
             Complaint complaint = em.find(Complaint.class, id);

@@ -1,6 +1,6 @@
 package service;
 
-import dto.BookingCart;
+import dto.BookingWishList;
 import dto.BookingCartItem;
 import entity.Booking;
 import entity.BookingDetail;
@@ -26,13 +26,12 @@ import util.PersistenceManager;
 
 public class BookingCheckoutService {
 
-    private static final long PAYMENT_TIMEOUT_MINUTES
-            = 15;
+    private static final long PAYMENT_TIMEOUT_MINUTES = 15;
 
     private static final int CHECKOUT_LOCK_TIMEOUT_MS = 10000;
 
     public Booking createPendingBooking(
-            BookingCart cart,
+            BookingWishList cart,
             int userID) {
 
         validateCart(cart);
@@ -268,7 +267,7 @@ public class BookingCheckoutService {
 
     private Map<String, Long> loadAvailability(
             EntityManager em,
-            BookingCart cart) {
+            BookingWishList cart) {
 
         StoredProcedureQuery query
                 = em.createStoredProcedureQuery(
@@ -365,7 +364,7 @@ public class BookingCheckoutService {
         );
     }
 
-    private void validateCart(BookingCart cart) {
+    private void validateCart(BookingWishList cart) {
         if (cart == null || cart.isEmpty()) {
             throw new IllegalArgumentException(
                     "Your booking cart is empty."
@@ -395,7 +394,7 @@ public class BookingCheckoutService {
 
         Hotel hotel = em.find(
                 Hotel.class,
-                "H01",
+                Hotel.FIXED_NAME,
                 LockModeType.PESSIMISTIC_WRITE,
                 lockProperties
         );

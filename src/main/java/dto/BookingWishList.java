@@ -9,23 +9,19 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class BookingCart implements Serializable {
+public class BookingWishList implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
 
-    private final Map<String, BookingCartItem> itemMap
-            = new LinkedHashMap<>();
+    private final Map<String, BookingCartItem> itemMap = new LinkedHashMap<>();
 
-    public BookingCart() {
+    public BookingWishList() {
     }
 
-    public BookingCart(
-            LocalDate checkInDate,
-            LocalDate checkOutDate) {
-
+    public BookingWishList(LocalDate checkInDate, LocalDate checkOutDate) {
         setStayDates(checkInDate, checkOutDate);
     }
 
