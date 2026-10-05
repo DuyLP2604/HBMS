@@ -89,16 +89,23 @@ body{
 
 .profile-body{
     padding:35px;
+
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    column-gap:40px;
 }
 
 .info-row{
     display:flex;
-    justify-content:space-between;
-    align-items:center;
+    flex-direction:column;     
+    align-items:flex-start;
+    gap:6px;
 
     padding:16px 0;
-
     border-bottom:1px solid #ececec;
+}
+.info-row:nth-last-child(-n+2){
+    border-bottom:none;
 }
 
 .info-row:last-child{
@@ -113,7 +120,8 @@ body{
 .info-value{
     color:#2C3E50;
     font-weight:500;
-    text-align:right;
+    text-align:left;
+    word-break:break-word;     /* tránh email/địa chỉ dài bị tràn */
 }
 
 /* Update button */
@@ -162,18 +170,16 @@ body{
 /* Mobile */
 
 @media(max-width:768px){
-
     .profile-body{
         padding:25px;
+        grid-template-columns:1fr;
     }
 
-    .info-row{
-        flex-direction:column;
-        align-items:flex-start;
-        gap:8px;
+    .info-row:nth-last-child(-n+2){
+        border-bottom:1px solid #ececec;
     }
 
-    .info-value{
-        text-align:left;
+    .info-row:last-child{
+        border-bottom:none;
     }
 }
