@@ -4,8 +4,7 @@
  */
 package dao;
 
-import entity.Booking;
-import entity.Room;
+import entity.Invoice;
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import util.PersistenceManager;
@@ -47,7 +46,9 @@ public class DAOFramework<entity> {
     }
 
     public boolean deleteById(String id) {
-
+        if (this.e == Invoice.class) {
+            return false;
+        }
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
