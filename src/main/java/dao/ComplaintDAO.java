@@ -1,7 +1,9 @@
 package dao;
+
 import entity.Complaint;
 import jakarta.persistence.EntityManager;
 import util.PersistenceManager;
+
 public class ComplaintDAO extends DAOFramework<Complaint> {
 
     public ComplaintDAO() {
@@ -27,7 +29,7 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
             }
             complaint.setStatus(status);
             em.getTransaction().commit();
-        } catch (Exception ex) {
+        } catch (IllegalArgumentException ex) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }

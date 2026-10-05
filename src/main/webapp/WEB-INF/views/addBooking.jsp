@@ -28,7 +28,7 @@
                         <select class="form-select" name="hotelId" required>
                             <option value="" disabled selected>-- Choose branch --</option>
                             <c:forEach items="${hotelList}" var="h">
-                                <option value="${h.hotelID}"><c:out value="${h.address}" /></option>
+                                <option value="${h.hotelName}"><c:out value="${h.address}" /></option>
                             </c:forEach>
                         </select>
                     </div>
