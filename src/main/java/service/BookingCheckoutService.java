@@ -26,8 +26,7 @@ import util.PersistenceManager;
 
 public class BookingCheckoutService {
 
-    private static final long PAYMENT_TIMEOUT_MINUTES
-            = 15;
+    private static final long PAYMENT_TIMEOUT_MINUTES = 15;
 
     private static final int CHECKOUT_LOCK_TIMEOUT_MS = 10000;
 
@@ -395,7 +394,7 @@ public class BookingCheckoutService {
 
         Hotel hotel = em.find(
                 Hotel.class,
-                "H01",
+                Hotel.FIXED_NAME,
                 LockModeType.PESSIMISTIC_WRITE,
                 lockProperties
         );

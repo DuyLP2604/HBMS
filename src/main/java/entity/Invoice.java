@@ -42,21 +42,19 @@ import java.util.Date;
 public class Invoice implements Serializable {
 
     private static final long serialVersionUID = 1L;
-    
+
     @Id
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 6)
     @Column(name = "InvoiceID")
     private String invoiceID;
-    
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 30)
     @Column(name = "InvoiceDate")
     @Temporal(TemporalType.DATE)
     private Date invoiceDate;
-    
     // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
     @Basic(optional = false)
     @NotNull
@@ -70,7 +68,6 @@ public class Invoice implements Serializable {
     @JoinColumn(name = "BookingID", referencedColumnName = "BookingID")
     @OneToOne(optional = false)
     private Booking bookingID;
-    
     @JoinColumn(name = "EmployeeID", referencedColumnName = "EmployeeID")
     @ManyToOne
     private Employee employeeID;
