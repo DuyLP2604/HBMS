@@ -1380,3 +1380,16 @@ GO
 -- EXEC SP_GET_ROOM_TYPE_AVAILABILITY
 --     @CheckInDate = '2026-09-20',
 --     @CheckOutDate = '2026-09-22';
+USE QLKS;
+GO
+
+UPDATE EMPLOYEE 
+SET Position = N'Customer service' 
+WHERE EmployeeID IN ('NV05', 'NV06', 'NV07');
+
+ALTER TABLE COMPLAINT 
+ADD ReplyMessage NVARCHAR(MAX) NULL;
+
+ALTER TABLE COMPLAINT 
+ADD EmployeeID CHAR(6) NULL;
+GO
