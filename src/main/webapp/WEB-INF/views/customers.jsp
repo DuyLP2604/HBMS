@@ -21,9 +21,17 @@
                         <form action="${pageContext.request.contextPath}/customer" method="get" class="d-flex gap-2">
                             <input type="hidden" name="action" value="list">
                             <div class="input-group">
-                                <span class="input-group-text bg-white">Name</span>
-                                <input type="text" name="searchName" class="form-control" value="<c:out value='${param.searchName}' />" placeholder="Enter customer name...">
-                                <button type="submit" class="btn btn-primary">Search</button>
+                                <span class="input-group-text bg-white">
+                                    Name
+                                </span>
+                                <input type="text" name="keyword" class="form-control"
+                                       value="<c:out value='${param.keyword}' />"
+                                       placeholder="Enter customer name or phone number...">
+
+                                <button type="submit" class="btn btn-primary">
+                                    Search
+                                </button>
+
                                 <c:if test="${not empty param.searchName}">
                                     <a href="${pageContext.request.contextPath}/customer?action=list" class="btn btn-secondary">Clear Filter</a>
                                 </c:if>

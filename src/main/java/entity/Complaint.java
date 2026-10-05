@@ -59,6 +59,10 @@ public class Complaint implements Serializable {
     @Size(min = 1, max = 30)
     @Column(name = "Status")
     private String status;
+    // them vo database de reply compnat
+    @Size(max = 2147483647)
+    @Column(name = "ReplyMessage")
+    private String replyMessage;
 
     private static final long serialVersionUID = 1L;
     @Id
@@ -92,7 +96,6 @@ public class Complaint implements Serializable {
     public void setComplaintID(Integer complaintID) {
         this.complaintID = complaintID;
     }
-
 
     public Customer getCustomerID() {
         return customerID;
@@ -157,6 +160,14 @@ public class Complaint implements Serializable {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getReplyMessage() {
+        return replyMessage;
+    }
+
+    public void setReplyMessage(String replyMessage) {
+        this.replyMessage = replyMessage;
     }
 
 }

@@ -108,9 +108,9 @@ public class ComplaintServlet extends HttpServlet {
             }
             Flash.success(request, "Complaint added successfully.");
             response.sendRedirect(request.getContextPath() + "/complaint?action=add");
-        } else if ("updateStatus".equalsIgnoreCase(action)) {
+        } else if ("updateStatus".equalsIgnoreCase(action) || "reply".equalsIgnoreCase(action)) {
             if (!canManageComplaints(user)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to update complaint status.");
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to update or reply to complaints.");
                 return;
             }
             Integer id = readComplaintId(request, response);
@@ -126,13 +126,28 @@ public class ComplaintServlet extends HttpServlet {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "Complaint not found.");
                 return;
             }
-            try {
-                daoCp.updateStatus(id, status.trim());
-            } catch (IllegalStateException ex) {
-                throw new ServletException("Unable to update complaint status.", ex);
+            if ("reply".equalsIgnoreCase(action)) {
+                String replyMessage = request.getParameter("replyMessage");
+                if (replyMessage == null || replyMessage.trim().isEmpty()) {
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Reply message is required.");
+                    return;
+                }
+                try {
+                    daoCp.updateReply(id, replyMessage.trim(), status.trim());
+                } catch (RuntimeException ex) {
+                    throw new ServletException("Unable to save complaint reply.", ex);
+                }
+                Flash.success(request, "Đã lưu phản hồi khách hàng thành công.");
+                response.sendRedirect(request.getContextPath() + "/complaint?action=viewDetail&id=" + id);
+            } else {
+                try {
+                    daoCp.updateStatus(id, status.trim());
+                } catch (IllegalStateException ex) {
+                    throw new ServletException("Unable to update complaint status.", ex);
+                }
+                Flash.success(request, "Complaint status updated successfully.");
+                response.sendRedirect(request.getContextPath() + "/complaint?action=list");
             }
-            Flash.success(request, "Complaint status updated successfully.");
-            response.sendRedirect(request.getContextPath() + "/complaint?action=list");
         } else {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid action.");
         }
@@ -178,6 +193,6 @@ public class ComplaintServlet extends HttpServlet {
 
     @Override
     public String getServletInfo() {
-        return "Handles complaint submission, viewing and status updates.";
+        return "Handles complaint submission, viewing, status updates and replies.";
     }
 }

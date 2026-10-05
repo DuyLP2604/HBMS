@@ -54,7 +54,12 @@
                                         </c:choose>
                                     </td>
                                     <td class="text-center">
-                                        <a href="${pageContext.request.contextPath}/complaint?action=viewDetail&amp;id=${cp.complaintID}" class="btn btn-outline-info btn-sm">View Details</a>
+                                        <a href="${pageContext.request.contextPath}/complaint?action=viewDetail&amp;id=${cp.complaintID}"
+                                           class="btn btn-outline-info btn-sm me-1">
+                                            <i class="fa-solid fa-eye"></i> View
+                                        </a>
+
+
                                     </td>
                                 </tr>
                             </c:forEach>

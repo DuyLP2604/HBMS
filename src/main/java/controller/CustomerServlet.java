@@ -35,8 +35,7 @@ public class CustomerServlet extends HttpServlet {
     }
 
     private boolean isWriteAction(String action) {
-        return "add".equalsIgnoreCase(action)
-                || "update".equalsIgnoreCase(action);
+        return "add".equalsIgnoreCase(action) || "update".equalsIgnoreCase(action);
     }
 
     @Override
@@ -49,8 +48,7 @@ public class CustomerServlet extends HttpServlet {
         }
 
         if (isWriteAction(action) && isAdmin(request)) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN,
-                    "Admin cannot add or edit customers.");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Admin cannot add or edit customers.");
             return;
         }
 
@@ -60,15 +58,14 @@ public class CustomerServlet extends HttpServlet {
         if ("list".equalsIgnoreCase(action)) {
             String keyword = request.getParameter("keyword");
             List<Customer> customerList;
-            // tim theo name
+            // tim theo name hoac sdt
             if (keyword != null && !keyword.trim().isEmpty()) {
                 customerList = daoCus.searchCustomerByKeyword(keyword.trim());
             } else {
                 customerList = daoCus.getAllCustomers();
             }
             request.setAttribute("customers", customerList);
-            request.getRequestDispatcher("/WEB-INF/views/customers.jsp")
-                    .forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/customers.jsp").forward(request, response);
 
         } else if ("add".equalsIgnoreCase(action)) {
             List<Nationality> listNat = daoNat.getAll();
