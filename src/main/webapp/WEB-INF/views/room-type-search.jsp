@@ -28,7 +28,7 @@
                     <div class="row g-3 align-items-end">
                         <div class="col-md-5">
                             <label for="checkInDate" class="form-label">Check-in Date</label>
-                            <input type="date" id="checkInDate" name="checkInDate" value="${checkInDate}" class="form-control" required>
+                            <input type="date" id="checkInDate" name="checkInDate" value="${checkInDate} min="${today}" class="form-control" required>
                         </div>
                         <div class="col-md-5">
                             <label for="checkOutDate" class="form-label">Check-out Date</label>

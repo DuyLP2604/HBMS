@@ -111,7 +111,7 @@
                     var container = document.getElementById('previewContainer');
                     preview.src = e.target.result;
                     container.classList.remove('d-none'); // Hiển thị khung preview
-                }
+                };
                 reader.readAsDataURL(input.files[0]);
             }
         }
