@@ -123,10 +123,23 @@
                             </div>
                         </div>
                     </div>
+                                    
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card h-100 shadow-sm border-success">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3"><i class="fa-solid fa-money-check-dollar fa-2x text-success"></i></div>
+                                <h3 class="h5">Check In</h3>
+                                <p class="text-muted flex-grow-1">Manage guest check-in of customer.</p>
+                                <a href="${pageContext.request.contextPath}/checkin" class="btn btn-success">
+                                    Checkin Manager
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </c:if>
-
+        
         <c:if test="${employee.employeeID == 'NV05' || employee.employeeID == 'NV06' || employee.employeeID == 'NV07' || employee.position == 'Customer service staff'}">
             <section class="mb-4" aria-labelledby="cs-menu-title">
                 <div class="d-flex align-items-center justify-content-between mb-4">
