@@ -98,24 +98,19 @@ public class CheckoutEmployeeServlet extends HttpServlet {
                 return;
             }
 
-            // Lấy dữ liệu Phòng và Dịch vụ từ InvoiceDAO
             Map<String, String> roomDetail = invoiceDAO.getRoomDetailByBooking(bookingID);
             List<Map<String, String>> services = invoiceDAO.getServicesByBooking(bookingID);
 
-            if (roomDetail == null) {
-                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Không tìm thấy thông tin Booking.");
+            // Kiểm tra an toàn nếu không tìm thấy dữ liệu
+            if (roomDetail == null || roomDetail.isEmpty()) {
+                request.getSession().setAttribute("msg", "Lỗi: Không tìm thấy chi tiết hóa đơn cho Booking " + bookingID);
+                response.sendRedirect(request.getContextPath() + "/CheckoutEmployee");
                 return;
             }
 
-            // Tính toán tiền cọc và tiền cần thanh toán
-            double baseTotal = Double.parseDouble(roomDetail.get("baseTotal"));
-            double deposit = baseTotal * 0.3; // Cọc 30%
-            double finalAmount = baseTotal - deposit;
-
+            // Chỉ đẩy 2 đối tượng thuần túy này sang JSP
             request.setAttribute("roomDetail", roomDetail);
             request.setAttribute("services", services);
-            request.setAttribute("deposit", deposit);
-            request.setAttribute("finalAmount", finalAmount);
 
             request.getRequestDispatcher("/WEB-INF/views/checkout-detail.jsp").forward(request, response);
 
@@ -124,7 +119,6 @@ public class CheckoutEmployeeServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/error.jsp");
         }
     }
-
     @Override
     protected void doPost(
             HttpServletRequest request,
