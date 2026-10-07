@@ -139,6 +139,7 @@ public class CustomerServlet extends HttpServlet {
 
         if ("add".equalsIgnoreCase(action)) {
             String createAccount = request.getParameter("createAccount");
+            Users newUser = null;
 
             if (createAccount != null) {
                 String username = request.getParameter("username");
@@ -147,12 +148,15 @@ public class CustomerServlet extends HttpServlet {
 
                 if (userDAO.isUsernameExists(username)) {
                     Flash.error(request, "Username already exists.");
-                    response.sendRedirect(
-                            request.getContextPath() + "/customer?action=add");
+                    response.sendRedirect(request.getContextPath() + "/customer?action=add");
                     return;
                 }
 
-                userDAO.insertUser(username, password, "Customer");
+                int userId = userDAO.insertUser(username, password, "Customer");
+                if (userId > 0) {
+                    newUser = new Users();
+                    newUser.setUserID(userId);
+                }
             }
 
             Customer customer = new Customer();
@@ -163,19 +167,20 @@ public class CustomerServlet extends HttpServlet {
             customer.setAddress(address);
             customer.setCccd(cccd);
             customer.setPassportNumber(passport);
-            customer.setNationalityID(
-                    new Nationality(nationalityId, null));
+            customer.setNationalityID(new Nationality(nationalityId, null));
+            customer.setUserID(newUser); // THÊM DÒNG NÀY ĐỂ GÁN USER CHO CUSTOMER
 
             daoCus.insertCustomer(customer);
 
             Flash.success(request, "Customer added successfully.");
-            response.sendRedirect(
-                    request.getContextPath() + "/customer?action=list");
-
+            response.sendRedirect(request.getContextPath() + "/customer?action=list");
         } else if ("update".equalsIgnoreCase(action)) {
             String id = request.getParameter("id");
 
-            if (daoCus.getCustomerById(id) == null) {
+            // Lấy thông tin khách hàng cũ từ DB để giữ lại userID hiện tại (tránh bị đè null)
+            Customer existingCustomer = daoCus.getCustomerById(id);
+
+            if (existingCustomer == null) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND);
                 return;
             }
@@ -192,6 +197,9 @@ public class CustomerServlet extends HttpServlet {
             customer.setPassportNumber(passport);
             customer.setNationalityID(
                     new Nationality(nationalityId, null));
+
+            // Giữ lại userID cũ của khách hàng (nếu có)
+            customer.setUserID(existingCustomer.getUserID());
 
             daoCus.updateCustomer(customer);
 
