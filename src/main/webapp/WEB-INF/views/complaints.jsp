@@ -58,8 +58,6 @@
                                            class="btn btn-outline-info btn-sm me-1">
                                             <i class="fa-solid fa-eye"></i> View
                                         </a>
-
-
                                     </td>
                                 </tr>
                             </c:forEach>
