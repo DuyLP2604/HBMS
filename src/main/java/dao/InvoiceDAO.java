@@ -1,339 +1,221 @@
 package dao;
 
-import entity.Booking;
-import entity.BookingDetail;
-import entity.BookingService;
-import entity.Employee;
-import entity.Hotel;
-import entity.Invoice;
-import entity.RoomAssignment;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import util.PersistenceManager;
 
-public class InvoiceDAO {
+public class InvoiceDAO
+{
+    private static final Logger LOGGER = Logger.getLogger(InvoiceDAO.class.getName());
+    private static final String HOTEL_NAME = "(SELECT TOP (1) HotelName FROM dbo.HOTEL)";
 
-    public List<Map<String, String>> getOccupiedRooms() {
-        List<Map<String, String>> result = new ArrayList<>();
-        EntityManager em = PersistenceManager.createEntityManager();
-
-        try {
-            String jpql = "SELECT ra FROM RoomAssignment ra "
-                    + "JOIN FETCH ra.roomID r "
-                    + "JOIN FETCH r.roomTypeID rt "
-                    + "JOIN FETCH ra.bookingDetailID bd "
-                    + "JOIN FETCH bd.bookingID b "
-                    + "JOIN FETCH b.customerID c "
-                    + "LEFT JOIN FETCH c.nationalityID n "
-                    + "WHERE b.bookingStatus = :status "
-                    + "ORDER BY r.roomNumber";
-
-            TypedQuery<RoomAssignment> query = em.createQuery(jpql, RoomAssignment.class);
-            query.setParameter("status", "CHECKED_IN");
-            List<RoomAssignment> assignments = query.getResultList();
-
-            // ĐÃ FIX: Đổi từ "H01" sang Hotel.FIXED_NAME để tránh crash do DB đổi khóa chính
-            Hotel hotel = em.find(Hotel.class, Hotel.FIXED_NAME);
-            String hotelName = hotel != null ? hotel.getHotelName() : "";
-
-            for (RoomAssignment assignment : assignments) {
-                BookingDetail detail = assignment.getBookingDetailID();
-                Booking booking = detail.getBookingID();
-                Map<String, String> room = new HashMap<>();
-
-                room.put("bookingID", booking.getBookingID());
-                room.put("customerName", booking.getCustomerID().getFullName());
-                room.put("hotelName", hotelName);
-                room.put("roomID", assignment.getRoomID().getRoomID());
-                room.put("roomNumber", assignment.getRoomID().getRoomNumber());
-                room.put("roomType", assignment.getRoomID().getRoomTypeID().getTypeName());
-
-                String nationality = "";
-                if (booking.getCustomerID().getNationalityID() != null) {
-                    nationality = booking.getCustomerID().getNationalityID().getNationalityName();
-                }
-
-                room.put("nationality", nationality);
-                room.put("price", detail.getUnitPrice().toString());
-                room.put("checkInDate", booking.getCheckInDate().toString());
-                room.put("checkOutDate", booking.getCheckOutDate().toString());
-
-                result.add(room);
-            }
-            return result;
-        } finally {
-            close(em);
+    public List<Map<String, String>> getOccupiedRooms()
+    {
+        String sql = "SELECT b.BookingID AS bookingID, c.FullName AS customerName, n.NationalityName AS nationality, " + HOTEL_NAME + " AS hotelName, CONVERT(VARCHAR(10), b.CheckInDate, 23) AS checkInDate, CONVERT(VARCHAR(10), b.CheckOutDate, 23) AS checkOutDate FROM dbo.BOOKING b JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID LEFT JOIN dbo.NATIONALITY n ON n.NationalityID = c.NationalityID WHERE b.BookingStatus = 'CHECKED_IN' ORDER BY b.CheckInDate, b.BookingID";
+        List<Map<String, String>> rooms = query(sql);
+        for (Map<String, String> room : rooms)
+        {
+            addRoomInfo(room);
         }
+        return rooms;
     }
 
-    public List<Map<String, String>> getPaidInvoices() {
-        List<Map<String, String>> result = new ArrayList<>();
-        EntityManager em = PersistenceManager.createEntityManager();
-
-        try {
-            String jpql = "SELECT i FROM Invoice i "
-                    + "JOIN FETCH i.bookingID b "
-                    + "JOIN FETCH b.customerID c "
-                    + "WHERE EXISTS (SELECT p.paymentID FROM Payment p WHERE p.bookingID = b AND p.status = :paymentStatus) "
-                    + "ORDER BY i.invoiceDate DESC";
-
-            TypedQuery<Invoice> query = em.createQuery(jpql, Invoice.class);
-            query.setParameter("paymentStatus", "PAID");
-            query.setMaxResults(10);
-
-            // ĐÃ FIX: Đổi từ "H01" sang Hotel.FIXED_NAME
-            Hotel hotel = em.find(Hotel.class, Hotel.FIXED_NAME);
-            String hotelName = hotel != null ? hotel.getHotelName() : "";
-
-            for (Invoice invoiceEntity : query.getResultList()) {
-                Booking booking = invoiceEntity.getBookingID();
-                Map<String, String> invoice = new HashMap<>();
-
-                invoice.put("invoiceID", invoiceEntity.getInvoiceID());
-                invoice.put("bookingID", booking.getBookingID());
-                invoice.put("customerName", booking.getCustomerID().getFullName());
-                invoice.put("hotelName", hotelName);
-                invoice.put("roomNumber", getAssignedRoomNumbers(em, booking));
-                invoice.put("totalAmount", invoiceEntity.getTotalAmount().toString());
-                invoice.put("invoiceDate", invoiceEntity.getInvoiceDate().toString());
-
-                result.add(invoice);
-            }
-            return result;
-        } finally {
-            close(em);
+    public List<Map<String, String>> getPaidInvoices()
+    {
+        String sql = "SELECT TOP (10) i.InvoiceID AS invoiceID, i.BookingID AS bookingID, c.FullName AS customerName, " + HOTEL_NAME + " AS hotelName, i.TotalAmount AS totalAmount, CONVERT(VARCHAR(10), i.InvoiceDate, 23) AS invoiceDate FROM dbo.INVOICE i JOIN dbo.BOOKING b ON b.BookingID = i.BookingID JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID JOIN dbo.V_BOOKING_PAYMENT_SUMMARY ps ON ps.BookingID = b.BookingID WHERE i.Status = N'Có hiệu lực' AND b.BookingStatus = 'CHECKED_OUT' AND ps.PaymentStatus = 'FULLY_PAID' ORDER BY i.InvoiceDate DESC, i.InvoiceID DESC";
+        List<Map<String, String>> invoices = query(sql);
+        for (Map<String, String> invoice : invoices)
+        {
+            addRoomInfo(invoice);
         }
+        return invoices;
     }
 
-    public boolean isBookingPaid(String bookingID) {
-        EntityManager em = PersistenceManager.createEntityManager();
-        try {
-            Booking booking = em.find(Booking.class, bookingID);
-            if (booking == null) {
-                return false;
-            }
-            BigDecimal totalPaid = getTotalPaid(em, booking);
-            return totalPaid.compareTo(booking.getTotalAmount()) >= 0;
-        } finally {
-            close(em);
-        }
-    }
-
-    public List<Map<String, String>> getServicesByBooking(String bookingID) {
-        List<Map<String, String>> result = new ArrayList<>();
-        EntityManager em = PersistenceManager.createEntityManager();
-        try {
-            String jpql = "SELECT bs FROM BookingService bs JOIN FETCH bs.serviceID s "
-                    + "WHERE bs.bookingID.bookingID = :bookingID ORDER BY s.serviceName";
-            TypedQuery<BookingService> query = em.createQuery(jpql, BookingService.class);
-            query.setParameter("bookingID", bookingID);
-
-            for (BookingService bookingService : query.getResultList()) {
-                Map<String, String> serviceMap = new HashMap<>();
-                serviceMap.put("serviceID", bookingService.getService().getServiceID());
-                serviceMap.put("serviceName", bookingService.getService().getServiceName());
-                serviceMap.put("quantity", "" + bookingService.getQuantity());
-                serviceMap.put("unitPrice", bookingService.getUnitPrice().toString());
-                serviceMap.put("subtotal", bookingService.getSubtotal().toString());
-                result.add(serviceMap);
-            }
-            return result;
-        } finally {
-            close(em);
-        }
-    }
-
-    public Map<String, String> getRoomDetailByBooking(String bookingID) {
-        EntityManager em = PersistenceManager.createEntityManager();
-        try {
-            Booking booking = em.find(Booking.class, bookingID);
-            if (booking == null) {
-                return null;
-            }
-
-            List<BookingDetail> details = getBookingDetails(em, booking);
-            List<BookingService> services = getBookingServices(em, booking);
-
-            BigDecimal roomTotal = BigDecimal.ZERO;
-            BigDecimal serviceTotal = BigDecimal.ZERO;
-            List<String> prices = new ArrayList<>();
-
-            for (BookingDetail detail : details) {
-                roomTotal = roomTotal.add(detail.getSubtotal());
-                prices.add(detail.getUnitPrice().toString());
-            }
-
-            for (BookingService service : services) {
-                serviceTotal = serviceTotal.add(service.getSubtotal());
-            }
-
-            LocalDate checkIn = toLocalDate(booking.getCheckInDate());
-            LocalDate checkOut = toLocalDate(booking.getCheckOutDate());
-            long totalDays = ChronoUnit.DAYS.between(checkIn, checkOut);
-
-            Map<String, String> room = new HashMap<>();
-            room.put("bookingID", booking.getBookingID());
-            room.put("customerName", booking.getCustomerID().getFullName());
-            room.put("roomNumber", getAssignedRoomNumbers(em, booking));
-            room.put("price", String.join(", ", prices));
-            room.put("checkInDate", booking.getCheckInDate().toString());
-            room.put("checkOutDate", booking.getCheckOutDate().toString());
-            room.put("totalDays", String.valueOf(totalDays));
-            room.put("roomTotal", roomTotal.toString());
-            room.put("serviceTotal", serviceTotal.toString());
-            room.put("baseTotal", booking.getTotalAmount().toString());
-
-            return room;
-        } finally {
-            close(em);
-        }
-    }
-
-    public boolean processCheckout(String bookingID, double ignoredTotalAmount, String employeeID) {
-        return processCheckout(bookingID, employeeID);
-    }
-
-    public boolean processCheckout(String bookingID, String employeeID) {
-        EntityManager em = PersistenceManager.createEntityManager();
-        try {
-            em.getTransaction().begin();
-            Booking booking = em.find(Booking.class, bookingID);
-
-            if (booking == null) {
-                throw new IllegalArgumentException("Booking not found: " + bookingID);
-            }
-
-            if (!"CHECKED_IN".equals(booking.getBookingStatus())) {
-                throw new IllegalStateException("Only a checked-in booking can be checked out.");
-            }
-
-            Employee employee = em.find(Employee.class, employeeID);
-            if (employee == null) {
-                throw new IllegalArgumentException("Employee not found: " + employeeID);
-            }
-
-            BigDecimal totalPaid = getTotalPaid(em, booking);
-            if (totalPaid.compareTo(booking.getTotalAmount()) < 0) {
-                throw new IllegalStateException("The booking has not been fully paid.");
-            }
-
-            Invoice invoice = findInvoiceByBooking(em, booking);
-            if (invoice == null) {
-                invoice = new Invoice();
-                invoice.setInvoiceID(generateInvoiceID(em));
-                invoice.setInvoiceDate(new Date());
-                invoice.setBookingID(booking);
-                em.persist(invoice);
-            }
-
-            invoice.setTotalAmount(booking.getTotalAmount());
-            invoice.setEmployeeID(employee);
-            booking.setBookingStatus("CHECKED_OUT");
-
-            em.getTransaction().commit();
-            return true;
-        } catch (IllegalArgumentException | IllegalStateException exception) {
-            rollback(em);
-            throw new IllegalStateException("Unable to process checkout.", exception);
-        } finally {
-            close(em);
-        }
-    }
-
-    private Invoice findInvoiceByBooking(EntityManager em, Booking booking) {
-        String jpql = "SELECT i FROM Invoice i WHERE i.bookingID = :booking";
-        TypedQuery<Invoice> query = em.createQuery(jpql, Invoice.class);
-        query.setParameter("booking", booking);
-        query.setMaxResults(1);
-        List<Invoice> invoices = query.getResultList();
+    public Map<String, String> getInvoiceByBooking(String bookingID)
+    {
+        String id = requireBookingID(bookingID);
+        List<Map<String, String>> invoices = query("SELECT InvoiceID AS invoiceID, BookingID AS bookingID, TotalAmount AS totalAmount, CONVERT(VARCHAR(10), InvoiceDate, 23) AS invoiceDate, EmployeeID AS employeeID, Status AS status FROM dbo.INVOICE WHERE BookingID = ? AND Status = N'Có hiệu lực'", id);
         return invoices.isEmpty() ? null : invoices.get(0);
     }
 
-    private List<BookingDetail> getBookingDetails(EntityManager em, Booking booking) {
-        String jpql = "SELECT bd FROM BookingDetail bd WHERE bd.bookingID = :booking";
-        TypedQuery<BookingDetail> query = em.createQuery(jpql, BookingDetail.class);
-        query.setParameter("booking", booking);
-        return query.getResultList();
+    public boolean isBookingPaid(String bookingID)
+    {
+        Map<String, Object> summary = new BookingDAO().getPaymentSummary(requireBookingID(bookingID));
+        return summary != null && "FULLY_PAID".equals(summary.get("paymentStatus")) && !"CANCELLED".equals(summary.get("bookingStatus"));
     }
 
-    private List<BookingService> getBookingServices(EntityManager em, Booking booking) {
-        String jpql = "SELECT bs FROM BookingService bs WHERE bs.bookingID = :booking";
-        TypedQuery<BookingService> query = em.createQuery(jpql, BookingService.class);
-        query.setParameter("booking", booking);
-        return query.getResultList();
+    public List<Map<String, String>> getServicesByBooking(String bookingID)
+    {
+        return query("SELECT bs.ServiceID AS serviceID, s.ServiceName AS serviceName, bs.Quantity AS quantity, bs.UnitPrice AS unitPrice, bs.Subtotal AS subtotal FROM dbo.BOOKING_SERVICE bs JOIN dbo.SERVICE s ON s.ServiceID = bs.ServiceID WHERE bs.BookingID = ? ORDER BY s.ServiceName, bs.ServiceID", requireBookingID(bookingID));
     }
 
-    private String getAssignedRoomNumbers(EntityManager em, Booking booking) {
-        String jpql = "SELECT ra.roomID.roomNumber FROM RoomAssignment ra WHERE ra.bookingDetailID.bookingID = :booking ORDER BY ra.roomID.roomNumber";
-        TypedQuery<String> query = em.createQuery(jpql, String.class);
-        query.setParameter("booking", booking);
-        List<String> roomNumbers = query.getResultList();
-        if (roomNumbers.isEmpty()) {
-            return "Pending assignment";
+    public Map<String, String> getRoomDetailByBooking(String bookingID)
+    {
+        String sql = "SELECT b.BookingID AS bookingID, c.FullName AS customerName, " + HOTEL_NAME + " AS hotelName, CONVERT(VARCHAR(10), b.CheckInDate, 23) AS checkInDate, CONVERT(VARCHAR(10), b.CheckOutDate, 23) AS checkOutDate, DATEDIFF(DAY, b.CheckInDate, b.CheckOutDate) AS totalDays, COALESCE((SELECT SUM(d.Subtotal) FROM dbo.BOOKING_DETAIL d WHERE d.BookingID = b.BookingID), 0) AS roomTotal, COALESCE((SELECT SUM(s.Subtotal) FROM dbo.BOOKING_SERVICE s WHERE s.BookingID = b.BookingID), 0) AS serviceTotal, b.TotalAmount AS baseTotal FROM dbo.BOOKING b JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID WHERE b.BookingID = ?";
+        List<Map<String, String>> rooms = query(sql, requireBookingID(bookingID));
+        if (rooms.isEmpty())
+        {
+            return null;
         }
-        return String.join(", ", roomNumbers);
+        Map<String, String> room = rooms.get(0);
+        addRoomInfo(room);
+        return room;
     }
 
-    private BigDecimal getTotalPaid(EntityManager em, Booking booking) {
-        String jpql = "SELECT p.amount FROM Payment p WHERE p.bookingID = :booking AND p.status = :status";
-        TypedQuery<BigDecimal> query = em.createQuery(jpql, BigDecimal.class);
-        query.setParameter("booking", booking);
-        query.setParameter("status", "PAID");
-        BigDecimal totalPaid = BigDecimal.ZERO;
-        for (BigDecimal amount : query.getResultList()) {
-            if (amount != null) {
-                totalPaid = totalPaid.add(amount);
+    public boolean processCheckout(String bookingID, int actorUserID)
+    {
+        String id = requireBookingID(bookingID);
+        if (actorUserID <= 0)
+        {
+            throw new IllegalArgumentException("An authenticated staff UserID is required.");
+        }
+        boolean confirmed = false;
+        try (Connection connection = PersistenceManager.openConnection(); PreparedStatement statement = connection.prepareStatement("EXEC dbo.SP_CHECKOUT_WITH_INVOICE @BookingID = ?, @ActorUserID = ?;"))
+        {
+            statement.setString(1, id);
+            statement.setInt(2, actorUserID);
+            boolean resultSet = statement.execute();
+            while (true)
+            {
+                if (resultSet)
+                {
+                    try (ResultSet result = statement.getResultSet())
+                    {
+                        while (result.next())
+                        {
+                            String invoiceID = result.getString("InvoiceID");
+                            confirmed = invoiceID != null && !invoiceID.isBlank();
+                        }
+                    }
+                }
+                else if (statement.getUpdateCount() == -1)
+                {
+                    break;
+                }
+                resultSet = statement.getMoreResults();
             }
         }
-        return totalPaid;
-    }
-
-    private String generateInvoiceID(EntityManager em) {
-        String jpql = "SELECT i.invoiceID FROM Invoice i";
-        List<String> invoiceIDs = em.createQuery(jpql, String.class).getResultList();
-        int largestNumber = 0;
-
-        for (String invoiceID : invoiceIDs) {
-            if (invoiceID == null) {
-                continue;
+        catch (SQLException ex)
+        {
+            throw new IllegalStateException(checkoutError(ex), ex);
+        }
+        finally
+        {
+            try
+            {
+                PersistenceManager.getEMF().getCache().evictAll();
             }
-            String normalizedID = invoiceID.trim();
-            if (!normalizedID.matches("HD\\d+")) {
-                continue;
-            }
-            int number = Integer.parseInt(normalizedID.substring(2));
-            if (number > largestNumber) {
-                largestNumber = number;
+            catch (RuntimeException ex)
+            {
+                LOGGER.log(Level.WARNING, "Unable to refresh the persistence cache after checkout.", ex);
             }
         }
-        return String.format("HD%04d", largestNumber + 1);
+        if (!confirmed)
+        {
+            throw new IllegalStateException("Checkout could not be confirmed. Check the booking and invoice before retrying.");
+        }
+        return true;
     }
 
-    private LocalDate toLocalDate(Date date) {
-        if (date instanceof java.sql.Date) {
-            return ((java.sql.Date) date).toLocalDate();
-        }
-        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    @Deprecated
+    public boolean processCheckout(String bookingID, String employeeID)
+    {
+        throw new IllegalStateException("Use processCheckout(bookingID, authenticatedUserID).");
     }
 
-    private void rollback(EntityManager em) {
-        if (em != null && em.getTransaction().isActive()) {
-            em.getTransaction().rollback();
+    @Deprecated
+    public boolean processCheckout(String bookingID, double ignoredTotalAmount, String employeeID)
+    {
+        throw new IllegalStateException("Use processCheckout(bookingID, authenticatedUserID). The database calculates the invoice total.");
+    }
+
+    private void addRoomInfo(Map<String, String> target)
+    {
+        List<Map<String, String>> rooms = query("SELECT r.RoomID AS roomID, r.RoomNumber AS roomNumber, rt.TypeName AS roomType, d.UnitPrice AS price FROM dbo.BOOKING_DETAIL d JOIN dbo.ROOM_TYPE rt ON rt.RoomTypeID = d.RoomTypeID LEFT JOIN dbo.ROOM_ASSIGNMENT ra ON ra.BookingDetailID = d.BookingDetailID LEFT JOIN dbo.ROOM r ON r.RoomID = ra.RoomID WHERE d.BookingID = ? ORDER BY r.RoomNumber, d.BookingDetailID", target.get("bookingID"));
+        for (String key : new String[]{"roomID", "roomNumber", "roomType", "price"})
+        {
+            Set<String> values = new LinkedHashSet<>();
+            for (Map<String, String> room : rooms)
+            {
+                String value = room.get(key);
+                if (value != null && !value.isBlank())
+                {
+                    values.add(value);
+                }
+            }
+            target.put(key, values.isEmpty() && "roomNumber".equals(key) ? "Pending assignment" : String.join(", ", values));
         }
     }
 
-    private void close(EntityManager em) {
-        if (em != null && em.isOpen()) {
-            em.close();
+    private List<Map<String, String>> query(String sql, String... parameters)
+    {
+        try (Connection connection = PersistenceManager.openConnection(); PreparedStatement statement = connection.prepareStatement(sql))
+        {
+            for (int index = 0; index < parameters.length; index++)
+            {
+                statement.setString(index + 1, parameters[index]);
+            }
+            try (ResultSet result = statement.executeQuery())
+            {
+                List<Map<String, String>> rows = new ArrayList<>();
+                ResultSetMetaData metadata = result.getMetaData();
+                while (result.next())
+                {
+                    Map<String, String> row = new LinkedHashMap<>();
+                    for (int index = 1; index <= metadata.getColumnCount(); index++)
+                    {
+                        String value = result.getString(index);
+                        row.put(metadata.getColumnLabel(index), value == null ? "" : value.trim());
+                    }
+                    rows.add(row);
+                }
+                return rows;
+            }
         }
+        catch (SQLException ex)
+        {
+            throw new IllegalStateException("Unable to load invoice data.", ex);
+        }
+    }
+
+    private String requireBookingID(String bookingID)
+    {
+        if (bookingID == null || bookingID.isBlank() || bookingID.trim().length() > 6)
+        {
+            throw new IllegalArgumentException("A valid booking ID is required.");
+        }
+        return bookingID.trim();
+    }
+
+    private String checkoutError(SQLException exception)
+    {
+        for (SQLException ex = exception; ex != null; ex = ex.getNextException())
+        {
+            switch (ex.getErrorCode())
+            {
+                case 51000: return "The booking system is busy. Please try again.";
+                case 51100: return "Only staff or admin can issue invoices.";
+                case 51101: return "Your account is not linked to an employee profile.";
+                case 51102: return "The requested booking was not found.";
+                case 51103: return "The current booking status does not allow checkout.";
+                case 51104: return "Complete the remaining payment before checkout.";
+                case 51105: return "The booking has no successful payment.";
+                case 51106: return "The active invoice total differs from the booking total. Review the invoice before continuing.";
+                case 51107: return "The invoice ID range is exhausted.";
+                default: break;
+            }
+        }
+        return "Checkout could not be confirmed. Check the booking and invoice before retrying.";
     }
 }

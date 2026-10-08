@@ -15,9 +15,14 @@
 
 <nav class="navbar">
     <a href="${logoUrl}" class="logo">
-        <i class="fa-solid fa-hotel"></i>
+        <i class="fa-solid fa-hotel" aria-hidden="true"></i>
         Hotel Management
     </a>
 
-    <jsp:include page="/WEB-INF/components/dropdownMenu.jsp" />
+    <div class="navbar-actions">
+        <c:if test="${sessionScope.user.role eq 'Customer'}">
+            <jsp:include page="/wallet-navbar" />
+        </c:if>
+        <jsp:include page="/WEB-INF/components/dropdownMenu.jsp" />
+    </div>
 </nav>

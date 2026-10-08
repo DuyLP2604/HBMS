@@ -8,7 +8,7 @@
     bodyClass="login-page"
     showNavbar="false"
     showFooter="false"
->
+    >
     <div class="login-container">
         <div class="login-logo"><i class="fa-solid fa-hotel"></i></div>
         <h2 class="login-title">Hotel Management System</h2>
@@ -35,5 +35,10 @@
                 <a href="${pageContext.request.contextPath}/register">Register</a>
             </div>
         </form>
+
+        <a href="${pageContext.request.contextPath}/home" class="back-home-btn">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            Back to Home
+        </a>
     </div>
 </layout:layout>

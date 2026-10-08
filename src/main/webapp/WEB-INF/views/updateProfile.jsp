@@ -1,57 +1,44 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-<layout:layout
-    title="Update Profile"
-    pageCss="updateProfile.css"
-    >
+<layout:layout title="Update Profile" pageCss="updateProfile.css" showNavbar="false">
     <div class="container">
         <div class="profile-card">
             <h1>Update Profile</h1>
             <form action="${pageContext.request.contextPath}/profile?action=update" method="post">
                 <table>
                     <tr>
-                        <td>Full Name</td>
+                        <td><label for="fullname">Full Name *</label></td>
                         <td>
-                            <input type="text" name="fullname" value="<c:out value='${customerUpdate.fullName}' />" required>
+                            <input type="text" id="fullname" name="fullname" value="${fn:escapeXml(customerUpdate.fullName)}" maxlength="100" required>
                         </td>
                     </tr>
                     <tr>
-                        <td>Phone</td>
+                        <td><label for="phone">Phone</label></td>
                         <td>
-                            <input type="text" name="phone" value="<c:out value='${customerUpdate.phone}' />">
+                            <input type="tel" id="phone" name="phone" value="${fn:escapeXml(customerUpdate.phone)}" maxlength="15">
                         </td>
                     </tr>
                     <tr>
-                        <td>Email</td>
+                        <td><label for="email">Email</label></td>
                         <td>
-                            <input type="email" name="email" value="<c:out value='${customerUpdate.email}' />">
+                            <input type="email" id="email" name="email" value="${fn:escapeXml(customerUpdate.email)}" maxlength="100">
                         </td>
                     </tr>
                     <tr>
-                        <td>Address</td>
+                        <td><label for="address">Address</label></td>
                         <td>
-                            <input type="text" name="address" value="<c:out value='${customerUpdate.address}' />">
+                            <input type="text" id="address" name="address" value="${fn:escapeXml(customerUpdate.address)}" maxlength="200">
                         </td>
                     </tr>
                     <tr>
-                        <td>Identity Number</td>
+                        <td><label for="nationalityId">Nationality *</label></td>
                         <td>
-                            <input type="text" name="cccd" value="<c:out value='${customerUpdate.cccd}' />">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Passport Number</td>
-                        <td>
-                            <input type="text" name="passportNumber" value="<c:out value='${customerUpdate.passportNumber}' />">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Nationality</td>
-                        <td>
-                            <select name="nationalityId" required>
+                            <select id="nationalityId" name="nationalityId" required>
+                                <option value="" disabled ${empty customerUpdate.nationalityID ? 'selected' : ''}>-- Select Nationality --</option>
                                 <c:forEach items="${nationalityUpdate}" var="n">
-                                    <option value="${n.nationalityID}" ${customerUpdate.nationalityID.nationalityID eq n.nationalityID ? 'selected' : ''}><c:out value="${n.nationalityName}" /></option>
+                                    <option value="${fn:escapeXml(n.nationalityID)}" ${customerUpdate.nationalityID.nationalityID eq n.nationalityID ? 'selected' : ''}><c:out value="${n.nationalityName}" /></option>
                                 </c:forEach>
                             </select>
                         </td>
