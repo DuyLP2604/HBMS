@@ -77,41 +77,44 @@ public class CustomerDAO {
         return List.of();
     }
 
+    public List<Customer> getCustomerByPhone(String phone) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            String searchPhone = "%" + phone.trim() + "%";
+            String jpql = "SELECT c FROM Customer c WHERE c.phone LIKE :phone";
+            TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
+            query.setParameter("phone", searchPhone);
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return List.of();
+    }
+
     // search theo ten hoac sdt
     public List<Customer> searchCustomerByKeyword(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return List.of();
         }
-        String Keywordtrim = keyword.trim();
-        Customer customerById = getCustomerById(Keywordtrim.toUpperCase());
-        if (customerById != null) {
-            return List.of(customerById);
+        String keywordTrim = keyword.trim();
+        List<Customer> customersByPhone = getCustomerByPhone(keywordTrim);
+        if (customersByPhone != null && !customersByPhone.isEmpty()) {
+            return customersByPhone;
         }
-        return getCustomerByName(Keywordtrim);
+        return getCustomerByName(keywordTrim);
     }
 
     public void updateCustomer(Customer customer) {
-
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
-
             em.getTransaction().begin();
-
             em.merge(customer);
-
             em.getTransaction().commit();
-
         } catch (Exception e) {
-
             e.printStackTrace();
-
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
             }
-
         } finally {
-
             if (em.isOpen()) {
                 em.close();
             }
