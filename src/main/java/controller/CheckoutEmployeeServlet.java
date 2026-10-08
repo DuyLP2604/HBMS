@@ -112,7 +112,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
                 return;
             }
             roomDetail = invoiceDAO.getRoomDetailByBooking(bookingID);
-            if (roomDetail == null)
+            if (roomDetail == null || roomDetail.isEmpty())
             {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "The booking details were not found.");
                 return;

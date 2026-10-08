@@ -109,6 +109,27 @@ public class CustomerDAO
         return List.of();
     }
 
+    public List<Customer> getCustomerByPhone(String phone)
+    {
+        if (phone == null || phone.trim().isEmpty())
+        {
+            return List.of();
+        }
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
+            String searchPhone = "%" + phone.trim() + "%";
+            String jpql = "SELECT c FROM Customer c WHERE c.phone LIKE :phone";
+            TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
+            query.setParameter("phone", searchPhone);
+            return query.getResultList();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return List.of();
+    }
+
     public List<Customer> searchCustomerByKeyword(String keyword)
     {
         if (keyword == null || keyword.trim().isEmpty())
@@ -226,8 +247,8 @@ public class CustomerDAO
         }
         return null;
     }
-    
-        public boolean insertCustomerWithAccount(Customer customer, String username, String password)
+
+    public boolean insertCustomerWithAccount(Customer customer, String username, String password)
     {
         if (customer == null || customer.getCustomerID() == null || customer.getCustomerID().isBlank())
         {
