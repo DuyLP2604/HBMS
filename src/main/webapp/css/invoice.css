@@ -1,0 +1,68 @@
+.invoice-page
+{
+    background: #f5f6f8;
+}
+.invoice-page .invoice-container
+{
+    max-width: 960px;
+    margin: 24px auto;
+    background: #fff;
+    overflow-wrap: anywhere;
+}
+.invoice-page .signature-space
+{
+    min-height: 70px;
+}
+@page
+{
+    size: A4;
+    margin: 15mm;
+}
+@media print
+{
+    body.invoice-page
+    {
+        background: #fff;
+        margin: 0;
+        padding: 0;
+    }
+    .invoice-page *
+    {
+        visibility: hidden;
+    }
+    .invoice-page .invoice-container, .invoice-page .invoice-container *
+    {
+        visibility: visible;
+    }
+    .invoice-page .print-controls
+    {
+        display: none !important;
+    }
+    .invoice-page .invoice-container
+    {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        color: #000;
+    }
+    .invoice-page .invoice-container .table-responsive
+    {
+        overflow: visible;
+    }
+    .invoice-page .invoice-container thead
+    {
+        display: table-header-group;
+    }
+    .invoice-page .invoice-container tr, .invoice-page .invoice-signatures
+    {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
