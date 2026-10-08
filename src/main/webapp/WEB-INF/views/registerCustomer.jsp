@@ -49,5 +49,9 @@
                 <button type="submit" class="register-btn">Register</button>
             </div>
         </div>
+        <a href="${pageContext.request.contextPath}/login" class="back-login-btn">
+            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+            Back to Login
+        </a>
     </form>
 </layout:layout>
