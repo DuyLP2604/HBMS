@@ -63,11 +63,11 @@
                                     </td>
                                     <td>
                                         <c:choose>
-                                            <c:when test="${c.status eq 'Available'}">
-                                                <span class="badge rounded-pill bg-success">Available</span>
+                                            <c:when test="${c.status eq 'ACTIVE'}">
+                                                <span class="badge rounded-pill bg-success">ACTIVE</span>
                                             </c:when>
-                                            <c:when test="${c.status eq 'Occupied'}">
-                                                <span class="badge rounded-pill bg-warning text-dark">Occupied</span>
+                                            <c:when test="${c.status eq 'MAINTENANCE'}">
+                                                <span class="badge rounded-pill bg-warning text-dark">MAINTENANCE</span>
                                             </c:when>
                                             <c:otherwise>
                                                 <span class="badge rounded-pill bg-danger"><c:out value="${c.status}" /></span>
