@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.Part;
 import java.io.File;
+import java.io.InputStream;
 import java.nio.file.Paths;
 import util.flash.Flash;
 
@@ -168,12 +169,12 @@ public class RoomServlet extends HttpServlet {
             if (part == null || part.getSize() == 0 || part.getSubmittedFileName() == null || part.getSubmittedFileName().isEmpty()) {
                 return null;
             }
-
-            String fileName = Paths.get(part.getSubmittedFileName()).getFileName().toString();
-            String uniqueFileName = System.currentTimeMillis() + "_" + fileName;
-            if (uniqueFileName.length() > 100) {
-                uniqueFileName = uniqueFileName.substring(uniqueFileName.length() - 100);
+            String extension = validateImage(part);
+            if (extension == null) {
+                // Trả về null nếu file bị từ chối (không phải jpg, png, webp hợp lệ)
+                return null;
             }
+            String uniqueFileName = "room-" + System.currentTimeMillis() + "." + extension;
             String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room";
             File uploadDir = new File(uploadPath);
             if (!uploadDir.exists()) {
@@ -183,6 +184,63 @@ public class RoomServlet extends HttpServlet {
             return uniqueFileName;
         } catch (ServletException | IOException e) {
             return null;
+        }
+    }
+
+    private String validateImage(Part part) throws IOException {
+        String extension = extensionOf(part.getSubmittedFileName());
+        if (extension == null) {
+            return null;
+        }
+
+        byte[] header = new byte[12];
+        int read;
+        try (InputStream in = part.getInputStream()) {
+            read = in.readNBytes(header, 0, header.length);
+        }
+
+        return matchesImageSignature(header, read, extension) ? extension : null;
+    }
+
+    private String extensionOf(String fileName) {
+        if (fileName == null) {
+            return null;
+        }
+        int dot = fileName.lastIndexOf('.');
+        if (dot < 0 || dot == fileName.length() - 1) {
+            return null;
+        }
+        String extension = fileName.substring(dot + 1).toLowerCase(java.util.Locale.ROOT);
+        switch (extension) {
+            case "jpg":
+            case "jpeg":
+                return "jpg";
+            case "png":
+                return "png";
+            case "webp":
+                return "webp";
+            default:
+                return null;
+        }
+    }
+
+    private boolean matchesImageSignature(byte[] h, int length, String extension) {
+        if (length < 12) {
+            return false;
+        }
+        switch (extension) {
+            case "jpg":
+                return (h[0] & 0xFF) == 0xFF
+                        && (h[1] & 0xFF) == 0xD8
+                        && (h[2] & 0xFF) == 0xFF;
+            case "png":
+                return (h[0] & 0xFF) == 0x89 && h[1] == 'P'
+                        && h[2] == 'N' && h[3] == 'G';
+            case "webp":
+                return h[0] == 'R' && h[1] == 'I' && h[2] == 'F' && h[3] == 'F'
+                        && h[8] == 'W' && h[9] == 'E' && h[10] == 'B' && h[11] == 'P';
+            default:
+                return false;
         }
     }
 

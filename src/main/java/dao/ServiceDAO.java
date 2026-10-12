@@ -32,7 +32,6 @@ public class ServiceDAO {
 
     public Service findByID(String serviceID) {
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
             return em.find(Service.class, serviceID);
         } finally {
@@ -42,12 +41,8 @@ public class ServiceDAO {
 
     public String generateServiceID() {
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
-            String jpql
-                    = "SELECT s.serviceID "
-                    + "FROM Service s";
-
+            String jpql = "SELECT s.serviceID " + "FROM Service s";
             TypedQuery<String> query = em.createQuery(
                     jpql,
                     String.class

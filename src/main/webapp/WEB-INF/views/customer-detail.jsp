@@ -1,12 +1,7 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-<layout:layout
-    title="Customer Details"
-    pageCss="customer.css"
-    useBootstrap="true"
-    bodyClass="bg-light"
-    >
+<layout:layout title="Customer Details" pageCss="customer.css" useBootstrap="true" bodyClass="bg-light">
     <div class="container my-5">
         <div class="row justify-content-center">
             <div class="col-md-6">
@@ -22,42 +17,20 @@
                         </div>
                         <div class="row mb-3 border-bottom pb-2">
                             <div class="col-sm-4 text-muted">Phone Number:</div>
-                            <div class="col-sm-8 fw-bold"><c:out value="${customer.phone}" /></div>
+                            <div class="col-sm-8 fw-bold"><c:out value="${empty customer.phone ? 'Not provided' : customer.phone}" /></div>
                         </div>
                         <div class="row mb-3 border-bottom pb-2">
                             <div class="col-sm-4 text-muted">Email:</div>
-                            <div class="col-sm-8 fw-bold text-primary"><c:out value="${customer.email}" /></div>
+                            <div class="col-sm-8 fw-bold text-primary"><c:out value="${empty customer.email ? 'Not provided' : customer.email}" /></div>
                         </div>
                         <div class="row mb-3 border-bottom pb-2">
                             <div class="col-sm-4 text-muted">Address:</div>
-                            <div class="col-sm-8 fw-bold"><c:out value="${customer.address}" /></div>
-                        </div>
-                        <div class="row mb-3 border-bottom pb-2">
-                            <div class="col-sm-4 text-muted">Citizen ID:</div>
-                            <div class="col-sm-8 fw-bold">
-                                <c:choose>
-                                    <c:when test="${not empty customer.cccd}">
-                                        <c:out value="${customer.cccd}" />
-                                    </c:when>
-                                    <c:otherwise>Not provided</c:otherwise>
-                                </c:choose>
-                            </div>
-                        </div>
-                        <div class="row mb-3 border-bottom pb-2">
-                            <div class="col-sm-4 text-muted">Passport Number:</div>
-                            <div class="col-sm-8 fw-bold">
-                                <c:choose>
-                                    <c:when test="${not empty customer.passportNumber}">
-                                        <c:out value="${customer.passportNumber}" />
-                                    </c:when>
-                                    <c:otherwise>Not provided</c:otherwise>
-                                </c:choose>
-                            </div>
+                            <div class="col-sm-8 fw-bold"><c:out value="${empty customer.address ? 'Not provided' : customer.address}" /></div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-sm-4 text-muted">Nationality:</div>
                             <div class="col-sm-8 fw-bold">
-                                <span class="badge bg-info text-dark"><c:out value="${customer.nationalityID.nationalityName}" /></span>
+                                <span class="badge bg-info text-dark"><c:out value="${empty customer.nationalityID ? 'Not provided' : customer.nationalityID.nationalityName}" /></span>
                             </div>
                         </div>
                     </div>

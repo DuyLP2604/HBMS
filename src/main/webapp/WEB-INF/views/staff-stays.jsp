@@ -42,17 +42,12 @@
                                         <a href="${pageContext.request.contextPath}/staff/bookings?bookingID=${booking.bookingID}" class="btn btn-primary btn-sm">Assign Rooms</a>
                                     </c:when>
                                     <c:when test="${booking.bookingStatus eq 'ASSIGNED'}">
-                                        <form action="${pageContext.request.contextPath}/staff/stays" method="post" class="d-inline">
+                                        <form action="${pageContext.request.contextPath}/checkin" method="post" class="d-inline"
+                                              onsubmit="return confirm('Are you sure you want to check in guest ${booking.customerID.fullName}?');">
+
                                             <input type="hidden" name="bookingID" value="${booking.bookingID}">
                                             <input type="hidden" name="action" value="checkIn">
                                             <button type="submit" class="btn btn-success btn-sm">Check In</button>
-                                        </form>
-                                    </c:when>
-                                    <c:when test="${booking.bookingStatus eq 'CHECKED_IN'}">
-                                        <form action="${pageContext.request.contextPath}/staff/stays" method="post" class="d-inline">
-                                            <input type="hidden" name="bookingID" value="${booking.bookingID}">
-                                            <input type="hidden" name="action" value="checkOut">
-                                            <button type="submit" class="btn btn-warning btn-sm">Check Out</button>
                                         </form>
                                     </c:when>
                                 </c:choose>

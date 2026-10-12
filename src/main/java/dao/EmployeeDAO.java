@@ -382,4 +382,25 @@ public class EmployeeDAO {
             close(em);
         }
     }
+    public String generateEmployeeID() {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            String jpql = "SELECT e.employeeID FROM Employee e ORDER BY e.employeeID DESC";
+            TypedQuery<String> query = em.createQuery(jpql, String.class);
+            query.setMaxResults(1);
+            List<String> result = query.getResultList();
+
+            if (result.isEmpty()) {
+                return "NV01";
+            }
+
+            String lastId = result.get(0); // Ví dụ: NV05
+            int number = Integer.parseInt(lastId.replaceAll("\\D+", "")) + 1;
+            return String.format("NV%02d", number);
+        } catch (Exception exception) {
+            return "NV01";
+        } finally {
+            close(em);
+        }
+    }
 }

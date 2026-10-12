@@ -1,97 +1,139 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package dao;
 
 import entity.Invoice;
+import jakarta.persistence.CacheRetrieveMode;
+import jakarta.persistence.CacheStoreMode;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Table;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import util.PersistenceManager;
 
-/**
- *
- * @author Asus
- * @param <entity>
- */
-public class DAOFramework<entity> {
+public class DAOFramework<T>
+{
+    private static final Set<String> PROCEDURE_TABLES = Set.of("BOOKING", "BOOKING_DETAIL", "BOOKING_SERVICE", "ROOM_ASSIGNMENT", "PAYMENT", "CUSTOMER_WALLET", "BOOKING_REFUND", "REFUND_PAYMENT", "WALLET_TRANSACTION", "USER_BOOKING_CONTROL", "BOOKING_LOCK_HISTORY");
+    private final Class<T> entityClass;
 
-    private Class<entity> e;
-
-    public DAOFramework(Class<entity> entityClassType) {
-        this.e = entityClassType;
+    public DAOFramework(Class<T> entityClassType)
+    {
+        this.entityClass = entityClassType;
     }
 
-    public List<entity> getAll() {
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
-            String jpql = "SELECT x FROM " + e.getName() + " x";
-            return em.createQuery(jpql, this.e).getResultList();
+    public List<T> getAll()
+    {
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
+            String entityName = em.getMetamodel().entity(entityClass).getName();
+            return em.createQuery("SELECT x FROM " + entityName + " x", entityClass).setHint("jakarta.persistence.cache.retrieveMode", CacheRetrieveMode.BYPASS).setHint("jakarta.persistence.cache.storeMode", CacheStoreMode.REFRESH).getResultList();
         }
     }
 
-    public entity getById(String id) {
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
-            return em.find(this.e, id);
-        } catch (Exception ex) {
+    public T getById(String id)
+    {
+        if (id == null || id.isBlank())
+        {
+            return null;
+        }
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
+            return em.find(entityClass, id.trim(), Map.of("jakarta.persistence.cache.retrieveMode", CacheRetrieveMode.BYPASS, "jakarta.persistence.cache.storeMode", CacheStoreMode.REFRESH));
+        }
+        catch (Exception exception)
+        {
+            exception.printStackTrace();
             return null;
         }
     }
 
-    public boolean insert(entity e) {
-        return process(e, "c");
+    public boolean insert(T entity)
+    {
+        requireDirectWriteAllowed();
+        return process(entity, true);
     }
 
-    public boolean update(entity e) {
-        return process(e, "u");
+    public boolean update(T entity)
+    {
+        requireDirectWriteAllowed();
+        return process(entity, false);
     }
 
-    public boolean deleteById(String id) {
-        if (this.e == Invoice.class) {
+    public boolean deleteById(String id)
+    {
+        requireDirectWriteAllowed();
+        if (entityClass == Invoice.class || id == null || id.isBlank())
+        {
             return false;
         }
         EntityManager em = PersistenceManager.createEntityManager();
-        try {
+        try
+        {
             em.getTransaction().begin();
-            entity obj = em.find(this.e, id);
-            if (obj != null) {
-                em.remove(obj);
-            } else {
+            T entity = em.find(entityClass, id.trim());
+            if (entity == null)
+            {
                 em.getTransaction().rollback();
                 return false;
             }
+            em.remove(entity);
             em.getTransaction().commit();
             return true;
-        } catch (Exception ex) {
-            if (em.getTransaction() != null && em.getTransaction().isActive()) {
+        }
+        catch (Exception exception)
+        {
+            exception.printStackTrace();
+            if (em.getTransaction().isActive())
+            {
                 em.getTransaction().rollback();
             }
             return false;
-        } finally {
+        }
+        finally
+        {
             em.close();
         }
     }
 
-    private boolean process(entity e, String task) {
+    private boolean process(T entity, boolean insert)
+    {
         EntityManager em = PersistenceManager.createEntityManager();
-        try {
+        try
+        {
             em.getTransaction().begin();
-            switch (task.toLowerCase()) {
-                case "c":
-                    em.persist(e);
-                    break;
-                case "u":
-                    em.merge(e);
-                    break;
+            if (insert)
+            {
+                em.persist(entity);
+            }
+            else
+            {
+                em.merge(entity);
             }
             em.getTransaction().commit();
             return true;
-        } catch (Exception ex) {
-            if (em.getTransaction() != null && em.getTransaction().isActive()) {
+        }
+        catch (Exception exception)
+        {
+            exception.printStackTrace();
+            if (em.getTransaction().isActive())
+            {
                 em.getTransaction().rollback();
             }
             return false;
-        } finally {
+        }
+        finally
+        {
             em.close();
+        }
+    }
+
+    private void requireDirectWriteAllowed()
+    {
+        Table table = entityClass.getAnnotation(Table.class);
+        String tableName = table == null || table.name().isBlank() ? entityClass.getSimpleName() : table.name();
+        if (PROCEDURE_TABLES.contains(tableName.toUpperCase(Locale.ROOT)))
+        {
+            throw new UnsupportedOperationException("Direct writes to " + tableName + " are disabled. Use the HBMS stored procedures.");
         }
     }
 }

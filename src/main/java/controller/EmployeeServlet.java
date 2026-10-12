@@ -1,7 +1,6 @@
 package controller;
 
 import dao.EmployeeDAO;
-import dao.UserDAO;
 import entity.Employee;
 import entity.Users;
 import jakarta.servlet.ServletException;
@@ -13,6 +12,8 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
 import util.flash.Flash;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 @WebServlet(
         name = "EmployeeServlet",
@@ -55,6 +56,7 @@ public class EmployeeServlet extends HttpServlet {
                 break;
 
             case "add":
+                request.setAttribute("positions", employeeDAO.getAllPositions());
                 request.getRequestDispatcher(
                         "/WEB-INF/views/add-employee.jsp"
                 ).forward(request, response);
@@ -130,15 +132,15 @@ public class EmployeeServlet extends HttpServlet {
                     + "/employee?action=list"
             );
         } catch (IllegalArgumentException exception) {
-            response.sendError(
-                    HttpServletResponse.SC_BAD_REQUEST,
-                    exception.getMessage()
-            );
+            request.setAttribute("positions", new EmployeeDAO().getAllPositions());
+            request.setAttribute("flashError", exception.getMessage());
+            String targetJsp = "update".equalsIgnoreCase(action) ? "/WEB-INF/views/update-employee-info.jsp" : "/WEB-INF/views/add-employee.jsp";
+            request.getRequestDispatcher(targetJsp).forward(request, response);
         } catch (Exception exception) {
-            throw new ServletException(
-                    "Unable to process employee information.",
-                    exception
-            );
+            request.setAttribute("positions", new EmployeeDAO().getAllPositions());
+            request.setAttribute("flashError", "Unable to process employee information.");
+            String targetJsp = "update".equalsIgnoreCase(action) ? "/WEB-INF/views/update-employee-info.jsp" : "/WEB-INF/views/add-employee.jsp";
+            request.getRequestDispatcher(targetJsp).forward(request, response);
         }
     }
 
@@ -166,6 +168,7 @@ public class EmployeeServlet extends HttpServlet {
         }
 
         request.setAttribute("employee", employee);
+        request.setAttribute("positions", employeeDAO.getAllPositions());
 
         request.getRequestDispatcher(
                 "/WEB-INF/views/update-employee-info.jsp"
@@ -222,28 +225,13 @@ public class EmployeeServlet extends HttpServlet {
             );
         }
 
-        /*
-         * Update the existing employee instead of creating
-         * a new object. This preserves the linked UserID.
-         */
         fillEmployeeInformation(request, employee);
 
         employeeDAO.updateEmployee(employee);
-
-        Flash.success(
-                request,
-                "Employee information updated successfully."
-        );
     }
 
     private void addEmployee(
             HttpServletRequest request) {
-
-        String employeeID = requireParameter(
-                request,
-                "id",
-                "Employee ID is required."
-        );
 
         String username = requireParameter(
                 request,
@@ -259,20 +247,13 @@ public class EmployeeServlet extends HttpServlet {
 
         EmployeeDAO employeeDAO = new EmployeeDAO();
 
-        if (employeeDAO.getEmployeeById(employeeID) != null) {
-            throw new IllegalArgumentException(
-                    "Employee ID already exists."
-            );
-        }
-
         Users user = new Users();
         user.setUsername(username);
-
-        user.setPassword(password);
+        user.setPassword(hashPassword(password)); // <-- Đã mã hóa mật khẩu ở đây
         user.setRole("Staff");
 
         Employee employee = new Employee();
-        employee.setEmployeeID(employeeID);
+        employee.setEmployeeID(employeeDAO.generateEmployeeID());
 
         fillEmployeeInformation(
                 request,
@@ -283,12 +264,20 @@ public class EmployeeServlet extends HttpServlet {
                 employee,
                 user
         );
-
-        Flash.success(
-                request,
-                "Employee added successfully."
-        );
     }
+    private String hashPassword(String password) {
+    try {
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        byte[] array = md.digest(password.getBytes());
+        StringBuilder sb = new StringBuilder();
+        for (byte b : array) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    } catch (NoSuchAlgorithmException e) {
+        return password; // Fallback nếu lỗi
+    }
+}
 
     private void fillEmployeeInformation(
             HttpServletRequest request,

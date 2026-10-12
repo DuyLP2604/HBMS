@@ -1,231 +1,110 @@
-<%--
-    Document   : invoice
-    Created on : Jul 13, 2026, 7:26:50 PM
-    Author     : Admin
---%>
-
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
-<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <title>JSP Page</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-              rel="stylesheet">
-        <link rel="stylesheet" href="fontawesome/css/all.min.css">
-    </head>
-    <body>
-        <div class ="container">
-            <div class="invoice-container shadow-sm p-4 p-md-5 mt-4 mb-4 border rounded">
-                <a href="invoice?action=checkout" class="btn btn-secondary shadow-sm">
-                    <i class="fa-solid fa-arrow-left me-1"></i> Back to Checkout
-                </a>
-                <h1 class="text-center text-uppercase fs-4 mb-4 fw-bold">Service Invoice</h1>
-
-                <div class="row border-bottom pb-2 mb-3 fs-6">
-                    <div class="col-sm-4">Invoice ID: <span class="fw-bold">${selectedRoom.bookingID}</span></div>
-                    <div class="col-sm-4 text-sm-center">Date printed: <span class="fw-bold" id="printDate"></span></div>
-                    <div class="col-sm-4 text-sm-end">Booking ID: <span class="fw-bold">${selectedRoom.bookingID}</span></div>
-                </div>
-
-                <div class="row mb-4 fs-6">
-                    <div class="col-md-6">
-                        <div class="row mb-2">
-                            <div class="col-5 text-secondary">Customer</div>
-                            <div class="col-7 fw-bold">${selectedRoom.customerName}</div>
+<%@ page contentType="text/html" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<fmt:setLocale value="vi_VN" scope="page" />
+<jsp:useBean id="printedAt" class="java.util.Date" scope="request" />
+<layout:layout title="Booking Invoice" pageCss="invoice.css" pageJs="invoice.js" useBootstrap="true" showNavbar="false" bodyClass="invoice-page">
+    <div class="container">
+        <c:choose>
+            <c:when test="${not empty invoice and not empty invoiceID and not empty selectedRoom and bookingSummary.bookingStatus eq 'CHECKED_OUT' and bookingSummary.paymentStatus eq 'FULLY_PAID'}">
+                <div class="invoice-container shadow-sm p-4 p-md-5 border rounded">
+                    <div class="print-controls d-flex flex-wrap justify-content-between gap-2 mb-4">
+                        <a href="${pageContext.request.contextPath}/invoice" class="btn btn-secondary">Back to Billing</a>
+                        <button type="button" id="printInvoiceButton" class="btn btn-primary">Print / Save PDF</button>
+                    </div>
+                    <h1 class="text-center fs-4 mb-1 fw-bold"><c:out value="${selectedRoom.hotelName}" /></h1>
+                    <h2 class="text-center text-uppercase fs-5 mb-4">Booking Invoice</h2>
+                    <div class="row border-bottom pb-3 mb-4 g-2">
+                        <div class="col-sm-6">Invoice ID: <strong><c:out value="${invoiceID}" /></strong></div>
+                        <div class="col-sm-6 text-sm-end">Booking ID: <strong><c:out value="${selectedRoom.bookingID}" /></strong></div>
+                        <div class="col-sm-6">Invoice date: <strong><c:out value="${invoiceDate}" /></strong></div>
+                        <div class="col-sm-6 text-sm-end">Printed at: <strong><fmt:formatDate value="${printedAt}" pattern="dd/MM/yyyy HH:mm:ss" timeZone="Asia/Ho_Chi_Minh" /></strong></div>
+                    </div>
+                    <div class="row mb-4 g-3">
+                        <div class="col-md-6">
+                            <div class="mb-2"><span class="text-secondary">Customer:</span> <strong><c:out value="${selectedRoom.customerName}" /></strong></div>
+                            <div class="mb-2"><span class="text-secondary">Check-in:</span> <strong><c:out value="${selectedRoom.checkInDate}" /></strong></div>
+                            <div class="mb-2"><span class="text-secondary">Check-out:</span> <strong><c:out value="${selectedRoom.checkOutDate}" /></strong></div>
                         </div>
-                        <div class="row mb-2">
-                            <div class="col-5 text-secondary">Checkin</div>
-                            <div class="col-7 fw-bold">${selectedRoom.checkInDate}</div>
+                        <div class="col-md-6">
+                            <div class="mb-2"><span class="text-secondary">Room(s):</span> <strong><c:out value="${selectedRoom.roomNumber}" /></strong></div>
+                            <div class="mb-2"><span class="text-secondary">Nights:</span> <strong><c:out value="${selectedRoom.totalDays}" /></strong></div>
+                            <div class="mb-2"><span class="text-secondary">Issued by employee:</span> <strong><c:out value="${empty invoice.employeeID ? 'Not recorded' : invoice.employeeID}" /></strong></div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="row mb-2">
-                            <div class="col-5 text-secondary">Room</div>
-                            <div class="col-7 fw-bold">${selectedRoom.roomNumber}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle text-center mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th scope="col">#</th>
-                                <th scope="col" class="text-start">Context</th>
-                                <th scope="col">Amount</th>
-                                <th scope="col">Price</th>
-                                <th scope="col" class="text-end">Room price (${selectedRoom.totalDays} days):</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>1</td>
-
-                                <td class="text-start">
-                                    Room charge
-                                    (Code:
-                                    ${selectedRoom.roomNumber})
-                                </td>
-
-                                <td>
-                                    ${selectedRoom.totalDays}
-                                </td>
-
-                                <td class="format-money"
-                                    data-val="${selectedRoom.price}">
-
-                                    ${selectedRoom.price}
-                                </td>
-
-                                <td class="text-end fw-bold
-                                    format-money"
-                                    data-val="${selectedRoom.roomTotal}">
-
-                                    ${selectedRoom.roomTotal}
-                                </td>
-
-                            </tr>
-
-                            <c:forEach
-                                items="${bookingServices}"
-                                var="srv"
-                                varStatus="loop">
-
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle text-center mb-0">
+                            <thead class="table-light">
                                 <tr>
-
-                                    <td>
-                                        ${loop.index + 2}
-                                    </td>
-
-                                    <td class="text-start">
-                                        ${srv.serviceName}
-                                    </td>
-
-                                    <td>1</td>
-
-                                    <td class="format-money"
-                                        data-val="${srv.unitPrice}">
-
-                                        ${srv.unitPrice}
-                                    </td>
-
-                                    <td class="text-end fw-bold
-                                        format-money"
-                                        data-val="${srv.unitPrice}">
-
-                                        ${srv.unitPrice}
-                                    </td>
-
+                                    <th scope="col">#</th>
+                                    <th scope="col" class="text-start">Description</th>
+                                    <th scope="col">Quantity</th>
+                                    <th scope="col">Unit price (VND)</th>
+                                    <th scope="col" class="text-end">Subtotal (VND)</th>
                                 </tr>
-
-                            </c:forEach>
-
-                            <tr>
-                                <td colspan="4"
-                                    class="text-end fw-bold pe-3">
-
-                                    VAT (8%)
-                                </td>
-
-                                <td class="text-end fw-bold
-                                    format-money"
-                                    data-val="${vat}">
-
-                                    ${vat}
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td colspan="4" class="text-end fw-bold pe-3">Total Payment:</td>
-
-                                <td class="text-end fw-bold
-                                    fs-5 text-danger
-                                    format-money"
-                                    data-val="${grandTotal}">
-
-                                    ${grandTotal}
-                                </td>
-
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="row text-center mt-5 pt-3">
-                    <div class="col-6">
-                        <p class="fw-bold mb-0">Receptionist</p>
-                        <div class="signature-space d-flex align-items-center justify-content-center">
-                            <span class="text-danger fw-bold text-uppercase"
-                                  style="border: 3px dashed #dc3545; padding: 8px 15px; border-radius: 8px; transform: rotate(-10deg); opacity: 0.8;">
-                                Payment has been made.
-                            </span>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td class="text-start">Room charges for all booked rooms, <c:out value="${selectedRoom.totalDays}" /> night(s)</td>
+                                    <td>—</td>
+                                    <td>—</td>
+                                    <td class="text-end fw-bold"><fmt:formatNumber value="${roomTotal}" type="number" maxFractionDigits="2" /></td>
+                                </tr>
+                                <c:forEach var="srv" items="${bookingServices}" varStatus="row">
+                                    <tr>
+                                        <td>${row.index + 2}</td>
+                                        <td class="text-start"><c:out value="${srv.serviceName}" /></td>
+                                        <td><c:out value="${srv.quantity}" /></td>
+                                        <td><fmt:formatNumber value="${srv.unitPrice}" type="number" maxFractionDigits="2" /></td>
+                                        <td class="text-end fw-bold"><fmt:formatNumber value="${srv.subtotal}" type="number" maxFractionDigits="2" /></td>
+                                    </tr>
+                                </c:forEach>
+                                <tr>
+                                    <td colspan="4" class="text-end fw-bold">Invoice total</td>
+                                    <td class="text-end fw-bold fs-5"><fmt:formatNumber value="${grandTotal}" type="number" maxFractionDigits="2" /></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end">Amount paid</td>
+                                    <td class="text-end"><fmt:formatNumber value="${paidAmount}" type="number" maxFractionDigits="2" /></td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end fw-bold">Remaining balance</td>
+                                    <td class="text-end fw-bold"><fmt:formatNumber value="${remainingAmount}" type="number" maxFractionDigits="2" /></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+                        <div>
+                            Initial payment option:
+                            <c:choose>
+                                <c:when test="${bookingSummary.paymentOption eq 'DEPOSIT'}">30% deposit</c:when>
+                                <c:when test="${bookingSummary.paymentOption eq 'FULL'}">Full payment</c:when>
+                                <c:otherwise><c:out value="${bookingSummary.paymentOption}" /></c:otherwise>
+                            </c:choose>
+                        </div>
+                        <strong class="text-success">FULLY PAID</strong>
+                    </div>
+                    <div class="row text-center mt-5 invoice-signatures">
+                        <div class="col-6">
+                            <p class="fw-bold mb-0">Receptionist</p>
+                            <div class="signature-space"></div>
+                            <p class="small text-secondary">Signature</p>
+                        </div>
+                        <div class="col-6">
+                            <p class="fw-bold mb-0">Customer</p>
+                            <div class="signature-space"></div>
+                            <p class="fw-bold fst-italic"><c:out value="${selectedRoom.customerName}" /></p>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <p class="fw-bold mb-0">Customer</p>
-                        <div class="signature-space"></div>
-                        <p class="fw-bold fst-italic">${selectedRoom.customerName}</p>
-                    </div>
                 </div>
-
-            </div>
-        </div>
-
-
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-        <script>
-
-            function formatVND(amount) {
-
-                let num = parseFloat(amount);
-
-                if (isNaN(num))
-                    return amount;
-
-                return num.toLocaleString('vi-VN') + " đ";
-            }
-
-            function getFormattedDate() {
-
-                let d = new Date();
-
-                let day =
-                        ("0" + d.getDate()).slice(-2);
-
-                let month =
-                        ("0" + (d.getMonth() + 1))
-                        .slice(-2);
-
-                let year =
-                        d.getFullYear();
-
-                let hours =
-                        ("0" + d.getHours())
-                        .slice(-2);
-
-                let minutes =
-                        ("0" + d.getMinutes())
-                        .slice(-2);
-
-                let seconds =
-                        ("0" + d.getSeconds())
-                        .slice(-2);
-
-                return day + "/"
-                        + month + "/"
-                        + year + " "
-                        + hours + ":"
-                        + minutes + ":"
-                        + seconds;
-            }
-
-            document.getElementById(
-                    "printDate")
-                    .innerText =
-                    getFormattedDate();
-
-        </script>
-    </body>
-</html>
+            </c:when>
+            <c:otherwise>
+                <div class="alert alert-warning mt-4">The invoice is unavailable. Open an issued invoice from Billing.</div>
+                <a href="${pageContext.request.contextPath}/invoice" class="btn btn-secondary">Back to Billing</a>
+            </c:otherwise>
+        </c:choose>
+    </div>
+</layout:layout>

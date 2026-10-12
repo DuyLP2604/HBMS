@@ -286,6 +286,32 @@ body.login-page {
     text-decoration: underline;
 }
 
+.back-home-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 18px;
+    padding: 11px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    color: #374151;
+    font-weight: 600;
+    text-decoration: none;
+    transition: .2s;
+}
+
+.back-home-btn:hover {
+    background: #f3f4f6;
+    border-color: #c8a96b;
+    color: #987438;
+}
+
+.back-home-btn:focus-visible {
+    outline: 2px solid #c8a96b;
+    outline-offset: 3px;
+}
 
 /* =========================
    RESPONSIVE

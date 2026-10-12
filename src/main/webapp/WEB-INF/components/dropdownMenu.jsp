@@ -43,6 +43,12 @@
 
                     </c:if>
 
+                    <c:if test="${sessionScope.user.role eq 'Staff'}">
+                        <a href="${pageContext.request.contextPath}/staff/dashboard">
+                            Dashboard
+                        </a>
+                    </c:if>
+
                     <c:if test="${sessionScope.user.role eq 'Admin'}">
                         <a href="${pageContext.request.contextPath}/dashboard">
                             Dashboard

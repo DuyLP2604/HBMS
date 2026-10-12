@@ -1,0 +1,13 @@
+.wallet-page { max-width: 1080px; }
+.wallet-balance-card { background: linear-gradient(125deg, #075c52, #108a78); color: #fff; border: 0; border-radius: 20px; }
+.wallet-balance-label { font-size: .95rem; color: #d4f4eb; }
+.wallet-balance { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 700; overflow-wrap: anywhere; }
+.wallet-balance small { font-size: 1rem; font-weight: 500; }
+.wallet-meta { color: #d4f4eb; font-size: .875rem; }
+.wallet-history-card { border: 0; border-radius: 16px; overflow: hidden; }
+.wallet-history-card th, .wallet-history-card td { padding: 1rem; white-space: nowrap; }
+.wallet-credit { color: #087d56; }
+.wallet-debit { color: #b42318; }
+.wallet-payment-panel { background: #f2faf7; border: 1px solid #c8e6d8; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; }
+.wallet-payment-panel .wallet-amount { font-size: 1.3rem; font-weight: 700; color: #075c52; }
+@media (max-width: 575px) { .wallet-balance-card .card-body { padding: 1.5rem !important; } }

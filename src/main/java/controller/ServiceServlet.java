@@ -14,33 +14,23 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 
-@WebServlet(
-        name = "ServiceServlet",
-        urlPatterns = {"/service"}
-)
+@WebServlet(name = "ServiceServlet", urlPatterns = {"/service"})
 public class ServiceServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
         Users currentUser = getCurrentUser(request);
-
         if (currentUser == null) {
             response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
-
         try {
             ServiceDAO serviceDAO = new ServiceDAO();
             request.setAttribute("list", serviceDAO.getAllServices());
 
-            request.getRequestDispatcher("/WEB-INF/views/service.jsp"
-            ).forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/service.jsp").forward(request, response);
         } catch (ServletException | IOException exception) {
-            throw new ServletException(
-                    "Unable to load the service list.",
-                    exception
-            );
+            throw new ServletException("Unable to load the service list.", exception);
         }
     }
 

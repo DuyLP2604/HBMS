@@ -56,32 +56,17 @@
                     <c:if test="${not empty complaint.replyMessage}">
                         <dt class="col-sm-3 text-danger mt-3">Staff Reply</dt>
                         <dd class="col-sm-9 mt-3" style="white-space: pre-wrap; overflow-wrap: anywhere; background-color: #f8d7da; color: #842029; padding: 12px; border-radius: 8px; border: 1px solid #f5c2c7;"><strong><c:out value="${complaint.replyMessage}" /></strong></dd>
-                    </c:if>
+                            </c:if>
                 </dl>
-                <c:if test="${canManageComplaints}">
-                    <hr>
-                    <form action="${pageContext.request.contextPath}/complaint" method="post" class="d-flex gap-2 align-items-end">
-                        <input type="hidden" name="action" value="updateStatus">
-                        <input type="hidden" name="id" value="${complaint.complaintID}">
-                        <div class="flex-grow-1">
-                            <label for="complaintStatus" class="form-label fw-bold">Update Status</label>
-                            <select id="complaintStatus" name="status" class="form-select" required>
-                                <option value="" disabled ${complaint.status ne 'Chưa xử lý' and complaint.status ne 'Đang xử lý' and complaint.status ne 'Đã xử lý' ? 'selected' : ''}>Select status</option>
-                                <option value="Chưa xử lý" ${complaint.status eq 'Chưa xử lý' ? 'selected' : ''}>Chưa xử lý</option>
-                                <option value="Đang xử lý" ${complaint.status eq 'Đang xử lý' ? 'selected' : ''}>Đang xử lý</option>
-                                <option value="Đã xử lý" ${complaint.status eq 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-danger">Update Status</button>
-                    </form>
+                <c:if test="${sessionScope.role eq 'Staff'}">
                     <hr class="mt-4">
-                    <form action="${pageContext.request.contextPath}/complaint" method="post" class="mt-4">
+                    <h4 class="text-danger mb-3">Handle Complaint</h4>
+                    <form action="${pageContext.request.contextPath}/complaint" method="post" class="mt-2">
                         <input type="hidden" name="action" value="reply">
                         <input type="hidden" name="id" value="${complaint.complaintID}">
                         <div class="mb-3">
-                            <label for="replyComplaintStatus" class="form-label fw-bold">Status for Reply</label>
-                            <select id="replyComplaintStatus" name="status" class="form-select" required>
-                                <option value="" disabled ${complaint.status ne 'Chưa xử lý' and complaint.status ne 'Đang xử lý' and complaint.status ne 'Đã xử lý' ? 'selected' : ''}>Select status</option>
+                            <label for="complaintStatus" class="form-label fw-bold">Update Status</label>
+                            <select id="complaintStatus" name="status" class="form-select w-25" required>
                                 <option value="Chưa xử lý" ${complaint.status eq 'Chưa xử lý' ? 'selected' : ''}>Chưa xử lý</option>
                                 <option value="Đang xử lý" ${complaint.status eq 'Đang xử lý' ? 'selected' : ''}>Đang xử lý</option>
                                 <option value="Đã xử lý" ${complaint.status eq 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
@@ -91,7 +76,7 @@
                             <label for="replyMessage" class="form-label fw-bold">Reply Message</label>
                             <textarea id="replyMessage" name="replyMessage" class="form-control" rows="5" placeholder="Nhập nội dung giải thích, hỗ trợ khách hàng vào đây..." required><c:out value="${complaint.replyMessage}" /></textarea>
                         </div>
-                        <button type="submit" class="btn btn-danger px-4">Update &amp; Reply</button>
+                        <button type="submit" class="btn btn-danger px-4">Update and Reply</button>
                     </form>
                 </c:if>
             </div>

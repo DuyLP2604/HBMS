@@ -1,4 +1,5 @@
 package controller;
+
 import dao.ComplaintDAO;
 import dao.CustomerDAO;
 import entity.Complaint;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.Objects;
 import util.flash.Flash;
+
 @WebServlet(name = "ComplaintServlet", urlPatterns = {"/complaint"})
 public class ComplaintServlet extends HttpServlet {
 
@@ -41,6 +43,14 @@ public class ComplaintServlet extends HttpServlet {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only customers can submit complaints.");
                 return;
             }
+            CustomerDAO daoCustomer = new CustomerDAO();
+            Customer customer = daoCustomer.getCustomerByUserId(user.getUserID());
+            if (customer != null) {
+                java.util.List<Complaint> myComplaints = daoCp.getAll().stream().filter(c -> c.getCustomerID() != null && c.getCustomerID().getCustomerID().equals(customer.getCustomerID())).collect(java.util.stream.Collectors.toList());
+
+                request.setAttribute("myComplaints", myComplaints);
+            }
+
             request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp").forward(request, response);
         } else if ("viewDetail".equalsIgnoreCase(action)) {
             Integer id = readComplaintId(request, response);
