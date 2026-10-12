@@ -56,22 +56,77 @@ function validatePersonalInformation()
     return true;
 }
 
-function nextStep()
+let checkingUsername = false;
+
+async function nextStep()
 {
-    if (!validateAccount())
+    if (checkingUsername || !validateAccount())
     {
         return;
     }
-    showStep(2);
-    handleNationalityChange();
-    const nationalitySelect = document.getElementById("nationalityID");
-    if (nationalitySelect.value === "")
+    const form = document.querySelector(".register-form");
+    const usernameInput = document.getElementById("username");
+    const nextButton = form.querySelector(".next-btn");
+    const username = usernameInput.value;
+    checkingUsername = true;
+    nextButton.disabled = true;
+    try
     {
-        nationalitySelect.focus();
-    }
-    else
+        const url = new URL(form.action, window.location.href);
+        url.searchParams.set("action", "checkUsername");
+        url.searchParams.set("username", username);
+        const response = await fetch(url, {
+            method: "GET",
+            headers: {"Accept": "application/json"},
+            credentials: "same-origin",
+            cache: "no-store"
+        });
+        if (!response.ok)
+        {
+            throw new Error("Unable to check username.");
+        }
+        const result = await response.json();
+        if (typeof result.exists !== "boolean")
+        {
+            throw new Error("Invalid response.");
+        }
+        if (usernameInput.value !== username)
+        {
+            return;
+        }
+        if (result.exists)
+        {
+            const actionInput = document.createElement("input");
+            actionInput.type = "hidden";
+            actionInput.name = "action";
+            actionInput.value = "checkUsername";
+            form.appendChild(actionInput);
+            HTMLFormElement.prototype.submit.call(form);
+            return;
+        }
+        if (!validateAccount())
+        {
+            return;
+        }
+        showStep(2);
+        handleNationalityChange();
+        const nationalitySelect = document.getElementById("nationalityID");
+        if (nationalitySelect.value === "")
+        {
+            nationalitySelect.focus();
+        } else
+        {
+            document.getElementById("fullname").focus();
+        }
+    } catch (error)
     {
-        document.getElementById("fullname").focus();
+        showStep(1);
+        usernameInput.setCustomValidity("Unable to check username. Please click Next to try again.");
+        usernameInput.reportValidity();
+    } finally
+    {
+        checkingUsername = false;
+        nextButton.disabled = false;
     }
 }
 
