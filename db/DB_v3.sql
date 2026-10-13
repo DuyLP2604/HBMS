@@ -1,9 +1,10 @@
 /*
-HBMS - DATABASE UPDATED 2026-10-07
-IMPORTANT: This is a FULL RECREATE + SEED script. It DROPS the existing QLKS.
-Back up existing data before executing. This file is not a live-data migration.
+HBMS - DATABASE UPDATED 2026-10-13
 
 Requested changes:
+0. EMPLOYEE.Email VARCHAR(100) NULL, unique when populated.
+   All 30 employee seed rows include sample Gmail addresses.
+   Seed addresses are examples only; use verified real addresses for email/OTP.
 1. CUSTOMER no longer stores citizen identity/passport numbers.
 2. BOOKING.PaymentOption: DEPOSIT (exactly 30%) or FULL (100%).
    PAYMENT.PaymentType: DEPOSIT, FULL, BALANCE (all currently unpaid amount).
@@ -175,6 +176,7 @@ CREATE TABLE EMPLOYEE (
     Shift NVARCHAR(20) NULL,
     Address NVARCHAR(200) NULL,
     Phone VARCHAR(20) NULL,
+    Email VARCHAR(100) NULL,
     UserID INT NOT NULL,
 
     CONSTRAINT PK_EMPLOYEE PRIMARY KEY (EmployeeID),
@@ -185,6 +187,13 @@ CREATE TABLE EMPLOYEE (
     CONSTRAINT CK_EMPLOYEE_Salary
         CHECK (Salary IS NULL OR Salary >= 0)
 );
+GO
+
+-- Optional email address (including Gmail); populated addresses must be unique.
+-- A filtered index allows multiple employees with no email yet.
+CREATE UNIQUE INDEX UQ_EMPLOYEE_Email
+    ON dbo.EMPLOYEE (Email)
+    WHERE Email IS NOT NULL;
 GO
 
 /*******************************************************************************
@@ -757,11 +766,7 @@ VALUES (
     'hotel3.jpg',
     'hotel.jpg',
     'hotel4.jpg',
-    N'600 Nguyen Van Cu Street (Extended), An Binh Ward, Can Tho City'
-    + CHAR(10)
-    + N'Lot E2a-7, D1 Street, High-Tech Park, Tang Nhon Phu Ward, Ho Chi Minh City, Vietnam'
-    + CHAR(10)
-    + N'Area K, FPT University, FPT Technology Urban Area, Ngu Hanh Son Ward, Da Nang City, Vietnam'
+    N'Lot E2a-7, D1 Street, High-Tech Park, Tang Nhon Phu Ward, Ho Chi Minh City, Vietnam'
 );
 GO
 
@@ -875,51 +880,51 @@ VALUES
 GO
 
 INSERT INTO EMPLOYEE
-(EmployeeID, FullName, Position, Salary, Shift, Address, Phone, UserID)
+(EmployeeID, FullName, Position, Salary, Shift, Address, Phone, Email, UserID)
 VALUES
-('NV02', N'Nguyễn Minh Anh', N'Receptionist', 9500000, N'Morning', N'Cần Thơ', '0901000002', 2),
-('NV03', N'Trần Quốc Bảo', N'Receptionist', 9500000, N'Afternoon', N'Cần Thơ', '0901000003', 3),
-('NV04', N'Lê Hoàng Nam', N'Receptionist', 10500000, N'Night', N'Cần Thơ', '0901000004', 4),
-('NV05', N'Phạm Thùy Linh', N'Receptionist', 9500000, N'Morning', N'Cần Thơ', '0901000005', 5),
-('NV06', N'Võ Minh Khang', N'Receptionist', 9500000, N'Afternoon', N'Cần Thơ', '0901000006', 6),
+('NV02', N'Nguyễn Minh Anh', N'Receptionist', 9500000, N'Morning', N'Cần Thơ', '0901000002', 'nv02.hbms@gmail.com', 2),
+('NV03', N'Trần Quốc Bảo', N'Receptionist', 9500000, N'Afternoon', N'Cần Thơ', '0901000003', 'nv03.hbms@gmail.com', 3),
+('NV04', N'Lê Hoàng Nam', N'Receptionist', 10500000, N'Night', N'Cần Thơ', '0901000004', 'nv04.hbms@gmail.com', 4),
+('NV05', N'Phạm Thùy Linh', N'Receptionist', 9500000, N'Morning', N'Cần Thơ', '0901000005', 'nv05.hbms@gmail.com', 5),
+('NV06', N'Võ Minh Khang', N'Receptionist', 9500000, N'Afternoon', N'Cần Thơ', '0901000006', 'nv06.hbms@gmail.com', 6),
 
-('NV07', N'Nguyễn Ngọc Hân', N'Customer service staff', 8000000, N'Morning', N'Cần Thơ', '0901000007', 7),
-('NV08', N'Trần Thanh Tùng', N'Customer service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000008', 8),
-('NV09', N'Lê Khánh Vy', N'Customer service staff', 8000000, N'Night', N'Cần Thơ', '0901000009', 9),
-('NV10', N'Phan Gia Huy', N'Customer service staff', 8000000, N'Morning', N'Cần Thơ', '0901000010', 10),
-('NV11', N'Đặng Mỹ Duyên', N'Customer service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000011', 11),
+('NV07', N'Nguyễn Ngọc Hân', N'Customer service staff', 8000000, N'Morning', N'Cần Thơ', '0901000007', 'nv07.hbms@gmail.com', 7),
+('NV08', N'Trần Thanh Tùng', N'Customer service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000008', 'nv08.hbms@gmail.com', 8),
+('NV09', N'Lê Khánh Vy', N'Customer service staff', 8000000, N'Night', N'Cần Thơ', '0901000009', 'nv09.hbms@gmail.com', 9),
+('NV10', N'Phan Gia Huy', N'Customer service staff', 8000000, N'Morning', N'Cần Thơ', '0901000010', 'nv10.hbms@gmail.com', 10),
+('NV11', N'Đặng Mỹ Duyên', N'Customer service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000011', 'nv11.hbms@gmail.com', 11),
 
 -- Spa
-('NV12', N'Bùi Thanh Trúc', N'Service staff', 8000000, N'Morning', N'Cần Thơ', '0901000012', 12),
+('NV12', N'Bùi Thanh Trúc', N'Service staff', 8000000, N'Morning', N'Cần Thơ', '0901000012', 'nv12.hbms@gmail.com', 12),
 
 -- Restaurant
-('NV13', N'Nguyễn Thành Đạt', N'Service staff', 12000000, N'Morning', N'Cần Thơ', '0901000013', 13),
-('NV14', N'Trần Minh Đức', N'Service staff', 10000000, N'Afternoon', N'Cần Thơ', '0901000014', 14),
-('NV15', N'Lê Ngọc Mai', N'Service staff', 10000000, N'Night', N'Cần Thơ', '0901000015', 15),
-('NV16', N'Phạm Quốc Khánh', N'Service staff', 10000000, N'Morning', N'Cần Thơ', '0901000016', 16),
-('NV17', N'Võ Thu Hà', N'Service staff', 10000000, N'Afternoon', N'Cần Thơ', '0901000017', 17),
+('NV13', N'Nguyễn Thành Đạt', N'Service staff', 12000000, N'Morning', N'Cần Thơ', '0901000013', 'nv13.hbms@gmail.com', 13),
+('NV14', N'Trần Minh Đức', N'Service staff', 10000000, N'Afternoon', N'Cần Thơ', '0901000014', 'nv14.hbms@gmail.com', 14),
+('NV15', N'Lê Ngọc Mai', N'Service staff', 10000000, N'Night', N'Cần Thơ', '0901000015', 'nv15.hbms@gmail.com', 15),
+('NV16', N'Phạm Quốc Khánh', N'Service staff', 10000000, N'Morning', N'Cần Thơ', '0901000016', 'nv16.hbms@gmail.com', 16),
+('NV17', N'Võ Thu Hà', N'Service staff', 10000000, N'Afternoon', N'Cần Thơ', '0901000017', 'nv17.hbms@gmail.com', 17),
 
 -- Car rental
-('NV18', N'Nguyễn Văn Phúc', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000018', 18),
-('NV19', N'Trần Gia Hưng', N'Service staff', 7000000, N'Afternoon', N'Cần Thơ', '0901000019', 19),
-('NV20', N'Lê Minh Quân', N'Service staff', 7000000, N'Night', N'Cần Thơ', '0901000020', 20),
+('NV18', N'Nguyễn Văn Phúc', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000018', 'nv18.hbms@gmail.com', 18),
+('NV19', N'Trần Gia Hưng', N'Service staff', 7000000, N'Afternoon', N'Cần Thơ', '0901000019', 'nv19.hbms@gmail.com', 19),
+('NV20', N'Lê Minh Quân', N'Service staff', 7000000, N'Night', N'Cần Thơ', '0901000020', 'nv20.hbms@gmail.com', 20),
 
 -- Laundry
-('NV21', N'Phạm Thị Hương', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000021', 21),
-('NV22', N'Nguyễn Thị Ngọc', N'Service staff', 7000000, N'Afternoon', N'Cần Thơ', '0901000022', 22),
-('NV23', N'Trần Mỹ Linh', N'Service staff', 7000000, N'Night', N'Cần Thơ', '0901000023', 23),
+('NV21', N'Phạm Thị Hương', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000021', 'nv21.hbms@gmail.com', 21),
+('NV22', N'Nguyễn Thị Ngọc', N'Service staff', 7000000, N'Afternoon', N'Cần Thơ', '0901000022', 'nv22.hbms@gmail.com', 22),
+('NV23', N'Trần Mỹ Linh', N'Service staff', 7000000, N'Night', N'Cần Thơ', '0901000023', 'nv23.hbms@gmail.com', 23),
 
 -- Clean up
-('NV24', N'Lê Thị Thanh', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000024', 24),
-('NV25', N'Phạm Ngọc Lan', N'Service staff', 7000000, N'Afternoon', N'Cần Thơ', '0901000025', 25),
-('NV26', N'Nguyễn Thị Mai', N'Service staff', 7000000, N'Night', N'Cần Thơ', '0901000026', 26),
-('NV27', N'Trần Thị Thu', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000027', 27),
+('NV24', N'Lê Thị Thanh', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000024', 'nv24.hbms@gmail.com', 24),
+('NV25', N'Phạm Ngọc Lan', N'Service staff', 7000000, N'Afternoon', N'Cần Thơ', '0901000025', 'nv25.hbms@gmail.com', 25),
+('NV26', N'Nguyễn Thị Mai', N'Service staff', 7000000, N'Night', N'Cần Thơ', '0901000026', 'nv26.hbms@gmail.com', 26),
+('NV27', N'Trần Thị Thu', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000027', 'nv27.hbms@gmail.com', 27),
 
 -- Spa
-('NV28', N'Võ Ngọc Diệp', N'Service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000028', 28),
-('NV29', N'Đặng Thảo Vy', N'Service staff', 8000000, N'Night', N'Cần Thơ', '0901000029', 29),
-('NV30', N'Nguyễn Khánh An', N'Service staff', 8000000, N'Morning', N'Cần Thơ', '0901000030', 30),
-('NV31', N'Trần Bảo Trâm', N'Service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000031', 31);
+('NV28', N'Võ Ngọc Diệp', N'Service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000028', 'nv28.hbms@gmail.com', 28),
+('NV29', N'Đặng Thảo Vy', N'Service staff', 8000000, N'Night', N'Cần Thơ', '0901000029', 'nv29.hbms@gmail.com', 29),
+('NV30', N'Nguyễn Khánh An', N'Service staff', 8000000, N'Morning', N'Cần Thơ', '0901000030', 'nv30.hbms@gmail.com', 30),
+('NV31', N'Trần Bảo Trâm', N'Service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000031', 'nv31.hbms@gmail.com', 31);
 GO
 
 INSERT INTO CUSTOMER

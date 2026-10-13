@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package entity;
 
 import jakarta.persistence.Basic;
@@ -14,6 +10,7 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
@@ -22,91 +19,70 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Collection;
 
-/**
- *
- * @author Asus
- */
 @Entity
 @Table(name = "EMPLOYEE")
 @XmlRootElement
 @NamedQueries({
-    @NamedQuery(
-        name = "Employee.findAll",
-        query = "SELECT e FROM Employee e"
-    ),
-    @NamedQuery(
-        name = "Employee.findByEmployeeID",
-        query = "SELECT e FROM Employee e "
-              + "WHERE e.employeeID = :employeeID"
-    ),
-    @NamedQuery(
-        name = "Employee.findByFullName",
-        query = "SELECT e FROM Employee e "
-              + "WHERE e.fullName = :fullName"
-    ),
-    @NamedQuery(
-        name = "Employee.findByPosition",
-        query = "SELECT e FROM Employee e "
-              + "WHERE e.position = :position"
-    ),
-    @NamedQuery(
-        name = "Employee.findByShift",
-        query = "SELECT e FROM Employee e "
-              + "WHERE e.shift = :shift"
-    ),
-    @NamedQuery(
-        name = "Employee.findByPhone",
-        query = "SELECT e FROM Employee e "
-              + "WHERE e.phone = :phone"
-    ),
-    @NamedQuery(
-        name = "Employee.findDistinctPositions",
-        query = "SELECT DISTINCT e.position FROM Employee e WHERE e.position IS NOT NULL ORDER BY e.position"
-    ),
-    @NamedQuery(
-        name = "Employee.findDistinctShifts",
-        query = "SELECT DISTINCT e.shift FROM Employee e WHERE e.shift IS NOT NULL ORDER BY e.shift"
-    )
+    @NamedQuery(name = "Employee.findAll", query = "SELECT e FROM Employee e"),
+    @NamedQuery(name = "Employee.findByEmployeeID", query = "SELECT e FROM Employee e WHERE e.employeeID = :employeeID"),
+    @NamedQuery(name = "Employee.findByFullName", query = "SELECT e FROM Employee e WHERE e.fullName = :fullName"),
+    @NamedQuery(name = "Employee.findByPosition", query = "SELECT e FROM Employee e WHERE e.position = :position"),
+    @NamedQuery(name = "Employee.findByShift", query = "SELECT e FROM Employee e WHERE e.shift = :shift"),
+    @NamedQuery(name = "Employee.findByPhone", query = "SELECT e FROM Employee e WHERE e.phone = :phone"),
+    @NamedQuery(name = "Employee.findByEmail", query = "SELECT e FROM Employee e WHERE e.email = :email"),
+    @NamedQuery(name = "Employee.findDistinctPositions", query = "SELECT DISTINCT e.position FROM Employee e WHERE e.position IS NOT NULL ORDER BY e.position"),
+    @NamedQuery(name = "Employee.findDistinctShifts", query = "SELECT DISTINCT e.shift FROM Employee e WHERE e.shift IS NOT NULL ORDER BY e.shift")
 })
 public class Employee implements Serializable {
 
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 100)
-    @Column(name = "FullName")
-    private String fullName;
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 50)
-    @Column(name = "Position")
-    private String position;
-    @Size(max = 20)
-    @Column(name = "Shift")
-    private String shift;
-    @Size(max = 200)
-    @Column(name = "Address")
-    private String address;
-    // @Pattern(regexp="^\\(?(\\d{3})\\)?[- ]?(\\d{3})[- ]?(\\d{4})$", message="Invalid phone/fax format, should be as xxx-xxx-xxxx")//if the field contains phone or fax number consider using this annotation to enforce field validation
-    // @Pattern(regexp="^\\(?(\\d{3})\\)?[- ]?(\\d{3})[- ]?(\\d{4})$", message="Invalid phone/fax format, should be as xxx-xxx-xxxx")//if the field contains phone or fax number consider using this annotation to enforce field validation
-    @Size(max = 20)
-    @Column(name = "Phone")
-    private String phone;
-
     private static final long serialVersionUID = 1L;
+
     @Id
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 6)
     @Column(name = "EmployeeID")
     private String employeeID;
-    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
+
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 100)
+    @Column(name = "FullName")
+    private String fullName;
+
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 50)
+    @Column(name = "Position")
+    private String position;
+
     @Column(name = "Salary")
     private BigDecimal salary;
+
+    @Size(max = 20)
+    @Column(name = "Shift")
+    private String shift;
+
+    @Size(max = 200)
+    @Column(name = "Address")
+    private String address;
+
+    @Size(max = 20)
+    @Column(name = "Phone")
+    private String phone;
+
+    @Email(message = "Invalid email address.")
+    @Size(max = 100)
+    @Column(name = "Email", length = 100, nullable = true)
+    private String email;
+
     @JoinColumn(name = "UserID", referencedColumnName = "UserID")
     @OneToOne(optional = false)
     private Users userID;
+
     @OneToMany(mappedBy = "employeeID")
     private Collection<Invoice> invoiceCollection;
+
     @OneToMany(mappedBy = "employeeID")
     private Collection<RoomAssignment> roomAssignmentCollection;
 
@@ -131,6 +107,21 @@ public class Employee implements Serializable {
         this.employeeID = employeeID;
     }
 
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
 
     public BigDecimal getSalary() {
         return salary;
@@ -140,6 +131,37 @@ public class Employee implements Serializable {
         this.salary = salary;
     }
 
+    public String getShift() {
+        return shift;
+    }
+
+    public void setShift(String shift) {
+        this.shift = shift;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
     public Users getUserID() {
         return userID;
@@ -176,12 +198,12 @@ public class Employee implements Serializable {
 
     @Override
     public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Employee)) {
             return false;
         }
         Employee other = (Employee) object;
-        if ((this.employeeID == null && other.employeeID != null) || (this.employeeID != null && !this.employeeID.equals(other.employeeID))) {
+        if ((this.employeeID == null && other.employeeID != null)
+                || (this.employeeID != null && !this.employeeID.equals(other.employeeID))) {
             return false;
         }
         return true;
@@ -191,45 +213,4 @@ public class Employee implements Serializable {
     public String toString() {
         return "entity.Employee[ employeeID=" + employeeID + " ]";
     }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getPosition() {
-        return position;
-    }
-
-    public void setPosition(String position) {
-        this.position = position;
-    }
-
-    public String getShift() {
-        return shift;
-    }
-
-    public void setShift(String shift) {
-        this.shift = shift;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
 }
