@@ -22,17 +22,6 @@
                         <label class="form-label">Phone Number <span class="text-danger">*</span></label>
                         <input type="text" name="phone" class="form-control" placeholder="Enter customer phone number" required>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">Branch <span class="text-danger">*</span></label>
-                        <select class="form-select" name="hotelId" required>
-                            <option value="" disabled selected>-- Choose branch --</option>
-                            <c:forEach items="${hotelList}" var="h">
-                                <option value="${h.hotelName}"><c:out value="${h.address}" /></option>
-                            </c:forEach>
-                        </select>
-                    </div>
-
                     <div class="mb-3">
                         <label class="form-label">Room <span class="text-danger">*</span></label>
                         <select class="form-select" name="roomID" required>
