@@ -47,6 +47,9 @@
                         <a href="${pageContext.request.contextPath}/staff/dashboard">
                             Dashboard
                         </a>
+                        <a href="${pageContext.request.contextPath}/room">
+                            View rooms
+                        </a>
                     </c:if>
 
                     <c:if test="${sessionScope.user.role eq 'Admin'}">
