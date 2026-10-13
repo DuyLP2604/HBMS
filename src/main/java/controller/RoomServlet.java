@@ -8,6 +8,7 @@ import dao.RoomDAO;
 import dao.RoomTypeDAO;
 import entity.Room;
 import entity.RoomType;
+import entity.Users;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
@@ -15,10 +16,10 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import java.io.File;
 import java.io.InputStream;
-import java.nio.file.Paths;
 import util.flash.Flash;
 
 /**
@@ -46,49 +47,82 @@ public class RoomServlet extends HttpServlet {
         String action = request.getParameter("action");
         RoomDAO roomDAO = new RoomDAO();
         RoomTypeDAO rtDao = new RoomTypeDAO();
-        if (action == null) {
-            request.setAttribute("roomList", roomDAO.getAll());
-            request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response);
+        HttpSession session = request.getSession(false);
+        Users u = null;
+        if (session != null) {
+            u = (Users) session.getAttribute("user");
         }
-        if ("viewDetail".equalsIgnoreCase(action)) {
-            String id = request.getParameter("id");
-            Room room = roomDAO.getById(id);
-            request.setAttribute("room", room);
-            request.getRequestDispatcher("/WEB-INF/views/room-detail.jsp").forward(request, response);
-        } else if ("create".equalsIgnoreCase(action)) {
-            request.setAttribute("roomType", rtDao.getAllRoomTypes());
-            request.getRequestDispatcher("/WEB-INF/views/add-room.jsp").forward(request, response);
-        } else if (action.equals("delete")) {
-            //TODO: Show pop-up "Are you sure to delete room and redirect url: /room?action=delete&id=?"
-            String roomId = request.getParameter("id");
-            Room room = roomDAO.getById(roomId);
-            boolean isOk = false;
-            if (room != null) {
-                isOk = roomDAO.deleteById(roomId);
-            }
-            if (isOk) {
-                Flash.success(request, "Delete success!");
-            } else {
-                Flash.error(request, "Error! Delete failed!");
-            }
-            response.sendRedirect(request.getContextPath() + "/room?action=list");
-        } else if ("update".equalsIgnoreCase(action)) {
-            String roomId = request.getParameter("id");
+        action = action == null ? "list" : action;
 
-            Room room = roomDAO.getById(roomId);
-            if (room != null) {
-                request.setAttribute("room", room);
-                request.setAttribute("roomTypes", rtDao.getAllRoomTypes());
-                request.getRequestDispatcher("/WEB-INF/views/update-room.jsp").forward(request, response);
-            }
-        } else {
-            request.setAttribute("roomList", roomDAO.getAll());
-            request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response);
+        switch (action.toLowerCase()) {
+            case "viewdetail":
+                viewDetail(request, response, request.getParameter("id"));
+                break;
+            case "create":
+                if (!isAdmin(session)) {
+                    Flash.error(request, "Permission denied! Only Admin can access this page.");
+                    response.sendRedirect(request.getContextPath() + "/room");
+                    return;
+                }
+                request.setAttribute("roomType", rtDao.getAllRoomTypes());
+                request.getRequestDispatcher("/WEB-INF/views/add-room.jsp").forward(request, response);
+                break;
+            case "update":
+                if (!isAdmin(session)) {
+                    Flash.error(request, "Permission denied! Only Admin can access this page.");
+                    response.sendRedirect(request.getContextPath() + "/room");
+                    return;
+                }
+                String updateId = request.getParameter("id");
+                Room room = roomDAO.getById(updateId);
+                if (room != null) {
+                    request.setAttribute("room", room);
+                    request.setAttribute("roomTypes", rtDao.getAllRoomTypes());
+                    request.getRequestDispatcher("/WEB-INF/views/update-room.jsp").forward(request, response);
+                } else {
+                    Flash.error(request, "Room not found!");
+                    response.sendRedirect(request.getContextPath() + "/room");
+                }
+                break;
+            case "delete":
+                if (!isAdmin(session)) {
+                    Flash.error(request, "Permission denied! Only Admin can remove room.");
+                    response.sendRedirect(request.getContextPath() + "/room");
+                    return;
+                }
+                String deleteId = request.getParameter("id");
+                Room roomToDelete = roomDAO.getById(deleteId);
+                boolean isOk = false;
+
+                if (roomToDelete != null) {
+                    // 1. Thực hiện XÓA TRONG DATABASE TRƯỚC
+                    isOk = roomDAO.deleteById(deleteId);
+                    if (isOk) {
+                        // 2. Nếu DB xóa thành công, tiến hành xóa ảnh vật lý
+                        if (roomToDelete.getRoomImage() != null && !roomToDelete.getRoomImage().isEmpty()) {
+                            String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room";
+                            File imageFile = new File(uploadPath + File.separator + roomToDelete.getRoomImage());
+                            if (imageFile.exists()) {
+                                imageFile.delete(); // Dọn dẹp file
+                            }
+                        }
+                        Flash.success(request, "Delete success!");
+                    } else {
+                        // DB không xóa được (thường do vướng khóa ngoại constraints)
+                        Flash.error(request, "Error! Delete failed (Room might be in use)!");
+                    }
+                } else {
+                    Flash.error(request, "Room not found!");
+                }
+
+                response.sendRedirect(request.getContextPath() + "/room");
+                break;
         }
+
     }
 
     /**
-     * Handles the HTTP <code>POST</code> method.
+     * Post method for admin only
      *
      * @param request servlet request
      * @param response servlet response
@@ -98,6 +132,16 @@ public class RoomServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        HttpSession session = request.getSession(false);
+        Users u = null;
+        if (session != null) {
+            u = (Users) session.getAttribute("user");
+        }
+        if (!isAdmin(session)) {
+            Flash.error(request, "Permission denied! Only Admin can modify data.");
+            response.sendRedirect(request.getContextPath() + "/room");
+            return;
+        }
         String action = request.getParameter("action");
         RoomDAO roomDAO = new RoomDAO();
         if ("update".equalsIgnoreCase(action)) {
@@ -115,15 +159,42 @@ public class RoomServlet extends HttpServlet {
                 if (newRoomType != null) {
                     room.setRoomTypeID(newRoomType);
                 }
+
+                // Lưu lại tên file cũ trước khi ghi đè
+                String oldImageName = room.getRoomImage();
+
+                // Upload file mới (hàm processImage đã tự động ghi file ra server lúc này)
                 String uploadedImage = processImage(request, "roomImage");
                 if (uploadedImage != null) {
-                    room.setRoomImage(uploadedImage);
+                    room.setRoomImage(uploadedImage); // Cập nhật tên ảnh mới vào object
                 }
-                boolean isOk = roomDAO.update(room);
-                if (isOk) {
+
+                // 1. Thực hiện UPDATE TRONG DATABASE TRƯỚC
+                boolean isOkUpdate = roomDAO.update(room);
+
+                // 2. Xử lý logic File dựa trên kết quả Database
+                if (isOkUpdate) {
                     Flash.success(request, "Room updated successfully!");
+
+                    // DB thành công + Có ảnh mới -> Xóa ảnh CŨ
+                    if (uploadedImage != null && oldImageName != null && !oldImageName.isEmpty()) {
+                        String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room";
+                        File oldImageFile = new File(uploadPath + File.separator + oldImageName);
+                        if (oldImageFile.exists()) {
+                            oldImageFile.delete(); // Xóa file cũ đi cho sạch
+                        }
+                    }
                 } else {
                     Flash.error(request, "Error! Cannot save room information.");
+
+                    // DB thất bại + Có ảnh mới vừa lưu -> Xóa ảnh MỚI đi để dọn rác (Rollback)
+                    if (uploadedImage != null) {
+                        String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room";
+                        File newUploadedFile = new File(uploadPath + File.separator + uploadedImage);
+                        if (newUploadedFile.exists()) {
+                            newUploadedFile.delete();
+                        }
+                    }
                 }
             } else {
                 Flash.error(request, "Error! Cannot update room information.");
@@ -161,6 +232,24 @@ public class RoomServlet extends HttpServlet {
 
             response.sendRedirect(request.getContextPath() + "/room?action=list");
         }
+    }
+
+    private boolean isAdmin(HttpSession session) {
+        if (session == null) {
+            return false;
+        }
+        Users u = (Users) session.getAttribute("user");
+        return u != null && "admin".equalsIgnoreCase(u.getRole());
+    }
+
+    private void viewList(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        request.setAttribute("roomList", new RoomDAO().getAll());
+        request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response);
+    }
+
+    private void viewDetail(HttpServletRequest request, HttpServletResponse response, String id) throws ServletException, IOException {
+        request.setAttribute("room", new RoomDAO().getById(id));
+        request.getRequestDispatcher("/WEB-INF/views/room-detail.jsp").forward(request, response);
     }
 
     private String processImage(HttpServletRequest request, String inputName) {
