@@ -1,5 +1,6 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 <layout:layout
     title="Add New Employee"
@@ -24,11 +25,11 @@
                     <div class="card-body p-4 p-md-5 bg-white">
                         <c:if test="${not empty flashError}">
                             <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                ${flashError}
+                                <c:out value="${flashError}" />
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         </c:if>
-                        <form action="${pageContext.request.contextPath}/employee" method="post" class="needs-validation" novalidate>
+                        <form action="${pageContext.request.contextPath}/employee" method="post" class="needs-validation">
                             <input type="hidden" name="action" value="add">
                             
                             <!-- Section: Personal Information -->
@@ -41,21 +42,28 @@
                                         <label for="fullName" class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                                            <input id="fullName" type="text" name="name" value="${param.name}" class="form-control border-start-0 ps-0" placeholder="e.g. Nguyen Van A" maxlength="100" autocomplete="name" required>
+                                            <input id="fullName" type="text" name="name" value="${fn:escapeXml(param.name)}" class="form-control border-start-0 ps-0" placeholder="e.g. Nguyen Van A" maxlength="100" autocomplete="name" required>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="phone" class="form-label fw-semibold">Phone Number</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-telephone text-muted"></i></span>
-                                            <input id="phone" type="tel" name="phone" value="${param.phone}" class="form-control border-start-0 ps-0" placeholder="e.g. 0901234567" maxlength="20" autocomplete="tel">
+                                            <input id="phone" type="tel" name="phone" value="${fn:escapeXml(param.phone)}" class="form-control border-start-0 ps-0" placeholder="e.g. 0901234567" maxlength="20" autocomplete="tel">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
+                                        <label for="email" class="form-label fw-semibold">Email</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+                                            <input id="email" type="email" name="email" value="${fn:escapeXml(param.email)}" class="form-control border-start-0 ps-0" placeholder="e.g. employee@gmail.com" maxlength="100" autocomplete="email">
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
                                         <label for="address" class="form-label fw-semibold">Address</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt text-muted"></i></span>
-                                            <input id="address" type="text" name="address" value="${param.address}" class="form-control border-start-0 ps-0" placeholder="e.g. Can Tho City" maxlength="200" autocomplete="street-address">
+                                            <input id="address" type="text" name="address" value="${fn:escapeXml(param.address)}" class="form-control border-start-0 ps-0" placeholder="e.g. Can Tho City" maxlength="200" autocomplete="street-address">
                                         </div>
                                     </div>
                                 </div>
@@ -72,7 +80,7 @@
                                         <select id="position" name="position" class="form-select" required>
                                             <option value="" disabled <c:if test="${empty param.position}">selected</c:if>>Select position</option>
                                             <c:forEach var="pos" items="${positions}">
-                                                <option value="${pos}" <c:if test="${param.position == pos}">selected</c:if>>${pos}</option>
+                                                <option value="${fn:escapeXml(pos)}" <c:if test="${param.position == pos}">selected</c:if>><c:out value="${pos}" /></option>
                                             </c:forEach>
                                         </select>
                                     </div>
@@ -80,7 +88,7 @@
                                         <label for="salary" class="form-label fw-semibold">Base Salary (VND)</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0">₫</span>
-                                            <input id="salary" type="number" name="salary" value="${param.salary}" class="form-control border-start-0 ps-0" placeholder="0.00" min="0" step="0.01">
+                                            <input id="salary" type="number" name="salary" value="${fn:escapeXml(param.salary)}" class="form-control border-start-0 ps-0" placeholder="0.00" min="0" step="0.01">
                                         </div>
                                     </div>
                                     <div class="col-md-4">
@@ -105,14 +113,14 @@
                                         <label for="username" class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-at text-muted"></i></span>
-                                            <input id="username" type="text" name="username" value="${param.username}" class="form-control border-start-0 ps-0" placeholder="Choose a username" maxlength="50" autocomplete="username" required>
+                                            <input id="username" type="text" name="username" value="${fn:escapeXml(param.username)}" class="form-control border-start-0 ps-0" placeholder="Choose a username" maxlength="50" autocomplete="username" required>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="password" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
-                                            <input id="password" type="password" name="password" value="${param.password}" class="form-control border-start-0 ps-0" placeholder="At least 6 characters" minlength="6" maxlength="255" autocomplete="new-password" required>
+                                            <input id="password" type="password" name="password" class="form-control border-start-0 ps-0" placeholder="At least 6 characters" minlength="6" maxlength="255" autocomplete="new-password" required>
                                         </div>
                                     </div>
                                 </div>

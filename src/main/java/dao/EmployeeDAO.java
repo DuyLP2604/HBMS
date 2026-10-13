@@ -3,150 +3,139 @@ package dao;
 import entity.Employee;
 import entity.Users;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
+import java.util.Locale;
 import util.PersistenceManager;
 
 public class EmployeeDAO {
 
     public List<Employee> getAllEmployees() {
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
-            String jpql
-                    = "SELECT e "
-                    + "FROM Employee e "
-                    + "ORDER BY e.employeeID";
-
-            TypedQuery<Employee> query = em.createQuery(
-                    jpql,
-                    Employee.class
-            );
-
-            return query.getResultList();
+            String jpql = "SELECT e FROM Employee e ORDER BY e.employeeID";
+            return em.createQuery(jpql, Employee.class).getResultList();
         } catch (Exception exception) {
-            throw new IllegalStateException(
-                    "Unable to load the employee list.",
-                    exception
-            );
+            throw new IllegalStateException("Unable to load the employee list.", exception);
         } finally {
             close(em);
         }
     }
 
     public Employee getEmployeeById(String employeeID) {
-        if (employeeID == null
-                || employeeID.trim().isEmpty()) {
-
+        if (employeeID == null || employeeID.trim().isEmpty()) {
             return null;
         }
-
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
-            return em.find(
-                    Employee.class,
-                    employeeID.trim()
-            );
+            return em.find(Employee.class, employeeID.trim());
         } catch (Exception exception) {
-            throw new IllegalStateException(
-                    "Unable to find the employee.",
-                    exception
-            );
+            throw new IllegalStateException("Unable to find the employee.", exception);
+        } finally {
+            close(em);
+        }
+    }
+
+    public Employee getEmployeeByEmail(String email) {
+        String normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail == null) {
+            return null;
+        }
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            List<Employee> result = em.createQuery("SELECT e FROM Employee e WHERE LOWER(e.email) = :email", Employee.class)
+                    .setParameter("email", normalizedEmail)
+                    .setMaxResults(1)
+                    .getResultList();
+            return result.isEmpty() ? null : result.get(0);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Unable to find the employee by email.", exception);
+        } finally {
+            close(em);
+        }
+    }
+
+    public boolean isEmailExists(String email) {
+        return isEmailExists(email, null);
+    }
+
+    /*
+     * When updating, exclude the employee being edited.
+     * Keeping their current email is therefore allowed.
+     */
+    public boolean isEmailExists(String email, String excludeEmployeeID) {
+        String normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail == null) {
+            return false;
+        }
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            return emailExists(em, normalizedEmail, excludeEmployeeID);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Unable to check employee email.", exception);
         } finally {
             close(em);
         }
     }
 
     /*
-     * Inserts an employee whose user account
-     * already exists in the database.
+     * Inserts an employee linked to an existing user account.
      */
     public void insertEmployee(Employee employee) {
         validateEmployee(employee);
-
-        if (employee.getUserID() == null
-                || employee.getUserID().getUserID() == null) {
-
-            throw new IllegalArgumentException(
-                    "An existing user account is required."
-            );
+        if (employee.getUserID() == null || employee.getUserID().getUserID() == null) {
+            throw new IllegalArgumentException("An existing user account is required.");
         }
-
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
             em.getTransaction().begin();
 
-            Users managedUser = em.find(
-                    Users.class,
-                    employee.getUserID().getUserID()
-            );
+            ensureEmailAvailable(em, employee.getEmail(), null);
 
+            Users managedUser = em.find(Users.class, employee.getUserID().getUserID());
             if (managedUser == null) {
-                throw new IllegalArgumentException(
-                        "The linked user account was not found."
-                );
+                throw new IllegalArgumentException("The linked user account was not found.");
             }
 
             employee.setUserID(managedUser);
-
             em.persist(employee);
 
             em.getTransaction().commit();
+        } catch (IllegalArgumentException exception) {
+            rollback(em);
+            throw exception;
         } catch (Exception exception) {
             rollback(em);
-
-            throw new IllegalStateException(
-                    "Unable to add the employee.",
-                    exception
-            );
+            throw new IllegalStateException("Unable to add the employee.", exception);
         } finally {
             close(em);
         }
     }
 
     /*
-     * Creates both the user account and employee
-     * in the same database transaction.
-     *
-     * If employee persistence fails, user persistence
-     * is rolled back automatically.
+     * Creates the account and employee in one transaction.
      */
-    public void insertEmployeeWithUser(
-            Employee employee,
-            Users user) {
-
+    public void insertEmployeeWithUser(Employee employee, Users user) {
         validateEmployee(employee);
         validateUser(user);
 
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
             em.getTransaction().begin();
 
+            ensureEmailAvailable(em, employee.getEmail(), null);
+
             em.persist(user);
-
-            /*
-             * UserID is generated by IDENTITY.
-             * The generated value is automatically assigned
-             * to the managed user object.
-             */
             employee.setUserID(user);
-
             em.persist(employee);
 
             em.getTransaction().commit();
+        } catch (IllegalArgumentException exception) {
+            rollback(em);
+            throw exception;
         } catch (Exception exception) {
             rollback(em);
-
-            throw new IllegalStateException(
-                    "Unable to create the employee "
-                    + "and user account.",
-                    exception
-            );
+            throw new IllegalStateException("Unable to create the employee and user account.", exception);
         } finally {
             close(em);
         }
@@ -156,58 +145,31 @@ public class EmployeeDAO {
         validateEmployee(employee);
 
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
             em.getTransaction().begin();
 
-            Employee managedEmployee = em.find(
-                    Employee.class,
-                    employee.getEmployeeID()
-            );
-
+            Employee managedEmployee = em.find(Employee.class, employee.getEmployeeID());
             if (managedEmployee == null) {
-                throw new IllegalArgumentException(
-                        "Employee not found: "
-                        + employee.getEmployeeID()
-                );
+                throw new IllegalArgumentException("Employee not found: " + employee.getEmployeeID());
             }
 
-            /*
-             * Only update editable employee information.
-             * UserID is intentionally preserved.
-             */
-            managedEmployee.setFullName(
-                    employee.getFullName()
-            );
+            ensureEmailAvailable(em, employee.getEmail(), managedEmployee.getEmployeeID());
 
-            managedEmployee.setPosition(
-                    employee.getPosition()
-            );
-
-            managedEmployee.setSalary(
-                    employee.getSalary()
-            );
-
-            managedEmployee.setShift(
-                    employee.getShift()
-            );
-
-            managedEmployee.setAddress(
-                    employee.getAddress()
-            );
-
-            managedEmployee.setPhone(
-                    employee.getPhone()
-            );
+            managedEmployee.setFullName(employee.getFullName());
+            managedEmployee.setPosition(employee.getPosition());
+            managedEmployee.setSalary(employee.getSalary());
+            managedEmployee.setShift(employee.getShift());
+            managedEmployee.setAddress(employee.getAddress());
+            managedEmployee.setPhone(employee.getPhone());
+            managedEmployee.setEmail(employee.getEmail());
 
             em.getTransaction().commit();
+        } catch (IllegalArgumentException exception) {
+            rollback(em);
+            throw exception;
         } catch (Exception exception) {
             rollback(em);
-
-            throw new IllegalStateException(
-                    "Unable to update the employee.",
-                    exception
-            );
+            throw new IllegalStateException("Unable to update the employee.", exception);
         } finally {
             close(em);
         }
@@ -215,154 +177,37 @@ public class EmployeeDAO {
 
     public boolean isReceptionistByUserId(int userID) {
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
-            Long count = em.createQuery(
-                    "SELECT COUNT(e) "
-                    + "FROM Employee e "
-                    + "WHERE e.userID.userID = :userID "
-                    + "AND LOWER(e.position) = :position",
-                    Long.class
-            )
+            Long count = em.createQuery("SELECT COUNT(e) FROM Employee e WHERE e.userID.userID = :userID AND LOWER(e.position) = :position", Long.class)
                     .setParameter("userID", userID)
                     .setParameter("position", "receptionist")
                     .getSingleResult();
-
             return count != null && count > 0;
-
         } finally {
-            if (em.isOpen()) {
-                em.close();
-            }
+            close(em);
         }
     }
 
     public Employee getByUserId(int userID) {
         EntityManager em = PersistenceManager.createEntityManager();
-
         try {
-            TypedQuery<Employee> query = em.createQuery(
-                    "SELECT e FROM Employee e "
-                    + "WHERE e.userID.userID = :userID",
-                    Employee.class
-            );
-
-            query.setParameter("userID", userID);
-
-            List<Employee> result = query.getResultList();
-
-            if (result.isEmpty()) {
-                return null;
-            }
-
-            return result.get(0);
-
-        } catch (Exception ex) {
-            throw new RuntimeException(
-                    "Unable to find employee information.",
-                    ex
-            );
+            List<Employee> result = em.createQuery("SELECT e FROM Employee e WHERE e.userID.userID = :userID", Employee.class)
+                    .setParameter("userID", userID)
+                    .getResultList();
+            return result.isEmpty() ? null : result.get(0);
+        } catch (Exception exception) {
+            throw new RuntimeException("Unable to find employee information.", exception);
         } finally {
-            if (em.isOpen()) {
-                em.close();
-            }
-        }
-    }
-
-    private void validateEmployee(Employee employee) {
-        if (employee == null) {
-            throw new IllegalArgumentException(
-                    "Employee must not be null."
-            );
-        }
-
-        if (employee.getEmployeeID() == null
-                || employee.getEmployeeID()
-                        .trim().isEmpty()) {
-
-            throw new IllegalArgumentException(
-                    "Employee ID is required."
-            );
-        }
-
-        if (employee.getFullName() == null
-                || employee.getFullName()
-                        .trim().isEmpty()) {
-
-            throw new IllegalArgumentException(
-                    "Employee name is required."
-            );
-        }
-
-        if (employee.getPosition() == null
-                || employee.getPosition()
-                        .trim().isEmpty()) {
-
-            throw new IllegalArgumentException(
-                    "Employee position is required."
-            );
-        }
-    }
-
-    private void validateUser(Users user) {
-        if (user == null) {
-            throw new IllegalArgumentException(
-                    "User account must not be null."
-            );
-        }
-
-        if (user.getUsername() == null
-                || user.getUsername()
-                        .trim().isEmpty()) {
-
-            throw new IllegalArgumentException(
-                    "Username is required."
-            );
-        }
-
-        if (user.getPassword() == null
-                || user.getPassword()
-                        .trim().isEmpty()) {
-
-            throw new IllegalArgumentException(
-                    "Password is required."
-            );
-        }
-
-        if (user.getRole() == null
-                || user.getRole()
-                        .trim().isEmpty()) {
-
-            throw new IllegalArgumentException(
-                    "User role is required."
-            );
-        }
-    }
-
-    private void rollback(EntityManager em) {
-        if (em != null
-                && em.getTransaction().isActive()) {
-
-            em.getTransaction().rollback();
-        }
-    }
-
-    private void close(EntityManager em) {
-        if (em != null && em.isOpen()) {
-            em.close();
+            close(em);
         }
     }
 
     public List<String> getAllPositions() {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
-            return em.createNamedQuery("Employee.findDistinctPositions", String.class)
-                    .getResultList();
+            return em.createNamedQuery("Employee.findDistinctPositions", String.class).getResultList();
         } catch (Exception exception) {
-            throw new IllegalStateException(
-                    "Unable to load position list.", 
-                    exception
-            );
+            throw new IllegalStateException("Unable to load position list.", exception);
         } finally {
             close(em);
         }
@@ -371,17 +216,14 @@ public class EmployeeDAO {
     public List<String> getAllShifts() {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
-            return em.createNamedQuery("Employee.findDistinctShifts", String.class)
-                    .getResultList();
+            return em.createNamedQuery("Employee.findDistinctShifts", String.class).getResultList();
         } catch (Exception exception) {
-            throw new IllegalStateException(
-                    "Unable to load shift list.", 
-                    exception
-            );
+            throw new IllegalStateException("Unable to load shift list.", exception);
         } finally {
             close(em);
         }
     }
+
     public String generateEmployeeID() {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
@@ -394,13 +236,106 @@ public class EmployeeDAO {
                 return "NV01";
             }
 
-            String lastId = result.get(0); // Ví dụ: NV05
+            String lastId = result.get(0);
             int number = Integer.parseInt(lastId.replaceAll("\\D+", "")) + 1;
             return String.format("NV%02d", number);
         } catch (Exception exception) {
             return "NV01";
         } finally {
             close(em);
+        }
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return null;
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean emailExists(EntityManager em, String email, String excludeEmployeeID) {
+        String jpql = "SELECT COUNT(e) FROM Employee e WHERE LOWER(e.email) = :email";
+        boolean excludeCurrentEmployee = excludeEmployeeID != null && !excludeEmployeeID.trim().isEmpty();
+
+        if (excludeCurrentEmployee) {
+            jpql += " AND e.employeeID <> :employeeID";
+        }
+
+        TypedQuery<Long> query = em.createQuery(jpql, Long.class);
+        query.setParameter("email", email);
+
+        if (excludeCurrentEmployee) {
+            query.setParameter("employeeID", excludeEmployeeID.trim());
+        }
+
+        return query.getSingleResult() > 0;
+    }
+
+    private void ensureEmailAvailable(EntityManager em, String email, String excludeEmployeeID) {
+        if (email != null && emailExists(em, email, excludeEmployeeID)) {
+            throw new IllegalArgumentException("Email is already used by another employee.");
+        }
+    }
+
+    private void validateEmployee(Employee employee) {
+        if (employee == null) {
+            throw new IllegalArgumentException("Employee must not be null.");
+        }
+
+        if (employee.getEmployeeID() == null || employee.getEmployeeID().trim().isEmpty()) {
+            throw new IllegalArgumentException("Employee ID is required.");
+        }
+
+        if (employee.getFullName() == null || employee.getFullName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Employee name is required.");
+        }
+
+        if (employee.getPosition() == null || employee.getPosition().trim().isEmpty()) {
+            throw new IllegalArgumentException("Employee position is required.");
+        }
+
+        String email = normalizeEmail(employee.getEmail());
+
+        if (email != null) {
+            if (email.length() > 100) {
+                throw new IllegalArgumentException("Email must not exceed 100 characters.");
+            }
+
+            if (!email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+                throw new IllegalArgumentException("Invalid email address.");
+            }
+        }
+
+        employee.setEmail(email);
+    }
+
+    private void validateUser(Users user) {
+        if (user == null) {
+            throw new IllegalArgumentException("User account must not be null.");
+        }
+
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            throw new IllegalArgumentException("Username is required.");
+        }
+
+        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("Password is required.");
+        }
+
+        if (user.getRole() == null || user.getRole().trim().isEmpty()) {
+            throw new IllegalArgumentException("User role is required.");
+        }
+    }
+
+    private void rollback(EntityManager em) {
+        if (em != null && em.getTransaction().isActive()) {
+            em.getTransaction().rollback();
+        }
+    }
+
+    private void close(EntityManager em) {
+        if (em != null && em.isOpen()) {
+            em.close();
         }
     }
 }

@@ -72,10 +72,17 @@
                             </div>
                         </div>
 
-                        <div class="row mb-3">
+                        <div class="row mb-3 border-bottom pb-2">
                             <div class="col-sm-4 text-muted">Phone Number:</div>
                             <div class="col-sm-8 fw-bold">
                                 <c:out value="${employee.phone}" default="—" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-sm-4 text-muted">Email:</div>
+                            <div class="col-sm-8 fw-bold text-break">
+                                <c:out value="${empty employee.email ? '—' : employee.email}" />
                             </div>
                         </div>
                     </div>

@@ -2,7 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-<layout:layout title="Employee List" pageCss="employee.css" pageJs="searchEmployee.js" useBootstrap="true" bodyClass="bg-light" >
+<layout:layout title="Employee List" pageCss="employee.css" pageJs="searchEmployee.js" useBootstrap="true" bodyClass="bg-light">
     <div class="container my-5">
         <div class="card shadow-sm">
             <!-- HEADER -->
@@ -33,14 +33,14 @@
                                     <select id="selectPosition" class="form-select d-none">
                                         <option value="">-- Select Position --</option>
                                         <c:forEach var="pos" items="${positions}">
-                                            <option value="${pos}" ${param.keyword == pos ? 'selected' : ''}>${pos}</option>
+                                            <option value="${fn:escapeXml(pos)}" ${param.keyword == pos ? 'selected' : ''}><c:out value="${pos}" /></option>
                                         </c:forEach>
                                     </select>
                                     <!-- SHIFT DROPDOWN -->
                                     <select id="selectShift" class="form-select d-none">
                                         <option value="">-- Select Work Shift --</option>
                                         <c:forEach var="s" items="${shifts}">
-                                            <option value="${s}" ${param.keyword == s ? 'selected' : ''}>${s}</option>
+                                            <option value="${fn:escapeXml(s)}" ${param.keyword == s ? 'selected' : ''}><c:out value="${s}" /></option>
                                         </c:forEach>
                                     </select>
                                     <!-- REAL VALUE SENT TO SERVLET -->
@@ -64,6 +64,7 @@
                             <tr>
                                 <th>Employee ID</th>
                                 <th>Full Name</th>
+                                <th>Email</th>
                                 <th>Position</th>
                                 <th>Work Shift</th>
                                 <th class="text-center">Action</th>
@@ -99,6 +100,7 @@
                                     <tr>
                                         <td class="fw-bold text-secondary"><c:out value="${e.employeeID}" /></td>
                                         <td><c:out value="${e.fullName}" /></td>
+                                        <td class="text-break"><c:out value="${empty e.email ? '—' : e.email}" /></td>
                                         <td>
                                             <span class="badge bg-secondary-subtle text-secondary-emphasis"><c:out value="${e.position}" /></span>
                                         </td>
@@ -114,7 +116,7 @@
                             </c:forEach>
                             <c:if test="${empty employees || matchCount == 0}">
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">No employees found.</td>
+                                    <td colspan="6" class="text-center text-muted py-4">No employees found.</td>
                                 </tr>
                             </c:if>
                         </tbody>

@@ -92,6 +92,13 @@
                     </div>
 
                     <div class="col-md-6">
+                        <div class="text-muted small mb-1">Email</div>
+                        <div class="fw-semibold text-break">
+                            <c:out value="${empty employee.email ? '—' : employee.email}" />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
                         <div class="text-muted small mb-1">Salary</div>
                         <div class="fw-semibold">
                             <c:choose>
@@ -108,7 +115,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-12">
                         <div class="text-muted small mb-1">Address</div>
                         <div class="fw-semibold">
                             <c:out value="${employee.address}" default="—" />
