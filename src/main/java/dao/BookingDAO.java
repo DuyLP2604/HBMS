@@ -84,6 +84,17 @@ public class BookingDAO extends DAOFramework<Booking>
         return latest(userID, false);
     }
 
+    public Booking getLatestActiveBookingByUserId(int userID)
+    {
+        requireActor(userID);
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
+            String jpql = "SELECT b FROM Booking b JOIN FETCH b.customerID WHERE b.customerID.userID.userID = :userID AND b.bookingStatus NOT IN ('CHECKED_OUT', 'CANCELLED') ORDER BY b.bookingDate DESC, b.bookingID DESC";
+            List<Booking> results = fresh(em.createQuery(jpql, Booking.class)).setParameter("userID", userID).setMaxResults(1).getResultList();
+            return results.isEmpty() ? null : results.get(0);
+        }
+    }
+
     public Booking getLatestPendingBookingByUserId(int userID)
     {
         return latest(userID, true);
