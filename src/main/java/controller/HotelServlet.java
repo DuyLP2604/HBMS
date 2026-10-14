@@ -32,11 +32,17 @@ import util.flash.FlashMessage;
 import util.flash.FlashType;
 
 /**
- * Lets the admin manager modify the hotel information:
- * - the address (one address per line),
- * - the background image and the three Overview images.
+ * Lets the admin manager change the hotel images:
+ * the background image and the three Overview images.
  *
- * The hotel name cannot be changed. The project has a single hotel.
+ * The hotel name and the address are shown on the page but cannot be changed.
+ * The project has a single hotel.
+ *
+ * How an image is replaced:
+ * 1. the new file is written to assets/images/hotel under a new, unique name,
+ * 2. the new file name is saved in the database (HOTEL table),
+ * 3. only after the database update succeeded, the old file is deleted.
+ * If step 1 or 2 fails, the new files are removed and the old image stays in use.
  */
 @WebServlet(name = "HotelServlet", urlPatterns = {"/hotel"})
 @MultipartConfig(
@@ -46,7 +52,6 @@ import util.flash.FlashType;
 public class HotelServlet extends HttpServlet {
 
     private static final String IMAGE_FOLDER = "/assets/images/hotel";
-    private static final int ADDRESS_MAX = 500; // HOTEL.Address
 
     /** File names created by this servlet, so old uploads can be cleaned up. */
     private static final Pattern GENERATED_NAME = Pattern.compile(
@@ -104,7 +109,7 @@ public class HotelServlet extends HttpServlet {
             return;
         }
 
-        forwardForm(request, response, hotel, null);
+        forwardForm(request, response, hotel);
     }
 
     @Override
@@ -130,8 +135,7 @@ public class HotelServlet extends HttpServlet {
             request.getParts();
         } catch (IllegalStateException exception) {
             forwardForm(request, response, hotel,
-                    "An image is too large. The maximum size is 2 MB per image.",
-                    null);
+                    "An image is too large. The maximum size is 2 MB per image.");
             return;
         } catch (ServletException exception) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST,
@@ -139,22 +143,7 @@ public class HotelServlet extends HttpServlet {
             return;
         }
 
-        // The hotel name is fixed: it is never read from the request.
-        String submittedAddress = request.getParameter("address");
-        String address = String.join("\n",
-                HotelContent.addressLines(submittedAddress));
-
-        if (address.isEmpty()) {
-            forwardForm(request, response, hotel,
-                    "Address is required.", submittedAddress);
-            return;
-        }
-        if (address.length() > ADDRESS_MAX) {
-            forwardForm(request, response, hotel,
-                    "The addresses must be at most " + ADDRESS_MAX
-                    + " characters in total.", submittedAddress);
-            return;
-        }
+        // The hotel name and the address are fixed: they are never read from the request.
 
         // Check every chosen image before anything is saved.
         Map<Slot, Part> chosen = new LinkedHashMap<>();
@@ -170,8 +159,7 @@ public class HotelServlet extends HttpServlet {
             String extension = validateImage(part);
             if (extension == null) {
                 forwardForm(request, response, hotel,
-                        slot.label + ": the file must be a valid JPG, PNG or WEBP image.",
-                        submittedAddress);
+                        slot.label + ": the file must be a valid JPG, PNG or WEBP image.");
                 return;
             }
 
@@ -179,7 +167,13 @@ public class HotelServlet extends HttpServlet {
             extensions.put(slot, extension);
         }
 
-        // Save the images.
+        if (chosen.isEmpty()) {
+            Flash.info(request, "No image was selected, so nothing was changed.");
+            response.sendRedirect(request.getContextPath() + "/hotel");
+            return;
+        }
+
+        // Step 1: write the new images (the old ones are still in place).
         List<Path> savedFiles = new ArrayList<>();
         Map<Slot, String> newNames = new LinkedHashMap<>();
 
@@ -209,29 +203,28 @@ public class HotelServlet extends HttpServlet {
             exception.printStackTrace();
             deleteQuietly(savedFiles);
             forwardForm(request, response, hotel,
-                    "Unable to save the images on the server.", submittedAddress);
+                    "Unable to save the images on the server.");
             return;
         }
 
-        // Update the hotel.
+        // Step 2: save the new file names in the database.
         Map<Slot, String> oldNames = new LinkedHashMap<>();
         for (Map.Entry<Slot, String> entry : newNames.entrySet()) {
             oldNames.put(entry.getKey(), entry.getKey().getter.apply(hotel));
             entry.getKey().setter.accept(hotel, entry.getValue());
         }
-        hotel.setAddress(address);
 
         if (!hotelDAO.updateHotel(hotel)) {
             deleteQuietly(savedFiles);
             // Reload so the form does not show the unsaved image names.
             Hotel stored = hotelDAO.getHotel();
             forwardForm(request, response, stored != null ? stored : hotel,
-                    "Unable to update the hotel information. Please try again.",
-                    submittedAddress);
+                    "Unable to update the hotel information. Please try again.");
             return;
         }
 
-        // Remove the previous uploads that were replaced (never the default images).
+        // Step 3: the database now points to the new files, so delete the replaced
+        // uploads (never the default images).
         for (String oldName : oldNames.values()) {
             deleteIfGenerated(oldName);
         }
@@ -366,7 +359,7 @@ public class HotelServlet extends HttpServlet {
     }
 
     private void forwardForm(HttpServletRequest request,
-            HttpServletResponse response, Hotel hotel, String addressText)
+            HttpServletResponse response, Hotel hotel)
             throws ServletException, IOException {
 
         List<Map<String, String>> imageFields = new ArrayList<>();
@@ -380,12 +373,7 @@ public class HotelServlet extends HttpServlet {
             imageFields.add(field);
         }
 
-        String text = addressText != null
-                ? addressText
-                : (hotel.getAddress() == null ? "" : hotel.getAddress());
-
         request.setAttribute("hotel", hotel);
-        request.setAttribute("addressText", text);
         request.setAttribute("imageFields", imageFields);
 
         request.getRequestDispatcher("/WEB-INF/views/update-hotel.jsp")
@@ -393,18 +381,18 @@ public class HotelServlet extends HttpServlet {
     }
 
     private void forwardForm(HttpServletRequest request,
-            HttpServletResponse response, Hotel hotel, String message,
-            String addressText) throws ServletException, IOException {
+            HttpServletResponse response, Hotel hotel, String message)
+            throws ServletException, IOException {
 
         // Set on the request (not the session) so it shows once, on this page.
         request.setAttribute("flashMessage",
                 new FlashMessage(FlashType.ERROR, message));
 
-        forwardForm(request, response, hotel, addressText);
+        forwardForm(request, response, hotel);
     }
 
     @Override
     public String getServletInfo() {
-        return "Modify the hotel address and images (admin only)";
+        return "Change the hotel images (admin only)";
     }
 }

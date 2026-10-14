@@ -1,6 +1,7 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 
 <layout:layout
@@ -72,7 +73,35 @@
                 <div class="kpi-subtitle">Total rooms reserved / occupied</div>
             </div>
 
-            <!-- Card 3: Total Guests -->
+            <!-- Card 3: Room-days used -->
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-title">Room-Days Used</div>
+                    <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
+                </div>
+                <div class="kpi-value" id="usedRoomDays">
+                    <fmt:formatNumber value="${roomUtilization.usedRoomDays}" type="number" pattern="#,##0" />
+                </div>
+                <div class="kpi-subtitle">
+                    Nights sold out of
+                    <fmt:formatNumber value="${roomUtilization.availableRoomDays}" type="number" pattern="#,##0" />
+                    available (${roomUtilization.activeRooms} rooms &times; ${roomUtilization.totalDays} days)
+                </div>
+            </div>
+
+            <!-- Card 4: Occupancy rate -->
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-title">Occupancy Rate</div>
+                    <div class="kpi-icon"><i class="fas fa-percent"></i></div>
+                </div>
+                <div class="kpi-value" id="occupancyRate">
+                    <fmt:formatNumber value="${roomUtilization.occupancyRate}" type="number" minFractionDigits="1" maxFractionDigits="1" />%
+                </div>
+                <div class="kpi-subtitle">Room-days used / room-days available</div>
+            </div>
+
+            <!-- Card 5: Total Guests -->
             <div class="kpi-card">
                 <div class="kpi-header">
                     <div class="kpi-title">Total Guests</div>
@@ -93,6 +122,70 @@
             <canvas id="revenueChart"></canvas>
         </div>
 
+        <!-- Room utilization report -->
+        <div class="chart-card">
+            <div class="chart-title">
+                <i class="fas fa-bed"></i> Room Utilization
+                <span class="utilization-period"><c:out value="${roomUtilization.periodLabel}" /></span>
+            </div>
+            <c:choose>
+                <c:when test="${empty roomUtilization.byRoomType}">
+                    <p class="text-muted mb-0">No room usage data for this period.</p>
+                </c:when>
+                <c:otherwise>
+                    <div class="utilization-chart">
+                        <canvas id="utilizationChart"></canvas>
+                    </div>
+                    <div class="table-responsive mt-4">
+                        <table class="table table-hover align-middle utilization-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Room type</th>
+                                    <th class="text-end">Active rooms</th>
+                                    <th class="text-end">Room-days used</th>
+                                    <th class="text-end">Room-days available</th>
+                                    <th style="min-width: 180px;">Occupancy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <c:forEach items="${roomUtilization.byRoomType}" var="u">
+                                    <tr>
+                                        <td class="fw-semibold"><c:out value="${u.typeName}" /></td>
+                                        <td class="text-end">${u.roomCount}</td>
+                                        <td class="text-end"><fmt:formatNumber value="${u.usedRoomDays}" type="number" pattern="#,##0" /></td>
+                                        <td class="text-end"><fmt:formatNumber value="${u.availableRoomDays}" type="number" pattern="#,##0" /></td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 8px;">
+                                                    <div class="progress-bar utilization-bar" role="progressbar"
+                                                         style="width: ${u.occupancyRate > 100 ? 100 : u.occupancyRate}%;"
+                                                         aria-valuenow="${u.occupancyRate}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                                <span class="fw-semibold utilization-rate"><fmt:formatNumber value="${u.occupancyRate}" type="number" minFractionDigits="1" maxFractionDigits="1" />%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </c:forEach>
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold">
+                                    <td>Total</td>
+                                    <td class="text-end">${roomUtilization.activeRooms}</td>
+                                    <td class="text-end"><fmt:formatNumber value="${roomUtilization.usedRoomDays}" type="number" pattern="#,##0" /></td>
+                                    <td class="text-end"><fmt:formatNumber value="${roomUtilization.availableRoomDays}" type="number" pattern="#,##0" /></td>
+                                    <td><fmt:formatNumber value="${roomUtilization.occupancyRate}" type="number" minFractionDigits="1" maxFractionDigits="1" />%</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <p class="utilization-note">
+                        Counts confirmed, assigned, checked-in and checked-out bookings (unpaid and cancelled bookings are excluded).
+                        One room-day = one room occupied for one night; the check-out day is not counted.
+                    </p>
+                </c:otherwise>
+            </c:choose>
+        </div>
+
         <!-- Customer Source Chart -->
         <div class="chart-card">
             <div class="chart-title">Customer Sources</div>
@@ -105,6 +198,11 @@
         <div id="revenueData">
             <c:forEach items="${revenueChart}" var="r">
                 <span class="revenue-data-item" data-day="${r.day}" data-revenue="${r.revenue}"></span>
+            </c:forEach>
+        </div>
+        <div id="utilizationData">
+            <c:forEach items="${roomUtilization.byRoomType}" var="u">
+                <span class="utilization-data-item" data-type="${fn:escapeXml(u.typeName)}" data-rate="${u.occupancyRate}" data-used="${u.usedRoomDays}" data-available="${u.availableRoomDays}"></span>
             </c:forEach>
         </div>
         <div id="customerSourceData">

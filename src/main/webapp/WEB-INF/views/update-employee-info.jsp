@@ -9,6 +9,7 @@
 <layout:layout
     title="Update Employee Information"
     pageCss="employee.css"
+    pageJs="employeeForm.js"
     useBootstrap="true"
     bodyClass="bg-light">
     <div class="container my-5">
@@ -25,7 +26,7 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         </c:if>
-                        <form action="${pageContext.request.contextPath}/employee" method="post">
+                        <form id="employeeForm" data-mode="update" action="${pageContext.request.contextPath}/employee" method="post" novalidate>
                             <input type="hidden" name="action" value="update">
                             <div class="row g-3">
                                 <div class="col-md-6">
@@ -34,41 +35,48 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label for="fullName" class="form-label fw-semibold">Full Name *</label>
-                                    <input id="fullName" type="text" name="name" class="form-control" value="${fn:escapeXml(isPost ? param.name : employee.fullName)}" maxlength="100" autocomplete="name" required>
+                                    <input id="fullName" type="text" name="name" class="form-control${not empty fieldErrors['name'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.name : employee.fullName)}" maxlength="100" autocomplete="name" required>
+                                    <div class="invalid-feedback" data-feedback-for="name"><c:out value="${fieldErrors['name']}" /></div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="position" class="form-label fw-semibold">Position *</label>
-                                    <select id="position" name="position" class="form-select" required>
+                                    <select id="position" name="position" class="form-select${not empty fieldErrors['position'] ? ' is-invalid' : ''}" required>
                                         <option value="" disabled <c:if test="${empty selectedPosition}">selected</c:if>>Select position</option>
                                         <c:forEach var="pos" items="${positions}">
                                             <option value="${fn:escapeXml(pos)}" <c:if test="${selectedPosition eq pos}">selected</c:if>><c:out value="${pos}" /></option>
                                         </c:forEach>
                                     </select>
+                                    <div class="invalid-feedback" data-feedback-for="position"><c:out value="${fieldErrors['position']}" /></div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="salary" class="form-label fw-semibold">Base Salary (VND)</label>
-                                    <input id="salary" type="number" name="salary" class="form-control" value="${fn:escapeXml(isPost ? param.salary : employee.salary)}" min="0" step="0.01">
+                                    <input id="salary" type="number" name="salary" class="form-control${not empty fieldErrors['salary'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.salary : employee.salary)}" min="0" step="0.01">
+                                    <div class="invalid-feedback" data-feedback-for="salary"><c:out value="${fieldErrors['salary']}" /></div>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="shift" class="form-label fw-semibold">Work Shift</label>
-                                    <select id="shift" name="shift" class="form-select">
+                                    <select id="shift" name="shift" class="form-select${not empty fieldErrors['shift'] ? ' is-invalid' : ''}">
                                         <option value="" <c:if test="${empty selectedShift}">selected</c:if>>Select work shift</option>
                                         <option value="Morning" <c:if test="${selectedShift eq 'Morning'}">selected</c:if>>Morning</option>
                                         <option value="Afternoon" <c:if test="${selectedShift eq 'Afternoon'}">selected</c:if>>Afternoon</option>
                                         <option value="Night" <c:if test="${selectedShift eq 'Night'}">selected</c:if>>Night</option>
                                     </select>
+                                    <div class="invalid-feedback" data-feedback-for="shift"><c:out value="${fieldErrors['shift']}" /></div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="phone" class="form-label fw-semibold">Phone Number</label>
-                                    <input id="phone" type="tel" name="phone" class="form-control" value="${fn:escapeXml(isPost ? param.phone : employee.phone)}" maxlength="20" autocomplete="tel">
+                                    <label for="phone" class="form-label fw-semibold">Phone Number *</label>
+                                    <input id="phone" type="tel" name="phone" class="form-control${not empty fieldErrors['phone'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.phone : employee.phone)}" maxlength="20" autocomplete="tel" required>
+                                    <div class="invalid-feedback" data-feedback-for="phone"><c:out value="${fieldErrors['phone']}" /></div>
                                 </div>
                                 <div class="col-12">
                                     <label for="email" class="form-label fw-semibold">Email</label>
-                                    <input id="email" type="email" name="email" class="form-control" value="${fn:escapeXml(emailValue)}" placeholder="e.g. employee@gmail.com" maxlength="100" autocomplete="email">
+                                    <input id="email" type="email" name="email" class="form-control${not empty fieldErrors['email'] ? ' is-invalid' : ''}" value="${fn:escapeXml(emailValue)}" placeholder="e.g. employee@gmail.com" maxlength="100" autocomplete="email">
+                                    <div class="invalid-feedback" data-feedback-for="email"><c:out value="${fieldErrors['email']}" /></div>
                                 </div>
                                 <div class="col-12">
                                     <label for="address" class="form-label fw-semibold">Address</label>
-                                    <input id="address" type="text" name="address" class="form-control" value="${fn:escapeXml(isPost ? param.address : employee.address)}" maxlength="200" autocomplete="street-address">
+                                    <input id="address" type="text" name="address" class="form-control${not empty fieldErrors['address'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.address : employee.address)}" maxlength="200" autocomplete="street-address">
+                                    <div class="invalid-feedback" data-feedback-for="address"><c:out value="${fieldErrors['address']}" /></div>
                                 </div>
                             </div>
                             <div class="d-flex justify-content-end gap-2 mt-4">

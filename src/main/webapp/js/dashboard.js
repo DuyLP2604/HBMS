@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     initializeDateRangePicker();
     initializeRevenueChart();
+    initializeUtilizationChart();
     initializeCustomerChart();
 
 });
@@ -268,6 +269,133 @@ function initializeCustomerChart() {
 
                     bodyColor:
                             "#e5e7eb"
+                }
+            }
+        }
+    });
+}
+
+
+function initializeUtilizationChart() {
+
+    const canvas =
+            document.getElementById(
+                "utilizationChart"
+            );
+
+    if (!canvas || typeof Chart === "undefined") {
+        return;
+    }
+
+    const items =
+            document.querySelectorAll(
+                ".utilization-data-item"
+            );
+
+    const labels = [];
+    const rates = [];
+    const used = [];
+    const available = [];
+
+    items.forEach(function (item) {
+
+        labels.push(item.dataset.type);
+        rates.push(Number(item.dataset.rate));
+        used.push(Number(item.dataset.used));
+        available.push(Number(item.dataset.available));
+    });
+
+
+    new Chart(canvas, {
+
+        type: "bar",
+
+        data: {
+
+            labels: labels,
+
+            datasets: [
+                {
+                    label: "Occupancy (%)",
+                    data: rates,
+
+                    backgroundColor:
+                            "rgba(200, 169, 107, 0.75)",
+
+                    borderColor: "#c8a96b",
+
+                    borderWidth: 1,
+
+                    borderRadius: 8
+                }
+            ]
+        },
+
+        options: {
+
+            responsive: true,
+            maintainAspectRatio: false,
+
+            plugins: {
+
+                legend: {
+                    display: false
+                },
+
+                tooltip: {
+
+                    backgroundColor: "#111827",
+                    titleColor: "#ffffff",
+                    bodyColor: "#e5e7eb",
+
+                    callbacks: {
+
+                        label: function (context) {
+
+                            const i = context.dataIndex;
+
+                            return context.parsed.y + "% ("
+                                    + used[i] + " / "
+                                    + available[i] + " room-days)";
+                        }
+                    }
+                }
+            },
+
+            scales: {
+
+                x: {
+
+                    grid: {
+                        display: false
+                    },
+
+                    ticks: {
+                        color: "#64748b"
+                    }
+                },
+
+                y: {
+
+                    beginAtZero: true,
+
+                    suggestedMax: 100,
+
+                    grid: {
+                        color:
+                                "rgba(148, 163, 184, 0.18)",
+
+                        drawBorder: false
+                    },
+
+                    ticks: {
+
+                        color: "#64748b",
+
+                        callback: function (value) {
+                            return value + "%";
+                        }
+                    }
                 }
             }
         }
