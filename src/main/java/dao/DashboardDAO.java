@@ -2,8 +2,12 @@ package dao;
 
 import dto.CustomerSource;
 import dto.RevenueChart;
+import dto.RoomTypeUtilization;
+import dto.RoomUtilizationReport;
 import entity.Payment;
+import entity.RoomType;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.TemporalType;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -16,8 +20,23 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import util.PersistenceManager;
+import util.RoomUsageCalculator;
 
 public class DashboardDAO {
+
+    // DashboardServlet sends this date as the start of the "All Time" range.
+    private static final LocalDate ALL_TIME_START = LocalDate.of(2010, 1, 1);
+
+    // Stays that really occupy a room. PENDING_PAYMENT (unpaid, may expire) and CANCELLED are excluded.
+    // EclipseLink does not accept a List bound to IN (:param), so each status gets its own parameter.
+    private static final String OCCUPYING_STATUS_JPQL = "b.bookingStatus IN (:s1, :s2, :s3, :s4)";
+
+    private static <T> TypedQuery<T> bindOccupyingStatuses(TypedQuery<T> query) {
+        return query.setParameter("s1", "CONFIRMED")
+                .setParameter("s2", "ASSIGNED")
+                .setParameter("s3", "CHECKED_IN")
+                .setParameter("s4", "CHECKED_OUT");
+    }
 
     public long getTodayRevenue() {
         LocalDate today = LocalDate.now();
@@ -216,6 +235,99 @@ public class DashboardDAO {
             return result;
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to load customer-source data.", exception);
+        } finally {
+            close(em);
+        }
+    }
+
+    /**
+     * Room-usage report for [startDate, endDate] (both inclusive).
+     *
+     * Used room-days: for every booking line (room type x quantity) the nights
+     * of the stay that fall inside the period, times the quantity.
+     * Available room-days: ACTIVE rooms x days in the period.
+     * Occupancy = used / available.
+     *
+     * For the "All Time" range the period starts at the first check-in, so the
+     * rate is not diluted by years in which the hotel had no bookings.
+     */
+    public RoomUtilizationReport getRoomUtilization(LocalDate startDate, LocalDate endDate) {
+        validateDateRange(startDate, endDate);
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            LocalDate from = startDate;
+            if (!from.isAfter(ALL_TIME_START)) {
+                java.util.Date firstCheckIn = bindOccupyingStatuses(em.createQuery(
+                        "SELECT MIN(b.checkInDate) FROM Booking b WHERE " + OCCUPYING_STATUS_JPQL,
+                        java.util.Date.class))
+                        .getSingleResult();
+                from = firstCheckIn != null ? toLocalDate(firstCheckIn) : endDate;
+            }
+
+            RoomUtilizationReport report = new RoomUtilizationReport();
+            if (from.isAfter(endDate)) {
+                report.setPeriodLabel("No bookings in this period");
+                return report;
+            }
+            long totalDays = RoomUsageCalculator.daysInPeriod(from, endDate);
+
+            // Active rooms per room type.
+            Map<String, Integer> roomsByType = new LinkedHashMap<>();
+            List<Object[]> roomRows = em.createQuery(
+                    "SELECT r.roomTypeID.roomTypeID, COUNT(r) FROM Room r WHERE r.status = :status GROUP BY r.roomTypeID.roomTypeID",
+                    Object[].class)
+                    .setParameter("status", "ACTIVE")
+                    .getResultList();
+            for (Object[] row : roomRows) {
+                roomsByType.put((String) row[0], ((Number) row[1]).intValue());
+            }
+
+            // Used room-days per room type.
+            Map<String, Long> usedByType = new LinkedHashMap<>();
+            List<Object[]> stayRows = bindOccupyingStatuses(em.createQuery(
+                    "SELECT rt.roomTypeID, bd.quantity, b.checkInDate, b.checkOutDate "
+                    + "FROM BookingDetail bd JOIN bd.bookingID b JOIN bd.roomTypeID rt "
+                    + "WHERE " + OCCUPYING_STATUS_JPQL + " AND b.checkInDate <= :toDate AND b.checkOutDate > :fromDate",
+                    Object[].class))
+                    .setParameter("fromDate", java.sql.Date.valueOf(from), TemporalType.DATE)
+                    .setParameter("toDate", java.sql.Date.valueOf(endDate), TemporalType.DATE)
+                    .getResultList();
+            for (Object[] row : stayRows) {
+                long nights = RoomUsageCalculator.nightsInPeriod(
+                        toLocalDate((java.util.Date) row[2]), toLocalDate((java.util.Date) row[3]), from, endDate);
+                long roomDays = nights * ((Number) row[1]).longValue();
+                usedByType.merge((String) row[0], roomDays, Long::sum);
+            }
+
+            List<RoomType> roomTypes = em.createQuery("SELECT rt FROM RoomType rt ORDER BY rt.typeName", RoomType.class)
+                    .getResultList();
+
+            List<RoomTypeUtilization> byType = new ArrayList<>();
+            int totalRooms = 0;
+            long totalUsed = 0;
+            long totalAvailable = 0;
+            for (RoomType roomType : roomTypes) {
+                int rooms = roomsByType.getOrDefault(roomType.getRoomTypeID(), 0);
+                long used = usedByType.getOrDefault(roomType.getRoomTypeID(), 0L);
+                long available = rooms * totalDays;
+                byType.add(new RoomTypeUtilization(roomType.getRoomTypeID(), roomType.getTypeName(), rooms,
+                        used, available, RoomUsageCalculator.occupancyRate(used, available)));
+                totalRooms += rooms;
+                totalUsed += used;
+                totalAvailable += available;
+            }
+
+            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            report.setPeriodLabel(from.equals(endDate) ? from.format(fmt) : from.format(fmt) + " - " + endDate.format(fmt));
+            report.setTotalDays(totalDays);
+            report.setActiveRooms(totalRooms);
+            report.setUsedRoomDays(totalUsed);
+            report.setAvailableRoomDays(totalAvailable);
+            report.setOccupancyRate(RoomUsageCalculator.occupancyRate(totalUsed, totalAvailable));
+            report.setByRoomType(byType);
+            return report;
+        } catch (Exception exception) {
+            throw new IllegalStateException("Unable to load the room utilization report.", exception);
         } finally {
             close(em);
         }

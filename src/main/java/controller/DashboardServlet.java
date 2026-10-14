@@ -3,6 +3,7 @@ package controller;
 import dao.DashboardDAO;
 import dto.CustomerSource;
 import dto.RevenueChart;
+import dto.RoomUtilizationReport;
 import entity.Users;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -38,6 +39,7 @@ public class DashboardServlet extends HttpServlet {
             int totalCustomers = dashboardDAO.getTotalCustomers(startDate, endDate); // Đã fix logic
             List<RevenueChart> revenueChart = dashboardDAO.getRevenueChartData(startDate, endDate); // Đã fix logic
             List<CustomerSource> customerSource = dashboardDAO.getCustomerSource();
+            RoomUtilizationReport roomUtilization = dashboardDAO.getRoomUtilization(startDate, endDate);
 
             request.setAttribute("todayRevenue", revenue);
             request.setAttribute("selectedRevenue", revenue);
@@ -46,6 +48,7 @@ public class DashboardServlet extends HttpServlet {
             request.setAttribute("totalCustomers", totalCustomers);
             request.setAttribute("revenueChart", revenueChart);
             request.setAttribute("customerSource", customerSource);
+            request.setAttribute("roomUtilization", roomUtilization);
             request.setAttribute("from", startDate.toString());
             request.setAttribute("to", endDate.toString());
             request.setAttribute("revenueLabel", createRevenueLabel(startDate, endDate));

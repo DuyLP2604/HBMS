@@ -5,6 +5,7 @@
 <layout:layout
     title="Add New Employee"
     pageCss="employee.css"
+    pageJs="employeeForm.js"
     useBootstrap="true"
     bodyClass="bg-light">
     <div class="container py-5">
@@ -29,7 +30,7 @@
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         </c:if>
-                        <form action="${pageContext.request.contextPath}/employee" method="post" class="needs-validation">
+                        <form id="employeeForm" data-mode="add" action="${pageContext.request.contextPath}/employee" method="post" class="needs-validation" novalidate>
                             <input type="hidden" name="action" value="add">
                             
                             <!-- Section: Personal Information -->
@@ -38,32 +39,44 @@
                                     <i class="bi bi-person-badge me-2"></i>Personal Information
                                 </h5>
                                 <div class="row g-3">
-                                    <div class="col-12">
+                                    <div class="col-md-4">
+                                        <label for="employeeID" class="form-label fw-semibold text-muted">Employee ID</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-hash text-muted"></i></span>
+                                            <input id="employeeID" type="text" value="${fn:escapeXml(nextEmployeeID)}" class="form-control bg-light border-start-0 ps-0" readonly tabindex="-1" aria-describedby="employeeIDHelp">
+                                        </div>
+                                        <div id="employeeIDHelp" class="form-text">Assigned automatically.</div>
+                                    </div>
+                                    <div class="col-md-8">
                                         <label for="fullName" class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                                            <input id="fullName" type="text" name="name" value="${fn:escapeXml(param.name)}" class="form-control border-start-0 ps-0" placeholder="e.g. Nguyen Van A" maxlength="100" autocomplete="name" required>
+                                            <input id="fullName" type="text" name="name" value="${fn:escapeXml(param.name)}" class="form-control border-start-0 ps-0${not empty fieldErrors['name'] ? ' is-invalid' : ''}" placeholder="e.g. Nguyen Van A" maxlength="100" autocomplete="name" required>
+                                        <div class="invalid-feedback" data-feedback-for="name"><c:out value="${fieldErrors['name']}" /></div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="phone" class="form-label fw-semibold">Phone Number</label>
+                                        <label for="phone" class="form-label fw-semibold">Phone Number <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-telephone text-muted"></i></span>
-                                            <input id="phone" type="tel" name="phone" value="${fn:escapeXml(param.phone)}" class="form-control border-start-0 ps-0" placeholder="e.g. 0901234567" maxlength="20" autocomplete="tel">
+                                            <input id="phone" type="tel" name="phone" value="${fn:escapeXml(param.phone)}" class="form-control border-start-0 ps-0${not empty fieldErrors['phone'] ? ' is-invalid' : ''}" placeholder="e.g. 0901234567" maxlength="20" autocomplete="tel" required>
+                                        <div class="invalid-feedback" data-feedback-for="phone"><c:out value="${fieldErrors['phone']}" /></div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="email" class="form-label fw-semibold">Email</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
-                                            <input id="email" type="email" name="email" value="${fn:escapeXml(param.email)}" class="form-control border-start-0 ps-0" placeholder="e.g. employee@gmail.com" maxlength="100" autocomplete="email">
+                                            <input id="email" type="email" name="email" value="${fn:escapeXml(param.email)}" class="form-control border-start-0 ps-0${not empty fieldErrors['email'] ? ' is-invalid' : ''}" placeholder="e.g. employee@gmail.com" maxlength="100" autocomplete="email">
+                                        <div class="invalid-feedback" data-feedback-for="email"><c:out value="${fieldErrors['email']}" /></div>
                                         </div>
                                     </div>
                                     <div class="col-12">
                                         <label for="address" class="form-label fw-semibold">Address</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt text-muted"></i></span>
-                                            <input id="address" type="text" name="address" value="${fn:escapeXml(param.address)}" class="form-control border-start-0 ps-0" placeholder="e.g. Can Tho City" maxlength="200" autocomplete="street-address">
+                                            <input id="address" type="text" name="address" value="${fn:escapeXml(param.address)}" class="form-control border-start-0 ps-0${not empty fieldErrors['address'] ? ' is-invalid' : ''}" placeholder="e.g. Can Tho City" maxlength="200" autocomplete="street-address">
+                                        <div class="invalid-feedback" data-feedback-for="address"><c:out value="${fieldErrors['address']}" /></div>
                                         </div>
                                     </div>
                                 </div>
@@ -77,28 +90,31 @@
                                 <div class="row g-3">
                                     <div class="col-md-4">
                                         <label for="position" class="form-label fw-semibold">Position <span class="text-danger">*</span></label>
-                                        <select id="position" name="position" class="form-select" required>
+                                        <select id="position" name="position" class="form-select${not empty fieldErrors['position'] ? ' is-invalid' : ''}" required>
                                             <option value="" disabled <c:if test="${empty param.position}">selected</c:if>>Select position</option>
                                             <c:forEach var="pos" items="${positions}">
                                                 <option value="${fn:escapeXml(pos)}" <c:if test="${param.position == pos}">selected</c:if>><c:out value="${pos}" /></option>
                                             </c:forEach>
                                         </select>
+                                        <div class="invalid-feedback" data-feedback-for="position"><c:out value="${fieldErrors['position']}" /></div>
                                     </div>
                                     <div class="col-md-4">
                                         <label for="salary" class="form-label fw-semibold">Base Salary (VND)</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0">₫</span>
-                                            <input id="salary" type="number" name="salary" value="${fn:escapeXml(param.salary)}" class="form-control border-start-0 ps-0" placeholder="0.00" min="0" step="0.01">
+                                            <input id="salary" type="number" name="salary" value="${fn:escapeXml(param.salary)}" class="form-control border-start-0 ps-0${not empty fieldErrors['salary'] ? ' is-invalid' : ''}" placeholder="0.00" min="0" step="0.01">
+                                        <div class="invalid-feedback" data-feedback-for="salary"><c:out value="${fieldErrors['salary']}" /></div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <label for="shift" class="form-label fw-semibold">Work Shift</label>
-                                        <select id="shift" name="shift" class="form-select">
+                                        <select id="shift" name="shift" class="form-select${not empty fieldErrors['shift'] ? ' is-invalid' : ''}">
                                             <option value="" <c:if test="${empty param.shift}">selected</c:if>>Select work shift</option>
                                             <option value="Morning" <c:if test="${param.shift == 'Morning'}">selected</c:if>>Morning</option>
                                             <option value="Afternoon" <c:if test="${param.shift == 'Afternoon'}">selected</c:if>>Afternoon</option>
                                             <option value="Night" <c:if test="${param.shift == 'Night'}">selected</c:if>>Night</option>
                                         </select>
+                                        <div class="invalid-feedback" data-feedback-for="shift"><c:out value="${fieldErrors['shift']}" /></div>
                                     </div>
                                 </div>
                             </div>
@@ -110,17 +126,19 @@
                                 </h5>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label for="username" class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+                                        <label for="username" class="form-label fw-semibold text-muted">Username</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-at text-muted"></i></span>
-                                            <input id="username" type="text" name="username" value="${fn:escapeXml(param.username)}" class="form-control border-start-0 ps-0" placeholder="Choose a username" maxlength="50" autocomplete="username" required>
+                                            <input id="username" type="text" value="${fn:escapeXml(nextUsername)}" class="form-control bg-light border-start-0 ps-0" readonly aria-describedby="usernameHelp">
                                         </div>
+                                        <div id="usernameHelp" class="form-text">Generated from the Employee ID.</div>
                                     </div>
                                     <div class="col-md-6">
                                         <label for="password" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
-                                            <input id="password" type="password" name="password" class="form-control border-start-0 ps-0" placeholder="At least 6 characters" minlength="6" maxlength="255" autocomplete="new-password" required>
+                                            <input id="password" type="password" name="password" class="form-control border-start-0 ps-0${not empty fieldErrors['password'] ? ' is-invalid' : ''}" placeholder="6-50 characters, no spaces" minlength="6" maxlength="50" autocomplete="new-password" required>
+                                        <div class="invalid-feedback" data-feedback-for="password"><c:out value="${fieldErrors['password']}" /></div>
                                         </div>
                                     </div>
                                 </div>

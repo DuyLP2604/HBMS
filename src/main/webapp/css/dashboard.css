@@ -197,6 +197,42 @@ body {
     color: #c8a96b;
 }
 
+.utilization-chart {
+    position: relative;
+    height: 300px;
+}
+
+.utilization-period {
+    margin-left: auto;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.utilization-table thead th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    white-space: nowrap;
+}
+
+.utilization-bar {
+    background-color: #c8a96b;
+}
+
+.utilization-rate {
+    min-width: 52px;
+    text-align: right;
+}
+
+.utilization-note {
+    margin: 16px 0 0;
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.6;
+}
+
 .chart-container {
     position: relative;
     height: 360px;

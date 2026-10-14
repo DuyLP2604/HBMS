@@ -23,9 +23,9 @@
                                     <input id="hotelName" type="text" class="form-control bg-light" value="${fn:escapeXml(hotel.hotelName)}" readonly>
                                 </div>
                                 <div class="col-12">
-                                    <label for="address" class="form-label fw-semibold">Addresses *</label>
-                                    <textarea id="address" name="address" class="form-control" rows="4" required>${fn:escapeXml(addressText)}</textarea>
-                                    <div class="form-text">Write one address per line. They are shown on the home page. Maximum 500 characters in total.</div>
+                                    <label for="address" class="form-label fw-semibold text-muted">Address (cannot be changed)</label>
+                                    <%-- No name attribute: the address is never sent to the server --%>
+                                    <textarea id="address" class="form-control bg-light" rows="3" readonly>${fn:escapeXml(hotel.address)}</textarea>
                                 </div>
                                 <div class="col-12">
                                     <hr class="my-2">

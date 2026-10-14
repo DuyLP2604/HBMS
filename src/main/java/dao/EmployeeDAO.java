@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
 import java.util.Locale;
+import util.EmployeeIdGenerator;
 import util.PersistenceManager;
 
 public class EmployeeDAO {
@@ -78,6 +79,28 @@ public class EmployeeDAO {
         }
     }
 
+    public boolean isPhoneExists(String phone) {
+        return isPhoneExists(phone, null);
+    }
+
+    /*
+     * When updating, exclude the employee being edited.
+     * The phone number must already be normalised (see EmployeeValidator.normalizePhone).
+     */
+    public boolean isPhoneExists(String phone, String excludeEmployeeID) {
+        if (phone == null || phone.trim().isEmpty()) {
+            return false;
+        }
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            return phoneExists(em, phone.trim(), excludeEmployeeID);
+        } catch (Exception exception) {
+            throw new IllegalStateException("Unable to check employee phone number.", exception);
+        } finally {
+            close(em);
+        }
+    }
+
     /*
      * Inserts an employee linked to an existing user account.
      */
@@ -91,6 +114,7 @@ public class EmployeeDAO {
             em.getTransaction().begin();
 
             ensureEmailAvailable(em, employee.getEmail(), null);
+            ensurePhoneAvailable(em, employee.getPhone(), null);
 
             Users managedUser = em.find(Users.class, employee.getUserID().getUserID());
             if (managedUser == null) {
@@ -124,6 +148,8 @@ public class EmployeeDAO {
             em.getTransaction().begin();
 
             ensureEmailAvailable(em, employee.getEmail(), null);
+            ensurePhoneAvailable(em, employee.getPhone(), null);
+            ensureUsernameAvailable(em, user.getUsername());
 
             em.persist(user);
             employee.setUserID(user);
@@ -154,6 +180,7 @@ public class EmployeeDAO {
             }
 
             ensureEmailAvailable(em, employee.getEmail(), managedEmployee.getEmployeeID());
+            ensurePhoneAvailable(em, employee.getPhone(), managedEmployee.getEmployeeID());
 
             managedEmployee.setFullName(employee.getFullName());
             managedEmployee.setPosition(employee.getPosition());
@@ -224,26 +251,33 @@ public class EmployeeDAO {
         }
     }
 
+    /*
+     * Next free employee ID (e.g. NV32). The matching username is the same text
+     * in lower case (nv32), so the number is skipped when that username is
+     * already taken by any account. Throws instead of guessing, because a wrong
+     * ID would collide with an existing employee.
+     */
     public String generateEmployeeID() {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
-            String jpql = "SELECT e.employeeID FROM Employee e ORDER BY e.employeeID DESC";
-            TypedQuery<String> query = em.createQuery(jpql, String.class);
-            query.setMaxResults(1);
-            List<String> result = query.getResultList();
-
-            if (result.isEmpty()) {
-                return "NV01";
+            List<String> ids = em.createQuery("SELECT e.employeeID FROM Employee e", String.class).getResultList();
+            int number = EmployeeIdGenerator.nextNumber(ids);
+            while (usernameTaken(em, EmployeeIdGenerator.usernameOf(EmployeeIdGenerator.formatId(number)))) {
+                number++;
             }
-
-            String lastId = result.get(0);
-            int number = Integer.parseInt(lastId.replaceAll("\\D+", "")) + 1;
-            return String.format("NV%02d", number);
+            return EmployeeIdGenerator.formatId(number);
         } catch (Exception exception) {
-            return "NV01";
+            throw new IllegalStateException("Unable to generate the next employee ID.", exception);
         } finally {
             close(em);
         }
+    }
+
+    private boolean usernameTaken(EntityManager em, String username) {
+        Long count = em.createQuery("SELECT COUNT(u) FROM Users u WHERE u.username = :username", Long.class)
+                .setParameter("username", username)
+                .getSingleResult();
+        return count != null && count > 0;
     }
 
     private String normalizeEmail(String email) {
@@ -274,6 +308,41 @@ public class EmployeeDAO {
     private void ensureEmailAvailable(EntityManager em, String email, String excludeEmployeeID) {
         if (email != null && emailExists(em, email, excludeEmployeeID)) {
             throw new IllegalArgumentException("Email is already used by another employee.");
+        }
+    }
+
+    private boolean phoneExists(EntityManager em, String phone, String excludeEmployeeID) {
+        String jpql = "SELECT COUNT(e) FROM Employee e WHERE e.phone = :phone";
+        boolean excludeCurrentEmployee = excludeEmployeeID != null && !excludeEmployeeID.trim().isEmpty();
+
+        if (excludeCurrentEmployee) {
+            jpql += " AND e.employeeID <> :employeeID";
+        }
+
+        TypedQuery<Long> query = em.createQuery(jpql, Long.class);
+        query.setParameter("phone", phone);
+
+        if (excludeCurrentEmployee) {
+            query.setParameter("employeeID", excludeEmployeeID.trim());
+        }
+
+        return query.getSingleResult() > 0;
+    }
+
+    // EMPLOYEE.Phone is UNIQUE in the database; report a clear message instead of a SQL error.
+    private void ensurePhoneAvailable(EntityManager em, String phone, String excludeEmployeeID) {
+        if (phone != null && !phone.trim().isEmpty() && phoneExists(em, phone.trim(), excludeEmployeeID)) {
+            throw new IllegalArgumentException("Phone number is already used by another employee.");
+        }
+    }
+
+    // USERS.Username is UNIQUE in the database.
+    private void ensureUsernameAvailable(EntityManager em, String username) {
+        Long count = em.createQuery("SELECT COUNT(u) FROM Users u WHERE u.username = :username", Long.class)
+                .setParameter("username", username.trim())
+                .getSingleResult();
+        if (count != null && count > 0) {
+            throw new IllegalArgumentException("Username is already taken.");
         }
     }
 
