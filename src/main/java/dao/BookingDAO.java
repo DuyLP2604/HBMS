@@ -175,7 +175,21 @@ public class BookingDAO extends DAOFramework<Booking>
         }, true);
         return getByIdWithDetails(bookingID);
     }
+    
+    public void updateBookingCCCDs(String bookingID, String cccds) {
+        String id = required(bookingID, "Booking ID", 6);
+        String value = (cccds == null || cccds.isBlank()) ? null : cccds.trim();
 
+        execute("UPDATE dbo.BOOKING SET GuestCCCDs = ? WHERE BookingID = ?", statement -> {
+            if (value == null) {
+                statement.setNull(1, Types.VARCHAR);
+            } else {
+                statement.setString(1, value);
+            }
+            statement.setString(2, id);
+        }, true);
+    }
+    
     public Booking cancelBooking(String bookingID, int actorUserID)
     {
         return cancelBooking(bookingID, actorUserID, "CUSTOMER_REQUEST");
