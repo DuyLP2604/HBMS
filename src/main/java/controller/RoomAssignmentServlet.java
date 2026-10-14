@@ -131,7 +131,7 @@ public class RoomAssignmentServlet extends HttpServlet {
 
             response.sendRedirect(
                     request.getContextPath()
-                    + "/staff/bookings"
+                    + "/staff/stays"
             );
 
         } catch (SecurityException ex) {
