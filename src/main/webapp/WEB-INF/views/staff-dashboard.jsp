@@ -162,5 +162,28 @@
                 </div>
             </section>
         </c:if>
+
+        <c:if test="${employee.position == 'Service staff'}">
+            <section class="mb-4" aria-labelledby="service-menu-title">
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <h2 id="service-menu-title" class="h4 mb-0">Service Staff Menu</h2>
+                    <span class="badge bg-warning text-dark">Service Staff</span>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6 col-xl-4">
+                        <div class="card h-100 shadow-sm border-warning">
+                            <div class="card-body d-flex flex-column">
+                                <div class="mb-3"><i class="fa-solid fa-bell-concierge fa-2x text-warning"></i></div>
+                                <h3 class="h5">Manage Services</h3>
+                                <p class="text-muted flex-grow-1">Xem danh mục dịch vụ, cập nhật đơn giá, tạo mới hoặc xóa dịch vụ khách sạn.</p>
+                                <a href="${pageContext.request.contextPath}/service?action=manage" class="btn btn-warning text-dark fw-semibold">
+                                    Manage Services
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </c:if>
     </div>
 </layout:layout>
