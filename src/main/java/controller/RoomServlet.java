@@ -114,9 +114,10 @@ public class RoomServlet extends HttpServlet {
                 } else {
                     Flash.error(request, "Room not found!");
                 }
-
                 response.sendRedirect(request.getContextPath() + "/room");
                 break;
+            default:
+                viewList(request, response);
         }
 
     }
