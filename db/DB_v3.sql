@@ -1470,13 +1470,11 @@ GO
 CREATE INDEX IX_PAYMENT_Booking_Status
 ON PAYMENT (BookingID, Status);
 GO
-
+/*
+   update reply cho complaint
+*/
 USE QLKS;
 GO
-
-UPDATE EMPLOYEE 
-SET Position = N'Customer service' 
-WHERE EmployeeID IN ('NV05', 'NV06', 'NV07');
 
 ALTER TABLE COMPLAINT 
 ADD ReplyMessage NVARCHAR(MAX) NULL;
