@@ -13,7 +13,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import util.flash.Flash;
 
 @WebServlet(name = "ComplaintServlet", urlPatterns = {"/complaint"})
@@ -26,50 +28,48 @@ public class ComplaintServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
+
         String action = request.getParameter("action");
-        if (action == null || action.trim().isEmpty()) {
-            action = "list";
-        }
+        action = (action == null || action.trim().isEmpty()) ? "list" : action;
         ComplaintDAO daoCp = new ComplaintDAO();
+
         if ("list".equalsIgnoreCase(action)) {
             if (!canManageComplaints(user)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page!");
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
                 return;
             }
             request.setAttribute("complaints", daoCp.getAll());
             request.getRequestDispatcher("/WEB-INF/views/complaints.jsp").forward(request, response);
+
         } else if ("add".equalsIgnoreCase(action)) {
             if (!"Customer".equalsIgnoreCase(user.getRole())) {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only customers can submit complaints.");
                 return;
             }
-            CustomerDAO daoCustomer = new CustomerDAO();
-            Customer customer = daoCustomer.getCustomerByUserId(user.getUserID());
+            Customer customer = new CustomerDAO().getCustomerByUserId(user.getUserID());
             if (customer != null) {
-                java.util.List<Complaint> myComplaints = daoCp.getAll().stream().filter(c -> c.getCustomerID() != null && c.getCustomerID().getCustomerID().equals(customer.getCustomerID())).collect(java.util.stream.Collectors.toList());
-
+                List<Complaint> myComplaints = daoCp.getAll().stream()
+                        .filter(c -> c.getCustomerID() != null && c.getCustomerID().getCustomerID().equals(customer.getCustomerID()))
+                        .collect(Collectors.toList());
                 request.setAttribute("myComplaints", myComplaints);
             }
-
             request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp").forward(request, response);
+
         } else if ("viewDetail".equalsIgnoreCase(action)) {
-            Integer id = readComplaintId(request, response);
-            if (id == null) {
-                return;
+            try {
+                int id = Integer.parseInt(request.getParameter("id"));
+                Complaint complaint = daoCp.getComplaintById(id);
+
+                if (complaint == null || !canViewComplaint(user, complaint)) {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "Complaint not found or access denied.");
+                    return;
+                }
+
+                request.setAttribute("complaint", complaint);
+                request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp").forward(request, response);
+            } catch (NumberFormatException e) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid complaint ID.");
             }
-            Complaint complaint = daoCp.getComplaintById(id);
-            if (complaint == null) {
-                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Complaint not found.");
-                return;
-            }
-            if (!canViewComplaint(user, complaint)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to view this complaint.");
-                return;
-            }
-            request.setAttribute("complaint", complaint);
-            request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp").forward(request, response);
-        } else {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid action.");
         }
     }
 
@@ -81,85 +81,63 @@ public class ComplaintServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
+
         String action = request.getParameter("action");
         ComplaintDAO daoCp = new ComplaintDAO();
+
         if ("add".equalsIgnoreCase(action)) {
             if (!"Customer".equalsIgnoreCase(user.getRole())) {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only customers can submit complaints.");
                 return;
             }
             Customer customer = new CustomerDAO().getCustomerByUserId(user.getUserID());
-            if (customer == null) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "No customer profile is linked to this account.");
-                return;
-            }
             String title = request.getParameter("title");
             String content = request.getParameter("content");
-            if (title == null || title.trim().isEmpty() || content == null || content.trim().isEmpty()) {
-                request.setAttribute("errorMessage", "Title and complaint details are required.");
-                request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp").forward(request, response);
+
+            if (title == null || title.trim().isEmpty() || content == null || content.trim().isEmpty() || title.length() > 200) {
+                Flash.error(request, "Title (max 200 chars) and details are required.");
+                response.sendRedirect(request.getContextPath() + "/complaint?action=add");
                 return;
             }
-            if (title.trim().length() > 200) {
-                request.setAttribute("errorMessage", "Title must not exceed 200 characters.");
-                request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp").forward(request, response);
-                return;
-            }
+
             Complaint complaint = new Complaint();
             complaint.setTitle(title.trim());
             complaint.setContent(content.trim());
             complaint.setCustomerID(customer);
             complaint.setCreatedAt(new Date());
             complaint.setStatus("Chưa xử lý");
-            if (!daoCp.insert(complaint)) {
-                request.setAttribute("errorMessage", "Unable to submit your complaint. Please try again.");
-                request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp").forward(request, response);
-                return;
+
+            if (daoCp.insert(complaint)) {
+                Flash.success(request, "Complaint added successfully.");
+            } else {
+                Flash.error(request, "System error. Please try again.");
             }
-            Flash.success(request, "Complaint added successfully.");
             response.sendRedirect(request.getContextPath() + "/complaint?action=add");
-        } else if ("updateStatus".equalsIgnoreCase(action) || "reply".equalsIgnoreCase(action)) {
+
+        } else if ("reply".equalsIgnoreCase(action)) {
             if (!canManageComplaints(user)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to update or reply to complaints.");
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
                 return;
             }
-            Integer id = readComplaintId(request, response);
-            if (id == null) {
-                return;
-            }
-            String status = request.getParameter("status");
-            if (status == null || status.trim().isEmpty() || status.trim().length() > 30) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Status is required and must not exceed 30 characters.");
-                return;
-            }
-            if (daoCp.getComplaintById(id) == null) {
-                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Complaint not found.");
-                return;
-            }
-            if ("reply".equalsIgnoreCase(action)) {
+
+            try {
+                int id = Integer.parseInt(request.getParameter("id"));
+                String status = request.getParameter("status");
                 String replyMessage = request.getParameter("replyMessage");
-                if (replyMessage == null || replyMessage.trim().isEmpty()) {
-                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Reply message is required.");
+
+                if (status == null || replyMessage == null || replyMessage.trim().isEmpty()) {
+                    Flash.error(request, "Status and Reply message are required.");
+                    response.sendRedirect(request.getContextPath() + "/complaint?action=viewDetail&id=" + id);
                     return;
                 }
-                try {
-                    daoCp.updateReply(id, replyMessage.trim(), status.trim());
-                } catch (RuntimeException ex) {
-                    throw new ServletException("Unable to save complaint reply.", ex);
-                }
-                Flash.success(request, "Đã lưu phản hồi khách hàng thành công.");
+
+                daoCp.updateReply(id, replyMessage.trim(), status.trim());
+                Flash.success(request, "Reply saved successfully.");
                 response.sendRedirect(request.getContextPath() + "/complaint?action=viewDetail&id=" + id);
-            } else {
-                try {
-                    daoCp.updateStatus(id, status.trim());
-                } catch (IllegalStateException ex) {
-                    throw new ServletException("Unable to update complaint status.", ex);
-                }
-                Flash.success(request, "Complaint status updated successfully.");
-                response.sendRedirect(request.getContextPath() + "/complaint?action=list");
+
+            } catch (Exception e) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid input data.");
             }
-        } else {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid action.");
         }
     }
 
