@@ -37,8 +37,8 @@
                         </div>
                         <form id="searchRoomForm" action="${pageContext.request.contextPath}/room-types" method="get" class="p-4">
                             <div class="mb-3">
-                                <label for="checkInDate" class="form-label fw-bold text-secondary small text-uppercase">Check-in Date</label>
-                                <input type="date" id="checkInDate" name="checkInDate" value="${checkInDate}" class="form-control bg-light" required>
+                                <label for="checkInDate" class="form-label fw-bold text-secondary small text-uppercase">Check-in Date (14:00)</label>
+                                <input type="date" id="checkInDate" name="checkInDate" value="<c:out value='${checkInDate}' />" min="<c:out value='${today}' />" class="form-control bg-light" required>
                             </div>
                             <div class="mb-4">
                                 <label for="checkOutDate" class="form-label fw-bold text-secondary small text-uppercase">Check-out Date</label>
@@ -59,6 +59,8 @@
         </div>
 
         <!-- Messages -->
+        <p class="small text-muted">Same-day bookings close at 10:00 Vietnam time. Check-in is at 14:00.</p>
+
         <c:if test="${not empty successMessage}">
             <div class="alert alert-success shadow-sm rounded-3"><i class="fa-solid fa-circle-check me-2"></i><c:out value="${successMessage}" /></div>
             </c:if>
@@ -173,57 +175,46 @@
         document.addEventListener("DOMContentLoaded", function () {
             const checkInInput = document.getElementById("checkInDate");
             const checkOutInput = document.getElementById("checkOutDate");
-
-            function formatDate(date) {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `\${year}-\${month}-\${day}`;
+            if (!checkInInput || !checkOutInput) {
+                return;
             }
 
-            const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-
-            const todayStr = formatDate(today);
-            const tomorrowStr = formatDate(tomorrow);
-
-            // Chặn người dùng chọn ngày quá khứ
-            checkInInput.min = todayStr;
-            checkOutInput.min = tomorrowStr;
-
-            // Nếu ô input đang trống (Lần đầu load trang) -> Gán giá trị mặc định
+            // The server supplies the earliest date using 10:00 Vietnam time.
+            const earliestCheckIn = checkInInput.min;
             let isFirstLoad = false;
-            if (!checkInInput.value) {
-                checkInInput.value = todayStr;
+            if (!checkInInput.value && earliestCheckIn) {
+                checkInInput.value = earliestCheckIn;
                 isFirstLoad = true;
             }
-            if (!checkOutInput.value) {
-                checkOutInput.value = tomorrowStr;
+
+            function nextDate(value) {
+                const parts = value.split("-").map(Number);
+                if (parts.length !== 3 || !parts.every(Number.isFinite)) {
+                    return "";
+                }
+                const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1));
+                return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : "";
             }
 
-            // Logic tự động tịnh tiến ngày Check-out nếu ngày Check-in thay đổi
-            checkInInput.addEventListener("change", function () {
-                if (this.value) {
-                    const selectedCheckIn = new Date(this.value);
-                    const minCheckOut = new Date(selectedCheckIn);
-                    minCheckOut.setDate(minCheckOut.getDate() + 1);
-
-                    const minCheckOutStr = formatDate(minCheckOut);
-                    checkOutInput.min = minCheckOutStr;
-
-                    if (!checkOutInput.value || checkOutInput.value < minCheckOutStr) {
-                        checkOutInput.value = minCheckOutStr;
+            function updateCheckOut() {
+                const minimumCheckOut = nextDate(checkInInput.value || earliestCheckIn);
+                if (minimumCheckOut) {
+                    checkOutInput.min = minimumCheckOut;
+                    if (!checkOutInput.value || checkOutInput.value < minimumCheckOut) {
+                        checkOutInput.value = minimumCheckOut;
                     }
                 }
-            });
-
-            // Nếu chưa submit lần nào -> Tự động submit bằng JS (Chạy nền)
-        <c:if test="${not searched}">
-            if (isFirstLoad) {
-                document.getElementById('searchRoomForm').submit();
             }
-        </c:if>
+
+            checkInInput.addEventListener("change", updateCheckOut);
+            updateCheckOut();
+
+            // Keep main's automatic first search, with dates allowed by the server.
+            <c:if test="${not searched}">
+                if (isFirstLoad && checkInInput.value && checkOutInput.value) {
+                    document.getElementById("searchRoomForm").submit();
+                }
+            </c:if>
         });
     </script>
 

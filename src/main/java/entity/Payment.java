@@ -34,6 +34,8 @@ public class Payment implements Serializable
     private Date paymentTime;
     @Basic(optional = false) @NotNull @DecimalMin(value = "0", inclusive = false) @Digits(integer = 10, fraction = 2) @Column(name = "Amount", precision = 12, scale = 2)
     private BigDecimal amount;
+    @NotNull @DecimalMin("0") @Digits(integer = 10, fraction = 2) @Column(name = "WalletAmount", precision = 12, scale = 2, updatable = false)
+    private BigDecimal walletAmount = BigDecimal.ZERO;
     @Basic(optional = false) @NotNull @Size(min = 1, max = 30) @Pattern(regexp = "PENDING|PAID|FAILED|REFUNDED") @Column(name = "Status")
     private String status;
     @Size(max = 100) @Column(name = "TransactionCode")
@@ -102,6 +104,21 @@ public class Payment implements Serializable
     public void setAmount(BigDecimal amount)
     {
         this.amount = amount;
+    }
+
+    public BigDecimal getWalletAmount()
+    {
+        return walletAmount;
+    }
+
+    public void setWalletAmount(BigDecimal walletAmount)
+    {
+        this.walletAmount = walletAmount;
+    }
+
+    public BigDecimal getExternalAmount()
+    {
+        return amount == null ? BigDecimal.ZERO : amount.subtract(walletAmount == null ? BigDecimal.ZERO : walletAmount);
     }
 
     public String getStatus()

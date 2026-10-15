@@ -1,0 +1,215 @@
+/* Scoped to the staff dashboard; loaded through layout.tag's pageCss. */
+.staff-dashboard-page {
+    background: #f4f6fb;
+    color: #18263b;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.staff-dashboard-page .staff-dashboard {
+    max-width: 1180px;
+    padding-top: 36px;
+    padding-bottom: 56px;
+}
+.staff-dashboard-page .staff-dashboard-header {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 36px 40px;
+    margin-bottom: 36px;
+    border: 1px solid #dce5f2;
+    border-radius: 24px;
+    background: linear-gradient(115deg, #eaf1ff 0%, #f5f8ff 65%, #e8f5f2 100%);
+}
+.staff-dashboard-page .staff-dashboard-header::after {
+    content: "";
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    right: -100px;
+    top: -130px;
+    border: 32px solid rgba(66, 117, 185, .06);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.staff-dashboard-page .staff-header-content,
+.staff-dashboard-page .staff-role-badge { position: relative; z-index: 1; }
+.staff-dashboard-page .staff-eyebrow {
+    margin: 0 0 12px;
+    color: #365b91;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+}
+.staff-dashboard-page .staff-dashboard-header h1 {
+    margin: 0 0 14px;
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    font-weight: 750;
+    letter-spacing: -.035em;
+    line-height: 1.15;
+}
+.staff-dashboard-page .staff-welcome {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    color: #41516b;
+}
+.staff-dashboard-page .staff-welcome strong { color: #243a5b; }
+.staff-dashboard-page .staff-header-description {
+    margin: 0;
+    font-size: .9rem;
+    color: #5b6b82;
+    line-height: 1.6;
+}
+.staff-dashboard-page .staff-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    max-width: 280px;
+    padding: 12px 16px;
+    border: 1px solid #d7e3f1;
+    border-radius: 12px;
+    background: rgba(255,255,255,.8);
+    color: #365b91;
+    font-size: .82rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.staff-dashboard-page .staff-section-heading { margin: 0 0 22px; }
+.staff-dashboard-page .staff-section-heading h2 {
+    margin: 0 0 6px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+}
+.staff-dashboard-page .staff-section-heading p {
+    margin: 0;
+    color: #647187;
+    font-size: .88rem;
+}
+.staff-dashboard-page .staff-functions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px;
+}
+.staff-dashboard-page .staff-function-item { min-width: 0; }
+.staff-dashboard-page .staff-function-card {
+    --staff-accent: #315ea5;
+    --staff-accent-hover: #244b89;
+    --staff-tint: #edf3ff;
+    height: 100%;
+    border: 1px solid #e0e6ef;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 4px 16px rgba(26, 45, 77, .035);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.staff-dashboard-page .staff-card-teal {
+    --staff-accent: #167368;
+    --staff-accent-hover: #0e5b53;
+    --staff-tint: #e8f6f2;
+}
+.staff-dashboard-page .staff-card-violet {
+    --staff-accent: #6850a2;
+    --staff-accent-hover: #523b88;
+    --staff-tint: #f2edfa;
+}
+.staff-dashboard-page .staff-card-amber {
+    --staff-accent: #8b5c15;
+    --staff-accent-hover: #72490c;
+    --staff-tint: #fff4e1;
+}
+.staff-dashboard-page .staff-function-card:hover,
+.staff-dashboard-page .staff-function-card:focus-within {
+    transform: translateY(-3px);
+    border-color: #c6d2e4;
+    box-shadow: 0 12px 28px rgba(26, 45, 77, .09);
+}
+.staff-dashboard-page .staff-card-body {
+    display: flex;
+    flex-direction: column;
+    padding: 26px;
+}
+.staff-dashboard-page .staff-function-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    margin-bottom: 20px;
+    border-radius: 14px;
+    background: var(--staff-tint);
+    color: var(--staff-accent);
+    font-size: 1.25rem;
+}
+.staff-dashboard-page .staff-card-title {
+    margin: 0 0 10px;
+    font-size: 1.08rem;
+    font-weight: 700;
+    letter-spacing: -.015em;
+    line-height: 1.4;
+}
+.staff-dashboard-page .staff-card-description {
+    flex-grow: 1;
+    margin: 0 0 24px;
+    color: #657186;
+    font-size: .88rem;
+    line-height: 1.7;
+}
+.staff-dashboard-page .staff-function-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 14px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: var(--staff-tint);
+    color: var(--staff-accent);
+    font-size: .84rem;
+    font-weight: 650;
+    text-align: left;
+    text-decoration: none;
+    white-space: normal;
+    transition: background .18s ease, color .18s ease;
+}
+.staff-dashboard-page .staff-function-link i { font-size: .78rem; flex-shrink: 0; }
+.staff-dashboard-page .staff-function-link:hover,
+.staff-dashboard-page .staff-function-link:active {
+    background: var(--staff-accent-hover);
+    color: #fff;
+}
+.staff-dashboard-page .staff-function-link:focus-visible {
+    outline: 3px solid var(--staff-accent);
+    outline-offset: 3px;
+    box-shadow: none;
+}
+.staff-dashboard-page .staff-dashboard .alert { border-radius: 12px; margin-bottom: 24px; }
+@media (max-width: 991.98px) {
+    .staff-dashboard-page .staff-functions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .staff-dashboard-page .staff-dashboard-header { padding: 30px; }
+    .staff-dashboard-page .staff-role-badge { max-width: 210px; }
+}
+@media (max-width: 575.98px) {
+    .staff-dashboard-page .staff-dashboard { padding: 22px 16px 36px; }
+    .staff-dashboard-page .staff-dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+        padding: 26px 22px;
+        margin-bottom: 28px;
+        border-radius: 18px;
+    }
+    .staff-dashboard-page .staff-role-badge { max-width: 100%; padding: 9px 12px; }
+    .staff-dashboard-page .staff-functions-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .staff-dashboard-page .staff-card-body { padding: 22px; }
+    .staff-dashboard-page .staff-function-icon { margin-bottom: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .staff-dashboard-page .staff-function-card,
+    .staff-dashboard-page .staff-function-link { transition: none; }
+    .staff-dashboard-page .staff-function-card:hover,
+    .staff-dashboard-page .staff-function-card:focus-within { transform: none; }
+}

@@ -143,7 +143,7 @@ public class BookingServlet extends HttpServlet {
             if ("REFUNDED".equals(summary.get("paymentStatus"))) {
                 Flash.success(request, "Booking cancelled. Eligible payments have been refunded to the customer's system wallet.");
             } else if ("NO_REFUND".equals(summary.get("paymentStatus"))) {
-                Flash.success(request, "Booking cancelled. The refund period has expired.");
+                Flash.success(request, "Booking cancelled. No refund applies under the booking cancellation policy.");
             } else {
                 Flash.success(request, "Booking cancelled successfully.");
             }

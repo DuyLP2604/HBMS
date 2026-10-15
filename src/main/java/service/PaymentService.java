@@ -1,6 +1,8 @@
 package service;
 
 import dao.BookingDAO;
+import dao.WalletDAO;
+import dto.WalletSummary;
 import entity.Booking;
 import entity.Payment;
 import entity.Paymentmethod;
@@ -83,7 +85,17 @@ public class PaymentService
         {
             throw new IllegalStateException("This booking has no outstanding payment.");
         }
-        return new PaymentRequest(bookingID.trim(), userID, type, (BigDecimal) value);
+        BigDecimal walletBalance = null;
+        try
+        {
+            WalletSummary wallet = new WalletDAO().getWalletByUserID(userID);
+            walletBalance = wallet == null ? null : wallet.getBalance();
+        }
+        catch (IllegalStateException exception)
+        {
+            LOGGER.log(Level.WARNING, "Unable to offer wallet payment.", exception);
+        }
+        return new PaymentRequest(bookingID.trim(), userID, type, (BigDecimal) value, walletBalance);
     }
 
     // Compatibility entry point for initial payments. Balance payments require a saved PaymentRequest.
@@ -100,11 +112,33 @@ public class PaymentService
     // External methods are SIMULATED, matching the existing project. Replace this with verified provider callbacks for real payments.
     public Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID)
     {
+        return processPayment(paymentRequest, methodID, userID, false);
+    }
+
+    public Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet)
+    {
         if (paymentRequest == null || paymentRequest.getUserID() != userID || userID <= 0)
         {
             throw new IllegalArgumentException("The payment request is invalid. Reload the payment page.");
         }
         String selectedMethod = methodID == null ? "" : methodID.trim();
+        BigDecimal walletAmount = useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
+        if (useWallet && walletAmount.signum() <= 0)
+        {
+            throw new IllegalArgumentException("No wallet balance is available. Reload the page or pay using an external method.");
+        }
+        if (useWallet && walletAmount.compareTo(paymentRequest.amount) == 0)
+        {
+            selectedMethod = "PT09";
+        }
+        if ("PT09".equals(selectedMethod))
+        {
+            if (paymentRequest.getOfferedWalletAmount().compareTo(paymentRequest.amount) < 0)
+            {
+                throw new IllegalArgumentException("Your wallet cannot cover the full payment. Select an external method and use your wallet for part of it.");
+            }
+            walletAmount = paymentRequest.amount;
+        }
         if (selectedMethod.isEmpty() || selectedMethod.length() > 4)
         {
             throw new IllegalArgumentException("Please select a valid payment method.");
@@ -115,7 +149,7 @@ public class PaymentService
         }
         synchronized (paymentRequest)
         {
-            if (paymentRequest.methodID != null && !paymentRequest.methodID.equals(selectedMethod))
+            if (paymentRequest.methodID != null && (!paymentRequest.methodID.equals(selectedMethod) || paymentRequest.walletAmount.compareTo(walletAmount) != 0))
             {
                 throw new IllegalStateException("This request already uses another payment method. Reload the payment page to change it.");
             }
@@ -138,6 +172,7 @@ public class PaymentService
                 throw new IllegalArgumentException("The selected payment method does not exist.");
             }
             paymentRequest.methodID = selectedMethod;
+            paymentRequest.walletAmount = walletAmount;
             try (Connection connection = PersistenceManager.openConnection())
             {
                 connection.setAutoCommit(false);
@@ -149,7 +184,7 @@ public class PaymentService
                     {
                         paymentRequest.paymentID = generatePaymentID(connection);
                     }
-                    execute(connection, "EXEC dbo.SP_RECORD_PAYMENT @PaymentID = ?, @BookingID = ?, @ActorUserID = ?, @PaymentType = ?, @Amount = ?, @MethodID = ?, @TransactionCode = ?;", paymentRequest);
+                    execute(connection, "EXEC dbo.SP_RECORD_PAYMENT @PaymentID = ?, @BookingID = ?, @ActorUserID = ?, @PaymentType = ?, @Amount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAmount = ?;", paymentRequest);
                     Payment payment = readPayment(connection, paymentRequest, booking, method);
                     connection.commit();
                     return payment;
@@ -187,7 +222,7 @@ public class PaymentService
 
     private boolean isIDUsedByAnotherRequest(Connection connection, PaymentRequest request) throws SQLException
     {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT BookingID, PaymentType, Amount, MethodID, TransactionCode FROM dbo.PAYMENT WHERE PaymentID = ?"))
+        try (PreparedStatement statement = connection.prepareStatement("SELECT BookingID, PaymentType, Amount, WalletAmount, MethodID, TransactionCode FROM dbo.PAYMENT WHERE PaymentID = ?"))
         {
             statement.setString(1, request.paymentID);
             try (ResultSet result = statement.executeQuery())
@@ -197,7 +232,7 @@ public class PaymentService
                     return false;
                 }
                 String transactionCode = "PT09".equals(request.methodID) ? "WALLET-" + request.paymentID : request.transactionCode;
-                return !request.bookingID.equals(result.getString("BookingID").trim()) || !request.paymentType.equals(result.getString("PaymentType")) || request.amount.compareTo(result.getBigDecimal("Amount")) != 0 || !request.methodID.equals(result.getString("MethodID")) || !transactionCode.equals(result.getString("TransactionCode"));
+                return !request.bookingID.equals(result.getString("BookingID").trim()) || !request.paymentType.equals(result.getString("PaymentType")) || request.amount.compareTo(result.getBigDecimal("Amount")) != 0 || request.walletAmount.compareTo(result.getBigDecimal("WalletAmount")) != 0 || !request.methodID.equals(result.getString("MethodID")) || !transactionCode.equals(result.getString("TransactionCode"));
             }
         }
     }
@@ -227,6 +262,7 @@ public class PaymentService
                 statement.setBigDecimal(5, request.amount);
                 statement.setString(6, request.methodID);
                 statement.setString(7, request.transactionCode);
+                statement.setBigDecimal(8, request.walletAmount);
             }
             boolean hasResult = statement.execute();
             while (true)
@@ -252,7 +288,7 @@ public class PaymentService
 
     private Payment readPayment(Connection connection, PaymentRequest request, Booking booking, Paymentmethod method) throws SQLException
     {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT PaymentTime, Amount, Status, TransactionCode FROM dbo.PAYMENT WHERE PaymentID = ? AND BookingID = ?"))
+        try (PreparedStatement statement = connection.prepareStatement("SELECT PaymentTime, Amount, WalletAmount, Status, TransactionCode FROM dbo.PAYMENT WHERE PaymentID = ? AND BookingID = ?"))
         {
             statement.setString(1, request.paymentID);
             statement.setString(2, request.bookingID);
@@ -268,6 +304,8 @@ public class PaymentService
                 payment.setMethodID(method);
                 payment.setPaymentTime(result.getTimestamp("PaymentTime"));
                 payment.setAmount(result.getBigDecimal("Amount"));
+                payment.setWalletAmount(result.getBigDecimal("WalletAmount"));
+                payment.setPaymentType(request.paymentType);
                 payment.setStatus(result.getString("Status"));
                 payment.setTransactionCode(result.getString("TransactionCode"));
                 return payment;
@@ -298,7 +336,11 @@ public class PaymentService
             case 51045:
                 return "The booking amount or payment state has changed. Reload the payment page.";
             case 51046:
-                return "Your internal wallet balance is insufficient.";
+                return "Your wallet balance has changed or is insufficient. Reload the payment page to review the amounts.";
+            case 51047:
+                return "The wallet contribution is invalid. Reload the payment page.";
+            case 51048:
+                return "Only the wallet owner can authorize a wallet contribution.";
             default:
                 return "Payment could not be confirmed. Check your booking or retry the same request.";
         }
@@ -306,21 +348,24 @@ public class PaymentService
 
     public static final class PaymentRequest implements Serializable
     {
-        private static final long serialVersionUID = 1L;
+        private static final long serialVersionUID = 2L;
         private final String bookingID;
         private final int userID;
         private final String paymentType;
         private final BigDecimal amount;
+        private final BigDecimal walletBalance;
         private final String transactionCode = "SIM-" + UUID.randomUUID();
         private String paymentID;
         private String methodID;
+        private BigDecimal walletAmount;
 
-        private PaymentRequest(String bookingID, int userID, String paymentType, BigDecimal amount)
+        private PaymentRequest(String bookingID, int userID, String paymentType, BigDecimal amount, BigDecimal walletBalance)
         {
             this.bookingID = bookingID;
             this.userID = userID;
             this.paymentType = paymentType;
             this.amount = amount;
+            this.walletBalance = walletBalance;
         }
 
         public String getBookingID()
@@ -341,6 +386,16 @@ public class PaymentService
         public BigDecimal getAmount()
         {
             return amount;
+        }
+
+        public BigDecimal getWalletBalance()
+        {
+            return walletBalance;
+        }
+
+        public BigDecimal getOfferedWalletAmount()
+        {
+            return walletBalance == null ? BigDecimal.ZERO : walletBalance.max(BigDecimal.ZERO).min(amount);
         }
     }
 }

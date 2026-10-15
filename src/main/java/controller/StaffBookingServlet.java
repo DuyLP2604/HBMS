@@ -14,7 +14,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import service.RoomAssignmentService;
+import util.BookingTimePolicy;
 
 @WebServlet(
         name = "StaffBookingServlet",
@@ -44,6 +46,13 @@ public class StaffBookingServlet extends HttpServlet {
         }
 
         moveFlashMessage(request, session);
+        synchronized (session)
+        {
+            if (!(session.getAttribute("bookingCsrfToken") instanceof String))
+            {
+                session.setAttribute("bookingCsrfToken", UUID.randomUUID().toString());
+            }
+        }
 
         String bookingID
                 = request.getParameter("bookingID");
@@ -59,6 +68,7 @@ public class StaffBookingServlet extends HttpServlet {
                     "bookings",
                     bookings
             );
+            request.setAttribute("noShowBookings", BookingTimePolicy.prepareStaffList(bookings, BookingTimePolicy.now()));
 
             request.getRequestDispatcher(
                     "/WEB-INF/views/staff-bookings.jsp"

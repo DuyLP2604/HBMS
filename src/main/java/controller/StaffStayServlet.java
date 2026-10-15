@@ -10,7 +10,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.UUID;
 import service.BookingLifecycleService;
+import util.BookingTimePolicy;
 
 @WebServlet(name = "StaffStayServlet", urlPatterns = {"/staff/stays"})
 public class StaffStayServlet extends HttpServlet
@@ -35,6 +39,15 @@ public class StaffStayServlet extends HttpServlet
             throw new ServletException("Unable to load guest stays.", ex);
         }
         moveFlashMessage(request, request.getSession(false));
+        HttpSession session = request.getSession(false);
+        synchronized (session)
+        {
+            if (!(session.getAttribute("bookingCsrfToken") instanceof String))
+            {
+                session.setAttribute("bookingCsrfToken", UUID.randomUUID().toString());
+            }
+        }
+        request.setAttribute("noShowBookings", BookingTimePolicy.prepareStaffList(bookings, BookingTimePolicy.now()));
         request.setAttribute("bookings", bookings);
         request.getRequestDispatcher("/WEB-INF/views/staff-stays.jsp").forward(request, response);
     }
@@ -51,6 +64,11 @@ public class StaffStayServlet extends HttpServlet
         HttpSession session = request.getSession(false);
         String bookingID = request.getParameter("bookingID");
         String action = request.getParameter("action");
+        if ("cancelNoShow".equals(action) && !validCancelToken(request, session))
+        {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid cancellation request. Reload Guest Stay Management.");
+            return;
+        }
         try
         {
             if (bookingID == null || bookingID.isBlank() || bookingID.trim().length() > 6)
@@ -58,7 +76,12 @@ public class StaffStayServlet extends HttpServlet
                 throw new IllegalArgumentException("A valid booking ID is required.");
             }
             bookingID = bookingID.trim();
-            if ("checkIn".equals(action))
+            if ("cancelNoShow".equals(action))
+            {
+                lifecycleService.cancelNoShow(bookingID, user.getUserID());
+                setFlash(session, "lifecycleSuccess", "Booking " + bookingID + " was cancelled for no-show. No refund applies.");
+            }
+            else if ("checkIn".equals(action))
             {
                 lifecycleService.checkIn(bookingID, user.getUserID());
                 setFlash(session, "lifecycleSuccess", "The guest was checked in successfully.");
@@ -106,6 +129,14 @@ public class StaffStayServlet extends HttpServlet
             return null;
         }
         return user;
+    }
+
+    private boolean validCancelToken(HttpServletRequest request, HttpSession session)
+    {
+        Object stored = session.getAttribute("bookingCsrfToken");
+        String submitted = request.getParameter("csrfToken");
+        return stored instanceof String && submitted != null && submitted.length() <= 100
+                && MessageDigest.isEqual(((String) stored).getBytes(StandardCharsets.UTF_8), submitted.getBytes(StandardCharsets.UTF_8));
     }
 
     private void setFlash(HttpSession session, String key, String message)

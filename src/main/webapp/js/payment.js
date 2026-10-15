@@ -6,6 +6,16 @@ document.addEventListener("DOMContentLoaded", function ()
     const countdown = document.getElementById("paymentCountdown");
     const expiredMessage = document.getElementById("expiredMessage");
     const walletNotice = document.getElementById("walletPaymentNotice");
+    const useWallet = document.getElementById("useWallet");
+    const walletDisplay = document.getElementById("walletContributionDisplay");
+    const externalDisplay = document.getElementById("externalContributionDisplay");
+    const amountCents = form ? Math.round(Number(form.dataset.amount) * 100) : 0;
+    const walletCents = form ? Math.round(Number(form.dataset.walletContribution) * 100) : 0;
+    const walletCoversPayment = form && form.dataset.walletCanPay === "true";
+    const currency = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+    let previousExternalMethod = "";
+    let walletSelectedAutomatically = false;
+    let expired = false;
     const originalButtonContent = paymentButton ? paymentButton.innerHTML : "";
     const rawDeadline = countdown ? countdown.dataset.deadline || "" : "";
     const deadline = rawDeadline.trim() === "" ? NaN : Number(rawDeadline);
@@ -15,10 +25,43 @@ document.addEventListener("DOMContentLoaded", function ()
     let countdownInterval = null;
     function updateWalletNotice()
     {
+        const walletOnly = useWallet && useWallet.checked && walletCoversPayment;
+        if (paymentMethod)
+        {
+            if (walletOnly)
+            {
+                if (!walletSelectedAutomatically)
+                {
+                    previousExternalMethod = paymentMethod.value === "PT09" ? "" : paymentMethod.value;
+                }
+                paymentMethod.value = "PT09";
+                walletSelectedAutomatically = true;
+            }
+            else if (walletSelectedAutomatically)
+            {
+                paymentMethod.value = previousExternalMethod;
+                walletSelectedAutomatically = false;
+            }
+            paymentMethod.required = !walletOnly;
+            paymentMethod.disabled = expired || walletOnly;
+        }
+        const walletAmount = paymentMethod && paymentMethod.value === "PT09" ? amountCents : (useWallet && useWallet.checked ? walletCents : 0);
+        if (walletDisplay)
+        {
+            walletDisplay.textContent = currency.format(walletAmount / 100) + " VND";
+        }
+        if (externalDisplay)
+        {
+            externalDisplay.textContent = currency.format((amountCents - walletAmount) / 100) + " VND";
+        }
         if (walletNotice)
         {
-            walletNotice.classList.toggle("d-none", !paymentMethod || paymentMethod.value !== "PT09");
+            walletNotice.classList.toggle("d-none", walletAmount <= 0);
         }
+    }
+    if (useWallet)
+    {
+        useWallet.addEventListener("change", updateWalletNotice);
     }
     if (paymentMethod)
     {
@@ -35,6 +78,7 @@ document.addEventListener("DOMContentLoaded", function ()
     }
     function expirePaymentPage(invalidDeadline)
     {
+        expired = true;
         if (countdown)
         {
             countdown.textContent = invalidDeadline ? "Unavailable" : "Expired";
@@ -49,6 +93,10 @@ document.addEventListener("DOMContentLoaded", function ()
         if (paymentMethod)
         {
             paymentMethod.disabled = true;
+        }
+        if (useWallet)
+        {
+            useWallet.disabled = true;
         }
         if (expiredMessage)
         {
@@ -132,6 +180,7 @@ document.addEventListener("DOMContentLoaded", function ()
             return;
         }
         submitted = false;
+        expired = false;
         if (paymentButton)
         {
             paymentButton.disabled = false;
@@ -140,6 +189,10 @@ document.addEventListener("DOMContentLoaded", function ()
         if (paymentMethod)
         {
             paymentMethod.disabled = false;
+        }
+        if (useWallet)
+        {
+            useWallet.disabled = walletCents <= 0;
         }
         startCountdown();
         updateWalletNotice();

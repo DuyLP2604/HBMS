@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import util.PersistenceManager;
+import util.BookingTimePolicy;
 
 public class BookingCheckoutService
 {
@@ -35,6 +36,7 @@ public class BookingCheckoutService
     public Booking createPendingBooking(BookingWishList cart, int userID, String paymentOption)
     {
         validateCart(cart);
+        BookingTimePolicy.validateStayDates(cart.getCheckInDate(), cart.getCheckOutDate());
         if (userID <= 0)
         {
             throw new IllegalArgumentException("A valid authenticated account is required.");
@@ -228,6 +230,9 @@ public class BookingCheckoutService
                 break;
             case 51020:
                 message = "The booking amount must be positive.";
+                break;
+            case 51022:
+                message = "Same-day bookings are available only before 10:00 Vietnam time. Please select tomorrow or a later check-in date.";
                 break;
             default:
                 message = "Unable to confirm the booking. Check your bookings before trying again.";

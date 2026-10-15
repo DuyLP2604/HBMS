@@ -23,6 +23,7 @@
             </div>
         </c:if>
 
+        <p class="small text-muted">Check-in: 14:00. From 14:15, unarrived bookings appear first. Refresh to see the latest status.</p>
         <div class="card shadow-sm border-0">
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -39,10 +40,10 @@
                         </thead>
                         <tbody class="border-top-0">
                             <c:forEach var="booking" items="${bookings}">
-                                <tr>
+                                <tr class="${noShowBookings[booking.bookingID] ? 'table-danger' : ''}">
                                     <td class="ps-4 fw-semibold text-primary"><c:out value="${booking.bookingID}" /></td>
                                     <td class="fw-medium"><c:out value="${booking.customerID.fullName}" /></td>
-                                    <td><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /></td>
+                                    <td><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /> 14:00<br><small class="text-muted">Held until 14:15</small></td>
                                     <td><fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" /></td>
                                     
                                     <td>
@@ -63,6 +64,7 @@
                                                 <span class="badge bg-dark px-2 py-1"><c:out value="${booking.bookingStatus}" /></span>
                                             </c:otherwise>
                                         </c:choose>
+                                        <c:if test="${noShowBookings[booking.bookingID]}"><span class="badge bg-danger ms-1">Overdue check-in</span></c:if>
                                     </td>
                                     
                                     <!-- Xử lý nút Action gọn gàng, tránh bị ô trống -->
@@ -87,6 +89,14 @@
                                                 <span class="text-muted small"><i class="fa-solid fa-minus"></i></span>
                                             </c:otherwise>
                                         </c:choose>
+                                        <c:if test="${noShowBookings[booking.bookingID]}">
+                                            <form action="${pageContext.request.contextPath}/staff/stays" method="post" class="d-inline" onsubmit="return confirm('Cancel this booking for no-show? No refund applies.');">
+                                                <input type="hidden" name="bookingID" value="<c:out value='${booking.bookingID}' />">
+                                                <input type="hidden" name="action" value="cancelNoShow">
+                                                <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.bookingCsrfToken}' />">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">Cancel No-show</button>
+                                            </form>
+                                        </c:if>
                                     </td>
                                 </tr>
                             </c:forEach>
