@@ -7,7 +7,10 @@
     useBootstrap="true"
     >
     <div class="container py-5">
-        <h1 class="h3 mb-4">Bookings Awaiting Room Assignment</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">Bookings Awaiting Room Assignment</h1>
+            <a href="${pageContext.request.contextPath}/customer?action=add" class="btn btn-success">Add New Customer</a>
+        </div>
         <c:if test="${not empty successMessage}">
             <div class="alert alert-success"><c:out value="${successMessage}" /></div>
         </c:if>

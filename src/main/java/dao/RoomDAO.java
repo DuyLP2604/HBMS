@@ -35,8 +35,4 @@ public class RoomDAO extends DAOFramework<Room> {
         }
         return "R01"; // ID mặc định nếu bảng Room đang trống
     }
-
-    public static void main(String[] args) {
-        System.out.println(new RoomDAO().getAll());
-    }
 }
