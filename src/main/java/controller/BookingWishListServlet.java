@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import util.BookingWishListSession;
+import util.BookingTimePolicy;
 
 @WebServlet(name = "BookingWishListServlet", urlPatterns = {"/booking-wish-list"})
 public class BookingWishListServlet extends HttpServlet {
@@ -95,9 +96,7 @@ public class BookingWishListServlet extends HttpServlet {
             LocalDate checkInDate = LocalDate.parse(checkInValue);
             LocalDate checkOutDate = LocalDate.parse(checkOutValue);
 
-            if (!checkOutDate.isAfter(checkInDate)) {
-                throw new IllegalArgumentException("Check-out date must be later than check-in date.");
-            }
+            BookingTimePolicy.validateStayDates(checkInDate, checkOutDate);
             if (roomTypeID == null || roomTypeID.trim().isEmpty()) {
                 throw new IllegalArgumentException("Room type is required.");
             }

@@ -2,19 +2,25 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 
-<layout:layout title="Staff Dashboard" useBootstrap="true">
-    <div class="container py-5">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-5">
-            <div>
-                <h1 class="h2 mb-2">Staff Dashboard</h1>
-                <p class="text-muted mb-0">
-                    Welcome, <strong><c:out value="${employee.fullName}" /></strong>
-                    <c:if test="${not empty employee.position}">
-                        <span class="badge bg-primary ms-2"><c:out value="${employee.position}" /></span>
-                    </c:if>
+<layout:layout title="Staff Dashboard" useBootstrap="true"
+               pageCss="staff-dashboard.css" bodyClass="staff-dashboard-page">
+    <div class="container staff-dashboard">
+        <header class="staff-dashboard-header">
+            <div class="staff-header-content">
+                <p class="staff-eyebrow">Hotel operations</p>
+                <h1>Staff Dashboard</h1>
+                <p class="staff-welcome">
+                    Welcome back, <strong><c:out value="${employee.fullName}" /></strong>.
                 </p>
+                <p class="staff-header-description">Everything you need to take care of your guests, in one place.</p>
             </div>
-        </div>
+            <c:if test="${not empty employee.position}">
+                <div class="staff-role-badge">
+                    <i class="fa-solid fa-id-badge" aria-hidden="true"></i>
+                    <c:out value="${employee.position}" />
+                </div>
+            </c:if>
+        </header>
 
         <c:if test="${not empty successMessage}">
             <div class="alert alert-success"><c:out value="${successMessage}" /></div>
@@ -23,167 +29,111 @@
             <div class="alert alert-danger"><c:out value="${errorMessage}" /></div>
         </c:if>
 
-        <section class="mb-5" aria-labelledby="general-menu-title">
-            <h2 id="general-menu-title" class="h4 mb-4">General Menu</h2>
-
-            <div class="row g-4">
-                <div class="col-md-6">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body d-flex flex-column">
-                            <div class="mb-3">
-                                <i class="fa-solid fa-circle-user fa-2x text-primary"></i>
-                            </div>
-                            <h3 class="h5">View Profile</h3>
-                            <p class="text-muted flex-grow-1">
-                                View your staff profile and personal information.
-                            </p>
-                            <a href="${pageContext.request.contextPath}/staff/profile"
-                               class="btn btn-primary">
-                                View Profile
-                            </a>
+        <section aria-labelledby="staff-functions-title">
+            <div class="staff-section-heading">
+                <div>
+                    <h2 id="staff-functions-title">Staff Functions</h2>
+                    <p>Choose a function to get started.</p>
+                </div>
+            </div>
+            <div class="staff-functions-grid">
+                <div class="staff-function-item">
+                    <div class="card staff-function-card staff-card-blue">
+                        <div class="card-body staff-card-body">
+                            <div class="staff-function-icon"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i></div>
+                            <h3 class="staff-card-title">Booking Overview</h3>
+                            <p class="staff-card-description">Browse all bookings and view the customer account for each booking.</p>
+                            <a href="${pageContext.request.contextPath}/booking-overview" class="btn staff-function-link"><span>View Bookings</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
                         </div>
                     </div>
                 </div>
-
                 <c:if test="${isReceptionist}">
-                    <div class="col-md-6">
-                        <div class="card h-100 shadow-sm">
-                            <div class="card-body d-flex flex-column">
-                                <div class="mb-3">
-                                    <i class="fa-solid fa-file-invoice-dollar fa-2x text-primary"></i>
-                                </div>
-                                <h3 class="h5">Invoice</h3>
-                                <p class="text-muted flex-grow-1">
-                                    View and manage customer invoices.
-                                </p>
-                                <a href="${pageContext.request.contextPath}/invoice" class="btn btn-primary">
-                                    Manage Invoices
-                                </a>
-                            </div>
+                <div class="staff-function-item">
+                    <div class="card staff-function-card staff-card-blue">
+                        <div class="card-body staff-card-body">
+                            <div class="staff-function-icon"><i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i></div>
+                            <h3 class="staff-card-title">Invoice</h3>
+                            <p class="staff-card-description">View and manage customer invoices.</p>
+                            <a href="${pageContext.request.contextPath}/invoice" class="btn staff-function-link"><span>Manage Invoices</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
                         </div>
                     </div>
+                </div>
+                <div class="staff-function-item">
+                    <div class="card staff-function-card staff-card-teal">
+                        <div class="card-body staff-card-body">
+                            <div class="staff-function-icon"><i class="fa-solid fa-key" aria-hidden="true"></i></div>
+                            <h3 class="staff-card-title">Room Assignment</h3>
+                            <p class="staff-card-description">Select available rooms and assign them to confirmed bookings.</p>
+                            <a href="${pageContext.request.contextPath}/staff/bookings" class="btn staff-function-link"><span>Assign Rooms</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="staff-function-item">
+                    <div class="card staff-function-card staff-card-teal">
+                        <div class="card-body staff-card-body">
+                            <div class="staff-function-icon"><i class="fa-solid fa-hotel" aria-hidden="true"></i></div>
+                            <h3 class="staff-card-title">Guest Stays</h3>
+                            <p class="staff-card-description">Manage guest stays and bookings awaiting check-in.</p>
+                            <a href="${pageContext.request.contextPath}/staff/stays" class="btn staff-function-link"><span>Manage Guest Stays</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="staff-function-item">
+                    <div class="card staff-function-card staff-card-violet">
+                        <div class="card-body staff-card-body">
+                            <div class="staff-function-icon"><i class="fa-solid fa-users" aria-hidden="true"></i></div>
+                            <h3 class="staff-card-title">Customer List</h3>
+                            <p class="staff-card-description">View the list of customers and their information.</p>
+                            <a href="${pageContext.request.contextPath}/customer?action=list" class="btn staff-function-link"><span>View Customer List</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="staff-function-item">
+                    <div class="card staff-function-card staff-card-amber">
+                        <div class="card-body staff-card-body">
+                            <div class="staff-function-icon"><i class="fa-solid fa-money-check-dollar" aria-hidden="true"></i></div>
+                            <h3 class="staff-card-title">Check Out</h3>
+                            <p class="staff-card-description">Manage guest check-out and invoices.</p>
+                            <a href="${pageContext.request.contextPath}/CheckoutEmployee" class="btn staff-function-link"><span>Checkout Manager</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="staff-function-item">
+                    <div class="card staff-function-card staff-card-teal">
+                        <div class="card-body staff-card-body">
+                            <div class="staff-function-icon"><i class="fa-solid fa-bell-concierge" aria-hidden="true"></i></div>
+                            <h3 class="staff-card-title">Check In</h3>
+                            <p class="staff-card-description">Manage guest check-in.</p>
+                            <a href="${pageContext.request.contextPath}/checkin" class="btn staff-function-link"><span>Checkin Manager</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </div>
+                </div>
                 </c:if>
+                <c:if test="${employee.position eq 'Customer service staff'}">
+                <div class="staff-function-item">
+                    <div class="card staff-function-card staff-card-violet">
+                        <div class="card-body staff-card-body">
+                            <div class="staff-function-icon"><i class="fa-solid fa-comments" aria-hidden="true"></i></div>
+                            <h3 class="staff-card-title">Review & Reply</h3>
+                            <p class="staff-card-description">View customer information and reply to their complaints.</p>
+                            <a href="${pageContext.request.contextPath}/complaint?action=list" class="btn staff-function-link"><span>Manage Complaints</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </div>
+                </div>
+                </c:if>
+                <c:if test="${employee.position eq 'Service staff'}">
+                <div class="staff-function-item">
+                    <div class="card staff-function-card staff-card-amber">
+                        <div class="card-body staff-card-body">
+                            <div class="staff-function-icon"><i class="fa-solid fa-bell-concierge" aria-hidden="true"></i></div>
+                            <h3 class="staff-card-title">Manage Services</h3>
+                            <p class="staff-card-description">View the service catalog and manage hotel services.</p>
+                            <a href="${pageContext.request.contextPath}/service?action=manage" class="btn staff-function-link"><span>Manage Services</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                        </div>
+                    </div>
+                </div>
+                </c:if>
+            </div>
         </section>
-
-        <c:if test="${isReceptionist}">
-            <section class="mb-4" aria-labelledby="receptionist-menu-title">
-                <div class="d-flex align-items-center justify-content-between mb-4">
-                    <h2 id="receptionist-menu-title" class="h4 mb-0">Receptionist Menu</h2>
-                    <span class="badge bg-success">Receptionist Only</span>
-                </div>
-                <div class="row g-4">
-                    <div class="col-md-6 col-xl-4">
-                        <div class="card h-100 shadow-sm border-success">
-                            <div class="card-body d-flex flex-column">
-                                <div class="mb-3"><i class="fa-solid fa-key fa-2x text-success"></i></div>
-                                <h3 class="h5">Room Assignment</h3>
-                                <p class="text-muted flex-grow-1">Select available rooms and assign them to confirmed bookings.</p>
-                                <a href="${pageContext.request.contextPath}/staff/bookings" class="btn btn-success">
-                                    Assign Rooms
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 col-xl-4">
-                        <div class="card h-100 shadow-sm border-success">
-                            <div class="card-body d-flex flex-column">
-                                <div class="mb-3"><i class="fa-solid fa-hotel fa-2x text-success"></i></div>
-                                <h3 class="h5">Guest Stays</h3>
-                                <p class="text-muted flex-grow-1">Manage guest check-in, stay information and check-out.</p>
-                                <a href="${pageContext.request.contextPath}/staff/stays" class="btn btn-success">
-                                    Manage Guest Stays
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 col-xl-4">
-                        <div class="card h-100 shadow-sm border-success">
-                            <div class="card-body d-flex flex-column">
-                                <div class="mb-3"><i class="fa-solid fa-users fa-2x text-success"></i></div>
-                                <h3 class="h5">Customer List</h3>
-                                <p class="text-muted flex-grow-1">View the list of customers and their information.</p>
-                                <a href="${pageContext.request.contextPath}/customer?action=list" class="btn btn-success">
-                                    View Customer List
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 col-xl-4">
-                        <div class="card h-100 shadow-sm border-success">
-                            <div class="card-body d-flex flex-column">
-                                <div class="mb-3"><i class="fa-solid fa-money-check-dollar fa-2x text-success"></i></div>
-                                <h3 class="h5">Check out</h3>
-                                <p class="text-muted flex-grow-1">Manage guest check-out, and invoice.</p>
-                                <a href="${pageContext.request.contextPath}/CheckoutEmployee" class="btn btn-success">
-                                    Checkout Manager
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6 col-xl-4">
-                        <div class="card h-100 shadow-sm border-success">
-                            <div class="card-body d-flex flex-column">
-                                <div class="mb-3"><i class="fa-solid fa-money-check-dollar fa-2x text-success"></i></div>
-                                <h3 class="h5">Check In</h3>
-                                <p class="text-muted flex-grow-1">Manage guest check-in of customer.</p>
-                                <a href="${pageContext.request.contextPath}/checkin" class="btn btn-success">
-                                    Checkin Manager
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </c:if>
-
-        <c:if test="${employee.position == 'Customer service staff'}">
-            <section class="mb-4" aria-labelledby="cs-menu-title">
-                <div class="d-flex align-items-center justify-content-between mb-4">
-                    <h2 id="cs-menu-title" class="h4 mb-0">Customer Service Menu</h2>
-                    <span class="badge bg-info text-dark">Customer Service </span>
-                </div>
-                <div class="row g-4">
-                    <div class="col-md-6 col-xl-4">
-                        <div class="card h-100 shadow-sm border-info">
-                            <div class="card-body d-flex flex-column">
-                                <div class="mb-3"><i class="fa-solid fa-comments fa-2x text-info"></i></div>
-                                <h3 class="h5">Review & Reply</h3>
-                                <p class="text-muted flex-grow-1">View customer information and reply to their complaints.</p>
-                                <a href="${pageContext.request.contextPath}/complaint?action=list" class="btn btn-info text-white">
-                                    Manage Complaints
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </c:if>
-
-        <c:if test="${employee.position == 'Service staff'}">
-            <section class="mb-4" aria-labelledby="service-menu-title">
-                <div class="d-flex align-items-center justify-content-between mb-4">
-                    <h2 id="service-menu-title" class="h4 mb-0">Service Staff Menu</h2>
-                    <span class="badge bg-warning text-dark">Service Staff</span>
-                </div>
-                <div class="row g-4">
-                    <div class="col-md-6 col-xl-4">
-                        <div class="card h-100 shadow-sm border-warning">
-                            <div class="card-body d-flex flex-column">
-                                <div class="mb-3"><i class="fa-solid fa-bell-concierge fa-2x text-warning"></i></div>
-                                <h3 class="h5">Manage Services</h3>
-                                <p class="text-muted flex-grow-1">Xem danh mục dịch vụ, cập nhật đơn giá, tạo mới hoặc xóa dịch vụ khách sạn.</p>
-                                <a href="${pageContext.request.contextPath}/service?action=manage" class="btn btn-warning text-dark fw-semibold">
-                                    Manage Services
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </c:if>
     </div>
 </layout:layout>

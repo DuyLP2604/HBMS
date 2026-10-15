@@ -2,7 +2,6 @@ package controller;
 
 import dao.PaymentmethodDAO;
 import dao.WalletDAO;
-import dto.WalletSummary;
 import entity.Booking;
 import entity.Payment;
 import entity.Paymentmethod;
@@ -53,7 +52,6 @@ public class PaymentServlet extends HttpServlet
         PaymentRequest paymentRequest;
         Map<String, Object> summary;
         List<Paymentmethod> methods;
-        WalletSummary wallet = null;
         try
         {
             booking = service.getBookingForPayment(bookingID, user.getUserID());
@@ -82,8 +80,6 @@ public class PaymentServlet extends HttpServlet
         {
             throw new ServletException("Unable to load the payment page.", exception);
         }
-        try { wallet = new WalletDAO().getWalletByUserID(user.getUserID()); }
-        catch (IllegalStateException exception) { getServletContext().log("Wallet balance is unavailable on the payment page.", exception); }
         String token = UUID.randomUUID().toString();
         synchronized (session)
         {
@@ -101,10 +97,11 @@ public class PaymentServlet extends HttpServlet
             }
         }
         request.setAttribute("booking", booking);
-        request.setAttribute("wallet", wallet);
-        request.setAttribute("walletAvailable", wallet != null);
-        request.setAttribute("walletCanPay", wallet != null && wallet.getBalance().compareTo(paymentRequest.getAmount()) >= 0);
-        request.setAttribute("walletShortfall", wallet == null ? null : paymentRequest.getAmount().subtract(wallet.getBalance()).max(java.math.BigDecimal.ZERO));
+        request.setAttribute("walletBalance", paymentRequest.getWalletBalance());
+        request.setAttribute("walletAvailable", paymentRequest.getWalletBalance() != null);
+        request.setAttribute("walletCanPay", paymentRequest.getOfferedWalletAmount().compareTo(paymentRequest.getAmount()) >= 0);
+        request.setAttribute("walletContribution", paymentRequest.getOfferedWalletAmount());
+        request.setAttribute("externalContribution", paymentRequest.getAmount().subtract(paymentRequest.getOfferedWalletAmount()));
         request.setAttribute("bookingSummary", summary);
         request.setAttribute("paymentMethods", methods);
         request.setAttribute("paymentOption", summary.get("paymentOption"));
@@ -126,6 +123,7 @@ public class PaymentServlet extends HttpServlet
         HttpSession session = request.getSession(false);
         String bookingID = trim(request.getParameter("bookingID"));
         String methodID = trim(request.getParameter("methodID"));
+        boolean useWallet = "true".equals(request.getParameter("useWallet"));
         String token = trim(request.getParameter("paymentRequestToken"));
         PaymentRequest paymentRequest;
         synchronized (session)
@@ -140,7 +138,7 @@ public class PaymentServlet extends HttpServlet
         String redirect;
         try
         {
-            Payment payment = new PaymentService().processPayment(paymentRequest, methodID, user.getUserID());
+            Payment payment = new PaymentService().processPayment(paymentRequest, methodID, user.getUserID(), useWallet);
             if ("REFUNDED".equals(payment.getStatus()))
             {
                 session.setAttribute("paymentError", "This payment has already been refunded to your wallet.");
@@ -155,6 +153,9 @@ public class PaymentServlet extends HttpServlet
                     session.setAttribute("successfulTransactionCode", payment.getTransactionCode());
                     session.setAttribute("successfulPaymentType", paymentRequest.getPaymentType());
                     session.setAttribute("successfulPaymentAmount", payment.getAmount());
+                    session.setAttribute("successfulWalletAmount", payment.getWalletAmount());
+                    session.setAttribute("successfulExternalAmount", payment.getExternalAmount());
+                    session.setAttribute("successfulExternalMethodName", payment.getMethodID().getMethodName());
                     session.setAttribute("successfulPaymentMethodID", payment.getMethodID().getMethodID().trim());
                     session.setAttribute("successfulPaymentUserID", user.getUserID());
                     session.removeAttribute("paymentError");
@@ -234,16 +235,22 @@ public class PaymentServlet extends HttpServlet
             request.setAttribute("transactionCode", session.getAttribute("successfulTransactionCode"));
             request.setAttribute("paymentType", session.getAttribute("successfulPaymentType"));
             request.setAttribute("paymentAmount", session.getAttribute("successfulPaymentAmount"));
+            request.setAttribute("walletAmount", session.getAttribute("successfulWalletAmount"));
+            request.setAttribute("externalAmount", session.getAttribute("successfulExternalAmount"));
+            request.setAttribute("externalMethodName", session.getAttribute("successfulExternalMethodName"));
             request.setAttribute("paymentMethodID", session.getAttribute("successfulPaymentMethodID"));
             session.removeAttribute("successfulPaymentID");
             session.removeAttribute("successfulBookingID");
             session.removeAttribute("successfulTransactionCode");
             session.removeAttribute("successfulPaymentType");
             session.removeAttribute("successfulPaymentAmount");
+            session.removeAttribute("successfulWalletAmount");
+            session.removeAttribute("successfulExternalAmount");
+            session.removeAttribute("successfulExternalMethodName");
             session.removeAttribute("successfulPaymentMethodID");
             session.removeAttribute("successfulPaymentUserID");
         }
-        if ("PT09".equals(request.getAttribute("paymentMethodID")))
+        if (request.getAttribute("walletAmount") instanceof java.math.BigDecimal && ((java.math.BigDecimal) request.getAttribute("walletAmount")).signum() > 0)
         {
             try { request.setAttribute("wallet", new WalletDAO().getWalletByUserID(user.getUserID())); }
             catch (IllegalStateException exception) { getServletContext().log("Payment succeeded, but the updated wallet balance is unavailable.", exception); }

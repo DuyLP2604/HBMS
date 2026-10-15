@@ -17,6 +17,7 @@
         <c:if test="${not empty errorMessage}">
             <div class="alert alert-danger"><c:out value="${errorMessage}" /></div>
         </c:if>
+        <p class="text-muted">Check-in: 14:00. From 14:15, unarrived bookings appear first. Refresh this list to see the latest status.</p>
         <div class="table-responsive">
             <table class="table table-bordered table-hover align-middle">
                 <thead class="table-light">
@@ -32,17 +33,26 @@
                 </thead>
                 <tbody>
                     <c:forEach var="booking" items="${bookings}">
-                        <tr>
+                        <tr class="${noShowBookings[booking.bookingID] ? 'table-danger' : ''}">
                             <td><c:out value="${booking.bookingID}" /></td>
                             <td><c:out value="${booking.customerID.fullName}" /></td>
-                            <td><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /></td>
+                            <td><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /> 14:00<br><small class="text-muted">Held until 14:15</small></td>
                             <td><fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" /></td>
                             <td><fmt:formatNumber value="${booking.totalAmount}" type="number" /> VND</td>
                             <td>
                                 <span class="badge bg-success"><c:out value="${booking.bookingStatus}" /></span>
+                                <c:if test="${noShowBookings[booking.bookingID]}"><span class="badge bg-danger ms-1">Overdue check-in</span></c:if>
                             </td>
                             <td>
                                 <a href="${pageContext.request.contextPath}/staff/bookings?bookingID=${booking.bookingID}" class="btn btn-primary btn-sm">Assign Rooms</a>
+                                <c:if test="${noShowBookings[booking.bookingID]}">
+                                    <form action="${pageContext.request.contextPath}/staff/stays" method="post" class="d-inline" onsubmit="return confirm('Cancel this booking for no-show? No refund applies.');">
+                                        <input type="hidden" name="bookingID" value="<c:out value='${booking.bookingID}' />">
+                                        <input type="hidden" name="action" value="cancelNoShow">
+                                        <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.bookingCsrfToken}' />">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">Cancel No-show</button>
+                                    </form>
+                                </c:if>
                             </td>
                         </tr>
                     </c:forEach>

@@ -21,7 +21,7 @@
         <div class="card shadow-sm mb-4">
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-4"><strong>Check-in:</strong><br><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /></div>
+                    <div class="col-md-4"><strong>Check-in:</strong><br><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /> 14:00</div>
                     <div class="col-md-4"><strong>Check-out:</strong><br><fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" /></div>
                     <div class="col-md-4"><strong>Nights:</strong><br><c:out value="${booking.numberOfNights}" /></div>
                     <div class="col-md-4"><strong>Booking Status:</strong><br><c:out value="${bookingState}" /></div>
@@ -37,7 +37,8 @@
                     </c:if>
                     <c:if test="${not empty bookingSummary.firstPaidAt}">
                         <div class="col-md-4"><strong>First Successful Payment:</strong><br><fmt:formatDate value="${bookingSummary.firstPaidAt}" pattern="dd/MM/yyyy HH:mm:ss" /></div>
-                        <div class="col-md-4"><strong>Refund Cutoff:</strong><br><fmt:formatDate value="${bookingSummary.refundDeadline}" pattern="dd/MM/yyyy HH:mm:ss" /></div>
+                        <div class="col-md-4"><strong>Booking Created:</strong><br><fmt:formatDate value="${bookingSummary.bookingDate}" pattern="dd/MM/yyyy HH:mm:ss" /></div>
+                        <div class="col-md-4"><strong>Refund Cutoff:</strong><br><c:choose><c:when test="${not empty bookingSummary.refundDeadline}"><fmt:formatDate value="${bookingSummary.refundDeadline}" pattern="dd/MM/yyyy HH:mm:ss" /></c:when><c:otherwise>Not refundable (booked within 24 hours of check-in)</c:otherwise></c:choose></div>
                     </c:if>
                     <c:if test="${not empty bookingSummary.cancelledAt}">
                         <div class="col-md-4"><strong>Cancelled At:</strong><br><fmt:formatDate value="${bookingSummary.cancelledAt}" pattern="dd/MM/yyyy HH:mm:ss" /></div>
@@ -50,11 +51,11 @@
                 <div class="alert alert-success">A refund of <strong><fmt:formatNumber value="${bookingSummary.refundedAmount}" type="number" /> VND</strong> is recorded in your system wallet.</div>
             </c:when>
             <c:when test="${bookingSummary.paymentStatus eq 'NO_REFUND'}">
-                <div class="alert alert-warning">This booking was cancelled without a refund under the 24-hour payment policy.</div>
+                <div class="alert alert-warning">This booking was cancelled without a refund under the booking cancellation policy.</div>
             </c:when>
         </c:choose>
         <div class="alert alert-info">
-            Cancel less than 24 hours after the first successful deposit or full payment to receive a 100% refund of the paid amount into your system wallet. Cancellation at or after 24 hours is not refundable. The period is measured from payment, not check-in. Paying the remaining balance does not restart it. Bookings cannot be cancelled after check-in.
+            Bookings created more than 24 hours before check-in at 14:00 qualify for a 100% refund of all successful payments when cancelled before 24 hours have passed since booking creation. Bookings created within 24 hours of check-in, including exactly 24 hours, are not refundable. Later payments do not restart the refund period. Refunds go to your internal wallet. Bookings cannot be cancelled after check-in. Guests who have not checked in by 14:15 may have their booking cancelled by staff for no-show without a refund.
         </div>
         <h2 class="h4 mb-3">Rooms</h2>
         <c:forEach var="item" items="${booking.items}">
@@ -96,7 +97,7 @@
                 <a href="<c:out value='${paymentUrl}' />" class="btn btn-success">Pay Remaining Balance</a>
             </c:if>
             <c:if test="${bookingState eq 'PENDING_PAYMENT' or bookingState eq 'CONFIRMED' or bookingState eq 'ASSIGNED'}">
-                <form action="${pageContext.request.contextPath}/my-bookings/cancel" method="post" class="m-0" onsubmit="return confirm('Cancel this booking? Refund eligibility follows the 24-hour payment policy.');">
+                <form action="${pageContext.request.contextPath}/my-bookings/cancel" method="post" class="m-0" onsubmit="return confirm('Cancel this booking? Refund eligibility follows the booking cancellation policy.');">
                     <input type="hidden" name="bookingID" value="<c:out value='${booking.bookingID}' />">
                     <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.bookingCsrfToken}' />">
                     <button type="submit" class="btn btn-outline-danger">Cancel Booking</button>

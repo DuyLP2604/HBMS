@@ -24,8 +24,11 @@
                             </strong>
                         </p>
                         <p>Amount Paid: <strong class="text-success"><fmt:formatNumber value="${paymentAmount}" type="number" /> VND</strong></p>
-                        <c:if test="${paymentMethodID eq 'PT09'}">
-                            <p>Payment Method: <strong>My Wallet</strong></p>
+                        <div class="border rounded p-3 mb-3 text-start">
+                            <p class="mb-1">From My Wallet: <strong><fmt:formatNumber value="${walletAmount}" pattern="#,##0.##" /> VND</strong></p>
+                            <p class="mb-0">From External Method: <strong><fmt:formatNumber value="${externalAmount}" pattern="#,##0.##" /> VND</strong><c:if test="${externalAmount gt 0}"> (<c:out value="${externalMethodName}" />)</c:if></p>
+                        </div>
+                        <c:if test="${walletAmount gt 0}">
                             <c:if test="${not empty wallet}"><p>Current Wallet Balance: <strong><fmt:formatNumber value="${wallet.balance}" pattern="#,##0.##" /> VND</strong></p></c:if>
                             <a href="${pageContext.request.contextPath}/wallet" class="btn btn-outline-secondary mb-2">View Wallet &amp; History</a>
                         </c:if>

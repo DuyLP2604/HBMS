@@ -73,7 +73,7 @@
                                                 </c:choose>
                                             </td>
                                             <td data-label="Your Stay" class="booking-stay-cell">
-                                                <div class="booking-dates"><div><span class="booking-date-label">Check-in</span><span><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /></span></div><i class="fa-solid fa-arrow-right" aria-hidden="true"></i><div><span class="booking-date-label">Check-out</span><span><fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" /></span></div></div>
+                                                <div class="booking-dates"><div><span class="booking-date-label">Check-in</span><span><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /> 14:00</span></div><i class="fa-solid fa-arrow-right" aria-hidden="true"></i><div><span class="booking-date-label">Check-out</span><span><fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" /></span></div></div>
                                                 <span class="booking-nights"><i class="fa-regular fa-moon" aria-hidden="true"></i> <c:out value="${booking.numberOfNights}" /> <c:out value="${booking.numberOfNights eq 1 ? 'night' : 'nights'}" /></span>
                                             </td>
                                             <td data-label="Total" class="booking-money-col"><span class="booking-money"><fmt:formatNumber value="${summary.totalAmount}" pattern="#,##0.##" /></span></td>
@@ -96,7 +96,7 @@
                                                     <c:if test="${bookingState eq 'PENDING_PAYMENT'}"><a href="<c:out value='${paymentUrl}' />" class="booking-btn booking-btn-dark">Pay <c:out value="${summary.paymentOption eq 'DEPOSIT' ? 'Deposit' : 'Full Amount'}" /></a></c:if>
                                                     <c:if test="${not empty summary.firstPaidAt and summary.remainingAmount gt 0 and (bookingState eq 'CONFIRMED' or bookingState eq 'ASSIGNED' or bookingState eq 'CHECKED_IN')}"><a href="<c:out value='${paymentUrl}' />" class="booking-btn booking-btn-dark">Pay Remaining Balance</a></c:if>
                                                     <c:if test="${bookingState eq 'PENDING_PAYMENT' or bookingState eq 'CONFIRMED' or bookingState eq 'ASSIGNED'}">
-                                                        <form action="${pageContext.request.contextPath}/my-bookings/cancel" method="post" class="booking-cancel-form" onsubmit="return confirm('Cancel this booking? Refund eligibility follows the 24-hour payment policy.');">
+                                                        <form action="${pageContext.request.contextPath}/my-bookings/cancel" method="post" class="booking-cancel-form" onsubmit="return confirm('Cancel this booking? Refund eligibility follows the booking cancellation policy.');">
                                                             <input type="hidden" name="bookingID" value="<c:out value='${booking.bookingID}' />">
                                                             <input type="hidden" name="csrfToken" value="<c:out value='${sessionScope.bookingCsrfToken}' />">
                                                             <button type="submit" class="booking-btn booking-btn-cancel">Cancel</button>

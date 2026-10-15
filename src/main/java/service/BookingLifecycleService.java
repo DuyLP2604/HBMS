@@ -64,6 +64,21 @@ public class BookingLifecycleService
         cancelByCustomerWithResult(bookingID, userID);
     }
 
+    public void cancelNoShow(String bookingID, int actorUserID)
+    {
+        String id = requireBookingID(bookingID);
+        requireUserID(actorUserID);
+        try
+        {
+            // SQL verifies staff role, 14:15 deadline and the current status under lock.
+            new BookingDAO().cancelBooking(id, actorUserID, "NO_SHOW");
+        }
+        catch (BookingDAO.BookingOperationException exception)
+        {
+            throw new IllegalStateException(operationError(exception.getSqlErrorCode()), exception);
+        }
+    }
+
     public Map<String, Object> cancelByCustomerWithResult(String bookingID, int userID)
     {
         String id = requireBookingID(bookingID);
@@ -230,6 +245,8 @@ public class BookingLifecycleService
                 return "This booking can no longer be cancelled after check-in.";
             case 51007:
                 return "Your wallet is unavailable. The cancellation was not completed.";
+            case 51008:
+                return "No-show cancellation is available from 14:15 on the check-in date, only for guests who have not checked in. Reload the list.";
             case 51063:
                 return "The current booking status does not allow this action.";
             case 51064:

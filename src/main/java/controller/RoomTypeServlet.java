@@ -17,9 +17,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.LocalDateTime;
+import java.util.Locale;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import util.BookingTimePolicy;
 import util.flash.Flash;
 
 @WebServlet(name = "RoomTypeServlet", urlPatterns = {"/room-types"})
@@ -35,11 +37,12 @@ public class RoomTypeServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
         RoomTypeDAO roomTypeDAO = new RoomTypeDAO();
 
-        switch (action.toLowerCase()) {
+        switch (action.toLowerCase(Locale.ROOT)) {
             case "detail":
                 showRoomDetail(request, response);
                 break;
 
+            case "manage":
             case "list": // Trang quản lý danh sách loại phòng dành cho Admin
                 if (!isAdmin(session)) {
                     Flash.error(request, "Permission denied! Only Admin can access this page.");
@@ -219,43 +222,47 @@ public class RoomTypeServlet extends HttpServlet {
     // ================= HELPER METHODS =================
     private void showSearchPage(HttpServletRequest request, HttpServletResponse response, RoomTypeDAO roomTypeDAO) throws ServletException, IOException {
         moveFlashMessage(request);
-        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-        LocalDate tomorrow = today.plusDays(1);
-        request.setAttribute("today", today.toString());
+        LocalDateTime now = BookingTimePolicy.now();
+        LocalDate minimumCheckIn = BookingTimePolicy.minimumCheckInDate(now);
+        // JSP uses "today" as the minimum selectable check-in date.
+        request.setAttribute("today", minimumCheckIn.toString());
 
         String checkInValue = request.getParameter("checkInDate");
         String checkOutValue = request.getParameter("checkOutDate");
+        boolean hasCheckIn = checkInValue != null && !checkInValue.trim().isEmpty();
+        boolean hasCheckOut = checkOutValue != null && !checkOutValue.trim().isEmpty();
 
-        if (checkInValue == null || checkInValue.trim().isEmpty()) {
-            checkInValue = today.toString();
-        }
-        if (checkOutValue == null || checkOutValue.trim().isEmpty()) {
-            checkOutValue = tomorrow.toString();
+        // Keep the new servlet's automatic search on the first visit.
+        // From 10:00, the default stay starts tomorrow instead of today.
+        if (!hasCheckIn && !hasCheckOut) {
+            checkInValue = minimumCheckIn.toString();
+            checkOutValue = minimumCheckIn.plusDays(1).toString();
+            hasCheckIn = true;
+            hasCheckOut = true;
         }
 
         request.setAttribute("checkInDate", checkInValue);
         request.setAttribute("checkOutDate", checkOutValue);
 
-        try {
-            LocalDate checkInDate = LocalDate.parse(checkInValue.trim());
-            LocalDate checkOutDate = LocalDate.parse(checkOutValue.trim());
+        if (hasCheckIn && hasCheckOut) {
+            try {
+                LocalDate checkInDate = LocalDate.parse(checkInValue.trim());
+                LocalDate checkOutDate = LocalDate.parse(checkOutValue.trim());
+                BookingTimePolicy.validateStayDates(checkInDate, checkOutDate, now);
 
-            if (checkInDate.isBefore(today)) {
-                throw new IllegalArgumentException("Check-in date cannot be in the past.");
+                List<RoomTypeAvailability> availabilityList = roomTypeDAO.getAvailability(checkInDate, checkOutDate);
+                request.setAttribute("availabilityList", availabilityList);
+                request.setAttribute("searched", true);
+            } catch (DateTimeParseException ex) {
+                request.setAttribute("errorMessage", "Dates must use the yyyy-MM-dd format.");
+            } catch (IllegalArgumentException ex) {
+                request.setAttribute("errorMessage", ex.getMessage());
+            } catch (Exception ex) {
+                log("Unable to load room availability.", ex);
+                request.setAttribute("errorMessage", "Unable to load room availability.");
             }
-            if (!checkOutDate.isAfter(checkInDate)) {
-                throw new IllegalArgumentException("Check-out date must be after check-in date.");
-            }
-
-            List<RoomTypeAvailability> availabilityList = roomTypeDAO.getAvailability(checkInDate, checkOutDate);
-            request.setAttribute("availabilityList", availabilityList);
-            request.setAttribute("searched", true);
-        } catch (DateTimeParseException ex) {
-            request.setAttribute("errorMessage", "Dates must use the yyyy-MM-dd format.");
-        } catch (IllegalArgumentException ex) {
-            request.setAttribute("errorMessage", ex.getMessage());
-        } catch (Exception ex) {
-            request.setAttribute("errorMessage", "Unable to load room availability.");
+        } else {
+            request.setAttribute("errorMessage", "Both check-in and check-out dates are required.");
         }
 
         request.getRequestDispatcher("/WEB-INF/views/room-type-search.jsp").forward(request, response);
@@ -271,12 +278,12 @@ public class RoomTypeServlet extends HttpServlet {
             request.setAttribute("roomType", roomType);
 
             if (roomType != null) {
-                LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
-                LocalDate tomorrow = today.plusDays(1);
+                LocalDate minimumCheckIn = BookingTimePolicy.minimumCheckInDate(BookingTimePolicy.now());
+                LocalDate defaultCheckOut = minimumCheckIn.plusDays(1);
                 long availableRooms = 0;
 
                 try {
-                    List<RoomTypeAvailability> availList = roomTypeDAO.getAvailability(today, tomorrow);
+                    List<RoomTypeAvailability> availList = roomTypeDAO.getAvailability(minimumCheckIn, defaultCheckOut);
                     for (RoomTypeAvailability rta : availList) {
                         if (rta.getRoomTypeID().equalsIgnoreCase(roomTypeId)) {
                             availableRooms = rta.getAvailableRooms();
