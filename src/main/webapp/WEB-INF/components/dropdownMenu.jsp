@@ -33,6 +33,7 @@
                             <a href="${pageContext.request.contextPath}/room?action=list">View rooms</a>
                             <a href="${pageContext.request.contextPath}/complaint?action=list">View complaints</a>
                             <a href="${pageContext.request.contextPath}/hotel">Hotel information</a>
+                            <a href="${pageContext.request.contextPath}/room-types?action=list">Manage room type</a>
                         </c:when>
                     </c:choose>
 
