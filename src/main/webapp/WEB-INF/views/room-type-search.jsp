@@ -78,7 +78,8 @@
                                     <c:choose>
                                         <c:when test="${not empty roomType.roomTypeImage}">
                                             <c:url var="roomTypeImageUrl" value="/assets/images/room-types/${roomType.roomTypeImage}" />
-                                            <img src="${roomTypeImageUrl}" class="card-img-top" alt="<c:out value='${roomType.typeName}' />" style="height: 240px; object-fit: cover;">
+                                            <img src="${roomTypeImageUrl}" class="card-img-top" alt="<c:out value='${roomType.typeName}' />" style="height: 240px; object-fit: cover; cursor: pointer;"
+                                                 onclick="window.location.href = '${pageContext.request.contextPath}/room-types?action=detail&id=${roomType.roomTypeID}'">
                                         </c:when>
                                         <c:otherwise>
                                             <div class="bg-light text-secondary d-flex justify-content-center align-items-center border-bottom" style="height: 240px;">
@@ -136,7 +137,7 @@
                                                             </div>
                                                         </div>
                                                         <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm py-2">
-                                                            <i class="fa-solid fa-cart-plus me-2"></i> Add to Wishlist
+                                                            Select this room.
                                                         </button>
                                                     </form>
                                                 </c:when>
@@ -217,13 +218,6 @@
                     }
                 }
             });
-
-            // Nếu chưa submit lần nào -> Tự động submit bằng JS (Chạy nền)
-        <c:if test="${not searched}">
-            if (isFirstLoad) {
-                document.getElementById('searchRoomForm').submit();
-            }
-        </c:if>
         });
     </script>
 

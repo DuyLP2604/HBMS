@@ -68,6 +68,9 @@
                         <a href="${pageContext.request.contextPath}/room?action=list">
                             View rooms
                         </a>
+                        <a href="${pageContext.request.contextPath}/room-types?action=list">
+                            Manage room type
+                        </a>
 
                         <a href="${pageContext.request.contextPath}/complaint?action=list">
                             View complaints
