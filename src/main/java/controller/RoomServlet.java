@@ -64,7 +64,7 @@ public class RoomServlet extends HttpServlet {
                     response.sendRedirect(request.getContextPath() + "/room");
                     return;
                 }
-                request.setAttribute("roomType", rtDao.getAllRoomTypes());
+                request.setAttribute("roomType", rtDao.getAll());
                 request.getRequestDispatcher("/WEB-INF/views/add-room.jsp").forward(request, response);
                 break;
             case "update":
@@ -77,7 +77,7 @@ public class RoomServlet extends HttpServlet {
                 Room room = roomDAO.getById(updateId);
                 if (room != null) {
                     request.setAttribute("room", room);
-                    request.setAttribute("roomTypes", rtDao.getAllRoomTypes());
+                    request.setAttribute("roomTypes", rtDao.getAll());
                     request.getRequestDispatcher("/WEB-INF/views/update-room.jsp").forward(request, response);
                 } else {
                     Flash.error(request, "Room not found!");

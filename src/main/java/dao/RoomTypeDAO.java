@@ -13,54 +13,28 @@ import java.util.ArrayList;
 import java.util.List;
 import util.PersistenceManager;
 
-public class RoomTypeDAO {
+public class RoomTypeDAO extends DAOFramework<RoomType> {
 
-    public List<RoomType> getAllRoomTypes() {
-        EntityManager em = PersistenceManager.createEntityManager();
-
-        try {
-            String jpql
-                    = "SELECT rt FROM RoomType rt "
-                    + "ORDER BY rt.price ASC, rt.typeName ASC";
-
-            TypedQuery<RoomType> query
-                    = em.createQuery(jpql, RoomType.class);
-
-            return query.getResultList();
-        } catch (Exception ex) {
-            throw new RuntimeException(
-                    "Unable to load room types.",
-                    ex
-            );
-        } finally {
-            if (em.isOpen()) {
-                em.close();
-            }
-        }
+    public RoomTypeDAO() {
+        super(RoomType.class);
     }
 
-    public RoomType getById(String roomTypeID) {
-        if (roomTypeID == null || roomTypeID.trim().isEmpty()) {
-            return null;
-        }
+    public String generateRoomTypeID() {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            // Lấy số lớn nhất từ chuỗi mã loại phòng (cắt từ vị trí số 3 vì 2 ký tự đầu là 'RT')
+            String jpql = "SELECT MAX("
+                    + "CAST(SUBSTRING(rt.roomTypeID, 3, LENGTH(rt.roomTypeID)) AS Integer)"
+                    + ") FROM RoomType rt";
+            TypedQuery<Integer> query = em.createQuery(jpql, Integer.class);
+            Integer maxId = query.getSingleResult();
 
-        EntityManager em = PersistenceManager.createEntityManager();
-
-        try {
-            return em.find(
-                    RoomType.class,
-                    roomTypeID.trim()
-            );
-        } catch (Exception ex) {
-            throw new RuntimeException(
-                    "Unable to find the requested room type.",
-                    ex
-            );
-        } finally {
-            if (em.isOpen()) {
-                em.close();
+            if (maxId != null) {
+                return String.format("RT%02d", maxId + 1); // Trả về RT01, RT02, RT03...
             }
+        } catch (Exception e) {
+            e.printStackTrace(); // In ra lỗi để dễ debug nếu có vấn đề với Database
         }
+        return "RT01"; // ID mặc định nếu bảng RoomType đang trống
     }
 
     public List<RoomTypeAvailability> getAvailability(
