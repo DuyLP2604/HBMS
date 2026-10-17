@@ -19,6 +19,31 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         super(RoomType.class);
     }
 
+    @Override
+    public boolean deleteById(String id) {
+        if (isRemovable(id)) {
+            return super.deleteById(id);
+        }
+        return false;
+    }
+
+    private boolean isRemovable(String id) {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            // Query đếm số lượng Room đang thuộc RoomType này
+            String jpql = "SELECT COUNT(r) FROM Room r WHERE r.roomTypeID.roomTypeID = :id";
+
+            Long count = em.createQuery(jpql, Long.class)
+                    .setParameter("id", id)
+                    .getSingleResult();
+
+            // Nếu count == 0 nghĩa là không còn phòng nào -> cho phép xóa (trả về true)
+            return count != null && count == 0;
+        } catch (Exception e) {
+        }
+        // Nếu xảy ra lỗi hệ thống/DB, mặc định trả về false để đảm bảo an toàn dữ liệu
+        return false;
+    }
+
     public String generateRoomTypeID() {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
             // Lấy số lớn nhất từ chuỗi mã loại phòng (cắt từ vị trí số 3 vì 2 ký tự đầu là 'RT')
