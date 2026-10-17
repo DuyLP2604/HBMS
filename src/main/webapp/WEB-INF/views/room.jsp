@@ -35,7 +35,7 @@
             </div>
 
             <div class="card-body bg-white p-4">
-                <!-- Search & Filter Bar chung cho mọi role -->
+                <!-- Search & Filter Bar -->
                 <div class="row mb-4">
                     <div class="col-md-8 col-lg-6">
                         <form onsubmit="event.preventDefault(); applyFilterAndSearch();" class="d-flex gap-2">
@@ -51,57 +51,60 @@
                     </div>
                 </div>
 
-                <%-- ======================= GIAO DIỆN ADMIN (TABLE) ======================= --%>
-                <c:if test="${sessionScope.user.role eq 'Admin'}">
-                    <div class="table-responsive shadow-sm rounded border">
-                        <table class="table table-hover align-middle mb-0 bg-white">
-                            <thead class="table-light border-bottom">
-                                <tr>
-                                    <th class="ps-3">Room Number</th>
-                                    <th>Room Type</th>
-                                    <th>Image</th>
-                                    <th>Status</th>
-                                    <th class="text-center pe-3">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="roomTableBody">
-                                <c:forEach items="${roomList}" var="c">
-                                    <tr class="room-row" data-search="<c:out value='${c.roomNumber} ${c.roomTypeID.typeName}${c.status}'/>">
-                                        <td class="fw-bold text-dark ps-3"><c:out value="${c.roomNumber}" /></td>
-                                        <td><c:out value="${c.roomTypeID.typeName}" /></td>
-                                        <td>
-                                            <c:choose>
-                                                <c:when test="${not empty c.roomImage}">
-                                                    <img class="room-thumbnail shadow-sm" src="${pageContext.request.contextPath}/assets/images/room/${c.roomImage}" alt="Room ${c.roomNumber}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px;">
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <div class="bg-secondary bg-opacity-10 rounded d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 50px;">
-                                                        <i class="fa-solid fa-image text-secondary"></i>
-                                                    </div>
-                                                </c:otherwise>
-                                            </c:choose>
-                                        </td>
-                                        <td>
-                                            <c:choose>
-                                                <c:when test="${c.status eq 'ACTIVE'}">
-                                                    <span class="badge bg-success shadow-sm px-2 py-1">ACTIVE</span>
-                                                </c:when>
-                                                <c:when test="${c.status eq 'MAINTENANCE'}">
-                                                    <span class="badge bg-warning text-dark shadow-sm px-2 py-1">MAINTENANCE</span>
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <span class="badge bg-danger shadow-sm px-2 py-1"><c:out value="${c.status}" /></span>
-                                                </c:otherwise>
-                                            </c:choose>
-                                        </td>
-                                        <td class="text-center pe-3">
-                                            <a href="${pageContext.request.contextPath}/room?action=viewDetail&id=${c.roomID}" class="btn btn-outline-info btn-sm me-1" title="View Details"><i class="fa-solid fa-eye"></i></a>
+                <%-- ======================= GIAO DIỆN CHUNG (TABLE CHO CẢ ADMIN & STAFF) ======================= --%>
+                <div class="table-responsive shadow-sm rounded border">
+                    <table class="table table-hover align-middle mb-0 bg-white">
+                        <thead class="table-light border-bottom">
+                            <tr>
+                                <th class="ps-3">Room Number</th>
+                                <th>Room Type</th>
+                                <th>Image</th>
+                                <th>Status</th>
+                                <th class="text-center pe-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roomTableBody">
+                            <c:forEach items="${roomList}" var="c">
+                                <tr class="room-row" data-search="<c:out value='${c.roomNumber} ${c.roomTypeID.typeName}${c.status}'/>">
+                                    <td class="fw-bold text-dark ps-3"><c:out value="${c.roomNumber}" /></td>
+                                    <td><c:out value="${c.roomTypeID.typeName}" /></td>
+                                    <td>
+                                        <c:choose>
+                                            <c:when test="${not empty c.roomImage}">
+                                                <img class="room-thumbnail shadow-sm" src="${pageContext.request.contextPath}/assets/images/room/${c.roomImage}" alt="Room ${c.roomNumber}" style="width: 80px; height: 50px; object-fit: cover; border-radius: 4px;">
+                                            </c:when>
+                                            <c:otherwise>
+                                                <div class="bg-secondary bg-opacity-10 rounded d-inline-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 50px;">
+                                                    <i class="fa-solid fa-image text-secondary"></i>
+                                                </div>
+                                            </c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                    <td>
+                                        <c:choose>
+                                            <c:when test="${c.status eq 'ACTIVE'}">
+                                                <span class="badge bg-success shadow-sm px-2 py-1">ACTIVE</span>
+                                            </c:when>
+                                            <c:when test="${c.status eq 'MAINTENANCE'}">
+                                                <span class="badge bg-warning text-dark shadow-sm px-2 py-1">MAINTENANCE</span>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <span class="badge bg-danger shadow-sm px-2 py-1"><c:out value="${c.status}" /></span>
+                                            </c:otherwise>
+                                        </c:choose>
+                                    </td>
+                                    <td class="text-center pe-3">
+                                        <a href="${pageContext.request.contextPath}/room?action=viewDetail&id=${c.roomID}" class="btn btn-outline-info btn-sm me-1" title="View Details"><i class="fa-solid fa-eye"></i></a>
+
+                                        <c:if test="${sessionScope.user.role eq 'Admin'}">
                                             <a href="${pageContext.request.contextPath}/room?action=update&id=${c.roomID}" class="btn btn-outline-warning btn-sm me-1" title="Edit"><i class="fa-solid fa-pen"></i></a>
                                             <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal${c.roomID}" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                                        </td>
-                                    </tr>
+                                            </c:if>
+                                    </td>
+                                </tr>
 
-                                    <!-- Pop-up delete room -->
+                                <%-- Pop-up delete room (Chỉ sinh ra nếu là Admin) --%>
+                                <c:if test="${sessionScope.user.role eq 'Admin'}">
                                 <div class="modal fade" id="deleteModal${c.roomID}" tabindex="-1" aria-hidden="true">
                                     <div class="modal-dialog modal-dialog-centered">
                                         <div class="modal-content border-0 shadow">
@@ -130,75 +133,20 @@
                                         </div>
                                     </div>
                                 </div>
-                            </c:forEach>
-
-                            <c:if test="${empty roomList}">
-                                <tr id="noDataRow">
-                                    <td colspan="5" class="text-center text-muted py-5">
-                                        <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50"></i>
-                                        <h5>No rooms found.</h5>
-                                    </td>
-                                </tr>
                             </c:if>
-                            </tbody>
-                        </table>
-                    </div>
-                </c:if>
-
-                <%-- ======================= GIAO DIỆN STAFF (CARD GRID) ======================= --%>
-                <c:if test="${sessionScope.user.role eq 'Staff'}">
-                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="roomCardContainer">
-                        <c:forEach items="${roomList}" var="c">
-                            <div class="col room-item" data-search="<c:out value='${c.roomNumber} ${c.roomTypeID.typeName}${c.status}'/>">
-                                <div class="card h-100 shadow-sm border-0 hover-lift overflow-hidden">
-                                    <c:choose>
-                                        <c:when test="${not empty c.roomImage}">
-                                            <img src="${pageContext.request.contextPath}/assets/images/room/${c.roomImage}" class="card-img-top" alt="Room ${c.roomNumber}" style="height: 220px; object-fit: cover;">
-                                        </c:when>
-                                        <c:otherwise>
-                                            <div class="card-img-top bg-light d-flex align-items-center justify-content-center border-bottom" style="height: 220px;">
-                                                <i class="fa-solid fa-image fa-4x text-secondary opacity-25"></i>
-                                            </div>
-                                        </c:otherwise>
-                                    </c:choose>
-
-                                    <div class="card-body d-flex flex-column p-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h4 class="card-title mb-0 fw-bold text-primary room-number"><c:out value="${c.roomNumber}" /></h4>
-                                            <c:choose>
-                                                <c:when test="${c.status eq 'ACTIVE'}">
-                                                    <span class="badge bg-success px-2 py-1 shadow-sm room-status">ACTIVE</span>
-                                                </c:when>
-                                                <c:when test="${c.status eq 'MAINTENANCE'}">
-                                                    <span class="badge bg-warning text-dark px-2 py-1 shadow-sm room-status">MAINTENANCE</span>
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <span class="badge bg-danger px-2 py-1 shadow-sm room-status"><c:out value="${c.status}" /></span>
-                                                </c:otherwise>
-                                            </c:choose>
-                                        </div>
-                                        <h6 class="card-subtitle text-muted mb-3 room-type"><i class="fa-solid fa-tag me-1"></i><c:out value="${c.roomTypeID.typeName}" /></h6>
-
-                                        <div class="mb-3">
-                                            <span class="text-danger fw-bold fs-4"><fmt:formatNumber value="${c.roomTypeID.price}" type="number" maxFractionDigits="0"/> VND</span>
-                                            <span class="text-muted fs-6">/ night</span>
-                                        </div>
-
-                                        <p class="card-text text-muted small flex-grow-1 room-desc"><c:out value="${c.roomTypeID.description}" /></p>
-
-                                        <a href="${pageContext.request.contextPath}/room?action=viewDetail&id=${c.roomID}" class="btn btn-outline-primary w-100 mt-2 fw-bold">View Details</a>
-                                    </div>
-                                </div>
-                            </div>
                         </c:forEach>
-                    </div>
 
-                    <!-- Fallback if empty array on load or empty search -->
-                    <div id="noDataMsg" class="text-center text-muted py-5" style="${empty roomList ? '' : 'display: none;'}">
-                        <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50"></i>
-                        <h5>No rooms found.</h5>
-                    </div>
-                </c:if>
+                        <c:if test="${empty roomList}">
+                            <tr id="noDataRow">
+                                <td colspan="5" class="text-center text-muted py-5">
+                                    <i class="fa-solid fa-folder-open fa-3x mb-3 text-secondary opacity-50"></i>
+                                    <h5>No rooms found.</h5>
+                                </td>
+                            </tr>
+                        </c:if>
+                        </tbody>
+                    </table>
+                </div>
 
             </div>
         </div>
@@ -232,7 +180,7 @@
                         </div>
                     </div>
                     <hr class="text-muted">
-                    <!-- Hàng dưới: Lọc phụ (Options) sẽ hiển thị dựa theo Hàng trên -->
+                    <!-- Hàng dưới: Lọc phụ (Options) -->
                     <div>
                         <label class="fw-bold mb-3 text-primary">Options:</label>
                         <div id="subFilterContainer" class="ps-2">
@@ -248,23 +196,21 @@
         </div>
     </div>
 
-    <!-- JavaScript Xử lý Tìm kiếm mờ & Lọc/Sắp xếp hỗ trợ đa giao diện -->
+    <!-- JavaScript Xử lý Tìm kiếm & Lọc/Sắp xếp -->
     <script>
-        // Kiểm tra xem hiện tại đang render giao diện Bảng (Admin) hay Lưới (Staff/Customer)
+        // Vì cả 2 role đều dùng bảng (table), hàm này luôn trả về true
         function isTableView() {
             return document.getElementById("roomTableBody") !== null;
         }
 
-        // Tự động kích hoạt hiển thị mục chọn phụ (Options) ngay khi trang tải xong
         document.addEventListener("DOMContentLoaded", function () {
             updateSubFilter();
         });
 
-        // Hàm này tự động thay đổi giao diện hàng dưới (Sub-filter) khi tick chọn hàng trên
         function updateSubFilter() {
             let category = document.querySelector('input[name="filterCategory"]:checked').value;
             let container = document.getElementById("subFilterContainer");
-            container.innerHTML = ""; // Xóa nội dung cũ
+            container.innerHTML = "";
             container.classList.remove("text-muted", "fst-italic");
 
             if (category === "number") {
@@ -281,13 +227,9 @@
                 </div>
             `;
             } else if (category === "type") {
-                // Tự động quét và lấy ra các loại phòng hiện có
                 let types = new Set();
-                let isTable = isTableView();
-                let selector = isTable ? "#roomTableBody tr.room-row" : "#roomCardContainer div.room-item";
-
-                document.querySelectorAll(selector).forEach(item => {
-                    let type = isTable ? item.cells[1].textContent.trim() : item.querySelector('.room-type').textContent.trim();
+                document.querySelectorAll("#roomTableBody tr.room-row").forEach(item => {
+                    let type = item.cells[1].textContent.trim();
                     types.add(type);
                 });
 
@@ -335,9 +277,8 @@
 
         function applyFilterAndSearch(fromModal = false) {
             let keyword = document.getElementById("searchInput").value.toLowerCase().trim();
-            let isTable = isTableView();
-            let wrapper = document.getElementById(isTable ? "roomTableBody" : "roomCardContainer");
-            let items = Array.from(wrapper.querySelectorAll(isTable ? "tr.room-row" : "div.room-item"));
+            let wrapper = document.getElementById("roomTableBody");
+            let items = Array.from(wrapper.querySelectorAll("tr.room-row"));
             let visibleItems = [];
 
             let categoryRadio = document.querySelector('input[name="filterCategory"]:checked');
@@ -349,11 +290,10 @@
                     filterModal.hide();
             }
 
-            // Lọc dữ liệu
             items.forEach(item => {
                 let searchData = item.getAttribute("data-search").toLowerCase();
-                let roomType = isTable ? item.cells[1].textContent.trim() : item.querySelector('.room-type').textContent.trim();
-                let roomStatus = isTable ? item.cells[3].textContent.trim().toUpperCase() : item.querySelector('.room-status').textContent.trim().toUpperCase();
+                let roomType = item.cells[1].textContent.trim();
+                let roomStatus = item.cells[3].textContent.trim().toUpperCase();
 
                 let matchSearch = searchData.includes(keyword);
                 let matchFilter = true;
@@ -379,13 +319,11 @@
                 }
             });
 
-            // Sắp xếp
             if (categoryRadio && subFilterRadio && categoryRadio.value === "number") {
                 let order = subFilterRadio.value;
-
                 visibleItems.sort((a, b) => {
-                    let valA = isTable ? a.cells[0].textContent.trim() : a.querySelector('.room-number').textContent.trim();
-                    let valB = isTable ? b.cells[0].textContent.trim() : b.querySelector('.room-number').textContent.trim();
+                    let valA = a.cells[0].textContent.trim();
+                    let valB = b.cells[0].textContent.trim();
 
                     let numA = parseInt(valA.replace(/[^0-9]/g, "")) || 0;
                     let numB = parseInt(valB.replace(/[^0-9]/g, "")) || 0;
@@ -396,14 +334,9 @@
                 visibleItems.forEach(item => wrapper.appendChild(item));
             }
 
-            // Xử lý thông báo Empty Data
-            let noDataRow = document.getElementById("noDataRow"); // Admin Table
+            let noDataRow = document.getElementById("noDataRow");
             if (noDataRow)
                 noDataRow.style.display = visibleItems.length === 0 ? "" : "none";
-
-            let noDataMsg = document.getElementById("noDataMsg"); // Staff/Customer Card Grid
-            if (noDataMsg)
-                noDataMsg.style.display = visibleItems.length === 0 ? "" : "none";
         }
 
         function clearFilter() {
