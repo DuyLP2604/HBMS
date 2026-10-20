@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import util.flash.Flash;
+import util.security.LoginSession;
 
 @WebServlet(
         name = "LoginServlet",
@@ -17,7 +18,9 @@ import util.flash.Flash;
 )
 public class LoginServlet extends HttpServlet {
 
-    private final UserDAO userDAO = new UserDAO();
+    protected UserDAO createUserDAO() {
+        return new UserDAO();
+    }
 
     @Override
     protected void doGet(
@@ -26,6 +29,11 @@ public class LoginServlet extends HttpServlet {
             throws ServletException, IOException {
 
         HttpSession session = request.getSession(false);
+
+        if (LoginSession.pending(session) != null) {
+            response.sendRedirect(request.getContextPath() + "/set-new-password");
+            return;
+        }
 
         if (session != null) {
             Users loggedInUser
@@ -80,7 +88,7 @@ public class LoginServlet extends HttpServlet {
         Users user;
 
         try {
-            user = userDAO.login(
+            user = createUserDAO().login(
                     username,
                     password
             );
@@ -110,37 +118,13 @@ public class LoginServlet extends HttpServlet {
             return;
         }
 
-        /*
-         * Delete the old session to prevent session fixation.
-         */
-        HttpSession oldSession
-                = request.getSession(false);
-
-        if (oldSession != null) {
-            oldSession.invalidate();
+        if ("Staff".equalsIgnoreCase(user.getRole()) && user.isMustChangePassword()) {
+            LoginSession.beginPasswordSetup(request, user);
+            response.sendRedirect(request.getContextPath() + "/set-new-password");
+            return;
         }
 
-        /*
-         * Create a new authenticated session.
-         */
-        HttpSession session
-                = request.getSession(true);
-
-        session.setAttribute("user", user);
-        session.setAttribute(
-                "role",
-                user.getRole()
-        );
-        session.setAttribute(
-                "userId",
-                user.getUserID()
-        );
-
-        /*
-         * Session expires after 30 minutes of inactivity.
-         * Unit: seconds.
-         */
-        session.setMaxInactiveInterval(30 * 60);
+        LoginSession.authenticate(request, user);
 
         Flash.success(
                 request,

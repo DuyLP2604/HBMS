@@ -8,7 +8,9 @@
             <!-- HEADER -->
             <div class="card-header employee-header text-white d-flex justify-content-between align-items-center py-3">
                 <h2 class="h4 mb-0">Employee List</h2>
+                <c:if test="${sessionScope.user.role eq 'Admin'}">
                 <a href="${pageContext.request.contextPath}/employee?action=add" class="btn btn-warning btn-sm fw-semibold">+ Add Employee</a>
+                </c:if>
             </div>
             <div class="card-body">
                 <!-- SEARCH -->

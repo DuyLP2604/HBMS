@@ -1,5 +1,6 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 
@@ -86,6 +87,18 @@
                             </div>
                         </div>
                     </div>
+
+                    <c:if test="${sessionScope.user.role eq 'Admin' and employee.userID.role eq 'Staff' and employee.userID.mustChangePassword}">
+                        <div class="card-body border-top px-4 pt-3">
+                            <div class="alert alert-info small">This account is waiting for its first password change. Resending generates a new temporary password and invalidates earlier temporary credentials.</div>
+                            <form action="${pageContext.request.contextPath}/employee" method="post">
+                                <input type="hidden" name="action" value="resendCredentials">
+                                <input type="hidden" name="id" value="${fn:escapeXml(employee.employeeID)}">
+                                <input type="hidden" name="csrfToken" value="${fn:escapeXml(csrfToken)}">
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Resend login email</button>
+                            </form>
+                        </div>
+                    </c:if>
 
                     <div class="card-footer bg-light text-end p-3">
                         <a href="${pageContext.request.contextPath}/employee?action=list"

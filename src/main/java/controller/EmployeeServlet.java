@@ -11,13 +11,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import util.EmployeeIdGenerator;
 import util.EmployeeValidator;
+import service.EmailService;
+import util.flash.Flash;
+import util.security.CsrfTokens;
+import util.security.TemporaryPasswordGenerator;
 
 @WebServlet(name = "EmployeeServlet", urlPatterns = {"/employee"})
 public class EmployeeServlet extends HttpServlet {
@@ -28,7 +30,7 @@ public class EmployeeServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "You do not have permission to access this page.");
             return;
         }
-        EmployeeDAO employeeDAO = new EmployeeDAO();
+        EmployeeDAO employeeDAO = createEmployeeDAO();
         String action = normalizeOptional(request.getParameter("action"));
         if (action == null) {
             action = "list";
@@ -41,6 +43,11 @@ public class EmployeeServlet extends HttpServlet {
                 request.getRequestDispatcher("/WEB-INF/views/employees.jsp").forward(request, response);
                 break;
             case "add":
+                if (!isAdmin(request)) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only administrators can create staff accounts.");
+                    return;
+                }
+                request.setAttribute("csrfToken", CsrfTokens.getOrCreate(request.getSession()));
                 request.setAttribute("positions", employeeDAO.getAllPositions());
                 setNextAccount(request, employeeDAO.generateEmployeeID());
                 request.getRequestDispatcher("/WEB-INF/views/add-employee.jsp").forward(request, response);
@@ -69,24 +76,46 @@ public class EmployeeServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Employee action is required.");
             return;
         }
-        if (!"update".equalsIgnoreCase(action) && !"add".equalsIgnoreCase(action)) {
+        if (!"update".equalsIgnoreCase(action) && !"add".equalsIgnoreCase(action) && !"resendCredentials".equalsIgnoreCase(action)) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid employee action.");
+            return;
+        }
+        boolean provisioning = "add".equalsIgnoreCase(action) || "resendCredentials".equalsIgnoreCase(action);
+        if (provisioning && !isAdmin(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only administrators can create or resend staff credentials.");
+            return;
+        }
+        if (provisioning && !CsrfTokens.isValid(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "The form expired. Reload the page and try again.");
             return;
         }
         try {
             if ("update".equalsIgnoreCase(action)) {
                 updateEmployee(request);
+                Flash.success(request, "Employee information updated.");
+            } else if ("add".equalsIgnoreCase(action)) {
+                boolean sent = addEmployee(request);
+                if (sent) {
+                    Flash.success(request, "Staff account created. The username and temporary password were sent by email.");
+                } else {
+                    Flash.warning(request, "The staff account was created, but email delivery failed. Open View Details and use Resend login email. Do not create the account again.");
+                }
             } else {
-                addEmployee(request);
+                boolean sent = resendCredentials(request);
+                if (sent) {
+                    Flash.success(request, "A new temporary password was sent. Earlier temporary credentials are no longer valid.");
+                } else {
+                    Flash.warning(request, "The temporary password was renewed, but email delivery failed. Please try Resend login email again.");
+                }
             }
             response.sendRedirect(request.getContextPath() + "/employee?action=list");
         } catch (ValidationException exception) {
             forwardFormError(request, response, action, "Please correct the highlighted fields.", exception.getErrors());
         } catch (IllegalArgumentException exception) {
-            forwardFormError(request, response, action, exception.getMessage(), Collections.emptyMap());
+            handleFormFailure(request, response, action, exception.getMessage());
         } catch (Exception exception) {
             getServletContext().log("Unable to process employee information.", exception);
-            forwardFormError(request, response, action, "Unable to process employee information.", Collections.emptyMap());
+            handleFormFailure(request, response, action, "Unable to process employee information.");
         }
     }
 
@@ -110,11 +139,12 @@ public class EmployeeServlet extends HttpServlet {
             return;
         }
         request.setAttribute("employee", employee);
+        request.setAttribute("csrfToken", CsrfTokens.getOrCreate(request.getSession()));
         request.getRequestDispatcher("/WEB-INF/views/employee-detail.jsp").forward(request, response);
     }
 
     private void updateEmployee(HttpServletRequest request) {
-        EmployeeDAO employeeDAO = new EmployeeDAO();
+        EmployeeDAO employeeDAO = createEmployeeDAO();
         String employeeID = requireParameter(request, "id", "Employee ID is required.");
         Employee employee = employeeDAO.getEmployeeById(employeeID);
         if (employee == null) {
@@ -128,46 +158,99 @@ public class EmployeeServlet extends HttpServlet {
         employeeDAO.updateEmployee(employee);
     }
 
-    private void addEmployee(HttpServletRequest request) {
-        EmployeeDAO employeeDAO = new EmployeeDAO();
+    private boolean addEmployee(HttpServletRequest request) {
+        EmployeeDAO employeeDAO = createEmployeeDAO();
         Employee employee = new Employee();
-        // ID and username are always generated by the server, whatever the browser sent.
         String employeeID = employeeDAO.generateEmployeeID();
         employee.setEmployeeID(employeeID);
         request.setAttribute("employee", employee);
-
-        // Collect every problem first so the admin sees all of them at once.
         Map<String, String> errors = fillEmployeeInformation(request, employee, employeeDAO, null);
-
+        if (EmployeeValidator.normalizeEmail(request.getParameter("email")) == null) {
+            errors.put("email", "Email is required to send the staff login credentials.");
+        }
         String username = EmployeeIdGenerator.usernameOf(employeeID);
-        String password = request.getParameter("password");
-        errors.putAll(EmployeeValidator.validateAccount(username, password));
-        if (!errors.containsKey("username") && new UserDAO().isUsernameExists(username)) {
+        String usernameError = EmployeeValidator.validateUsername(username);
+        if (usernameError != null) {
+            errors.put("username", usernameError);
+        } else if (createUserDAO().isUsernameExists(username)) {
             errors.put("username", "Username is already taken.");
         }
         if (!errors.isEmpty()) {
             throw new ValidationException(errors);
         }
-
+        EmailService emailService = configuredEmailService();
+        String password = TemporaryPasswordGenerator.generate();
         Users user = new Users();
         user.setUsername(username);
-        user.setPassword(hashPassword(password));
+        user.setPassword(createUserDAO().hashMD5(password));
         user.setRole("Staff");
+        user.setMustChangePassword(true);
+        // Commit both records before sending email: SMTP failures do not leave partial records.
         employeeDAO.insertEmployeeWithUser(employee, user);
+        return deliverCredentials(emailService, employee, user, password);
     }
 
-    private String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] array = md.digest(password.getBytes());
-            StringBuilder sb = new StringBuilder();
-            for (byte b : array) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (NoSuchAlgorithmException exception) {
-            return password;
+    private boolean resendCredentials(HttpServletRequest request) {
+        String employeeID = requireParameter(request, "id", "Employee ID is required.");
+        Employee employee = createEmployeeDAO().getEmployeeById(employeeID);
+        Users user = employee == null ? null : employee.getUserID();
+        if (user == null || !"Staff".equalsIgnoreCase(user.getRole()) || !user.isMustChangePassword()) {
+            throw new IllegalArgumentException("Only staff accounts awaiting their first password change can receive temporary credentials.");
         }
+        String email = EmployeeValidator.normalizeEmail(employee.getEmail());
+        if (email == null || EmployeeValidator.validateEmail(email) != null) {
+            throw new IllegalArgumentException("Update this employee with a valid email address first.");
+        }
+        EmailService emailService = configuredEmailService();
+        String password = TemporaryPasswordGenerator.generate();
+        if (!createUserDAO().renewStaffTemporaryPassword(user.getUserID(), password)) {
+            throw new IllegalArgumentException("This account has already completed password setup. Its password was not changed.");
+        }
+        return deliverCredentials(emailService, employee, user, password);
+    }
+
+    private boolean deliverCredentials(EmailService emailService, Employee employee, Users user, String password) {
+        try {
+            return emailService.sendStaffCredentials(employee.getEmail(), employee.getFullName(), user.getUsername(), password);
+        } catch (RuntimeException exception) {
+            // The account is already committed; report delivery failure without suggesting recreation.
+            return false;
+        }
+    }
+
+    private EmailService configuredEmailService() {
+        EmailService service = createEmailService();
+        if (!service.isConfigured()) {
+            throw new IllegalArgumentException("Staff email delivery is not configured. Please contact the system administrator before creating or resending an account.");
+        }
+        return service;
+    }
+
+    private boolean isAdmin(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        Users user = session == null ? null : (Users) session.getAttribute("user");
+        return user != null && "Admin".equalsIgnoreCase(user.getRole());
+    }
+
+    private void handleFormFailure(HttpServletRequest request, HttpServletResponse response, String action, String message) throws ServletException, IOException {
+        if ("resendCredentials".equalsIgnoreCase(action)) {
+            Flash.error(request, message);
+            response.sendRedirect(request.getContextPath() + "/employee?action=list");
+        } else {
+            forwardFormError(request, response, action, message, Collections.emptyMap());
+        }
+    }
+
+    protected EmployeeDAO createEmployeeDAO() {
+        return new EmployeeDAO();
+    }
+
+    protected UserDAO createUserDAO() {
+        return new UserDAO();
+    }
+
+    protected EmailService createEmailService() {
+        return new EmailService();
     }
 
     /*
@@ -216,10 +299,11 @@ public class EmployeeServlet extends HttpServlet {
 
     private void forwardFormError(HttpServletRequest request, HttpServletResponse response, String action,
             String message, Map<String, String> fieldErrors) throws ServletException, IOException {
-        EmployeeDAO employeeDAO = new EmployeeDAO();
+        EmployeeDAO employeeDAO = createEmployeeDAO();
         request.setAttribute("positions", employeeDAO.getAllPositions());
         request.setAttribute("flashError", message);
         request.setAttribute("fieldErrors", fieldErrors);
+        request.setAttribute("csrfToken", CsrfTokens.getOrCreate(request.getSession()));
         if (!"update".equalsIgnoreCase(action)) {
             setNextAccount(request, employeeDAO.generateEmployeeID());
         }
