@@ -19,7 +19,7 @@
                             </div>
                             <div>
                                 <h2 class="h4 fw-bold mb-1">Add New Employee</h2>
-                                <p class="mb-0 text-white-50 small">Enter staff member details and login credentials below.</p>
+                                <p class="mb-0 text-white-50 small">Enter staff details. Login credentials will be sent to the staff email address.</p>
                             </div>
                         </div>
                     </div>
@@ -32,6 +32,7 @@
                         </c:if>
                         <form id="employeeForm" data-mode="add" action="${pageContext.request.contextPath}/employee" method="post" class="needs-validation" novalidate>
                             <input type="hidden" name="action" value="add">
+                            <input type="hidden" name="csrfToken" value="${fn:escapeXml(csrfToken)}">
                             
                             <!-- Section: Personal Information -->
                             <div class="mb-4">
@@ -64,10 +65,10 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="email" class="form-label fw-semibold">Email</label>
+                                        <label for="email" class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
-                                            <input id="email" type="email" name="email" value="${fn:escapeXml(param.email)}" class="form-control border-start-0 ps-0${not empty fieldErrors['email'] ? ' is-invalid' : ''}" placeholder="e.g. employee@gmail.com" maxlength="100" autocomplete="email">
+                                            <input id="email" type="email" name="email" value="${fn:escapeXml(param.email)}" class="form-control border-start-0 ps-0${not empty fieldErrors['email'] ? ' is-invalid' : ''}" placeholder="e.g. employee@gmail.com" maxlength="100" autocomplete="email" required>
                                         <div class="invalid-feedback" data-feedback-for="email"><c:out value="${fieldErrors['email']}" /></div>
                                         </div>
                                     </div>
@@ -134,11 +135,10 @@
                                         <div id="usernameHelp" class="form-text">Generated from the Employee ID.</div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="password" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
-                                            <input id="password" type="password" name="password" class="form-control border-start-0 ps-0${not empty fieldErrors['password'] ? ' is-invalid' : ''}" placeholder="6-50 characters, no spaces" minlength="6" maxlength="50" autocomplete="new-password" required>
-                                        <div class="invalid-feedback" data-feedback-for="password"><c:out value="${fieldErrors['password']}" /></div>
+                                        <div class="form-label fw-semibold">Temporary Password</div>
+                                        <div class="alert alert-info mb-0 small">
+                                            Generated automatically and sent to the staff email address.
+                                            The staff member must set a new password on first login.
                                         </div>
                                     </div>
                                 </div>

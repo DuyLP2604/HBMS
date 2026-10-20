@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
         email: function (field) {
             const value = field.value.trim();
             if (!value) {
-                return "";
+                return field.required ? "Email is required to send the staff login credentials." : "";
             }
             if (value.length > 100) {
                 return "Email must not exceed 100 characters.";

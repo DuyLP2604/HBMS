@@ -51,6 +51,11 @@ public class Users implements Serializable {
     @Column(name = "Role")
     private String role;
 
+    @Basic(optional = false)
+    @Column(name = "MustChangePassword", nullable = false)
+    private boolean mustChangePassword;
+
+
     private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -148,6 +153,18 @@ public class Users implements Serializable {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public boolean getMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 
 }
