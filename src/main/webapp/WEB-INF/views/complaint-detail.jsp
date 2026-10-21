@@ -76,7 +76,7 @@
                             <label for="replyMessage" class="form-label fw-bold">Reply Message</label>
                             <textarea id="replyMessage" name="replyMessage" class="form-control" rows="5" placeholder="Nhập nội dung giải thích, hỗ trợ khách hàng vào đây..." required><c:out value="${complaint.replyMessage}" /></textarea>
                         </div>
-                        <button type="submit" class="btn btn-danger px-4">Update and Reply</button>
+                        <button type="submit" class="btn btn-danger px-4">Reply</button>
                     </form>
                 </c:if>
             </div>
