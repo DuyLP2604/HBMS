@@ -114,6 +114,7 @@
             </div>
         </div>
 
+
         <!-- Revenue Chart -->
         <div class="chart-card">
             <div class="chart-title">
@@ -193,6 +194,55 @@
         </div>
     </div>
 
+    <!-- Khối Data Management -->
+    <div class="chart-card mx-auto" style="max-width: 650px;">
+        <div class="chart-title">
+            <i class="fas fa-database dashboard-accent-icon"></i> Data Management
+        </div>
+        <p class="text-muted small mb-3">Export or import full system database backup (.xlsx).</p>
+        <div class="d-flex gap-2">
+            <!-- Nút Export -->
+            <a href="${pageContext.request.contextPath}/data" class="btn btn-outline-primary btn-sm flex-grow-1 py-2" style="border-radius: 6px; font-weight: 500;">
+                <i class="fas fa-download me-1"></i> Export Data
+            </a>
+
+            <!-- Nút Import -->
+            <form id="importForm" action="${pageContext.request.contextPath}/data" method="post" enctype="multipart/form-data" class="m-0 flex-grow-1 d-flex">
+                <input type="file" name="backupFile" accept=".xlsx" class="d-none" id="backupFileInput">
+
+                <button type="button" class="btn btn-outline-warning btn-sm w-100 py-2" id="importBtn"
+                        style="border-radius: 6px; font-weight: 500;">
+                    <i class="fas fa-upload me-1"></i> Import Data
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="importConfirmModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-warning bg-opacity-10 py-3">
+                    <h5 class="modal-title fw-bold text-danger" id="importModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Xác nhận Import Dữ liệu
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="mb-1 text-dark fw-medium">Hành động này sẽ nạp dữ liệu từ file Excel vào Database hệ thống.</p>
+                    <p class="text-muted small mb-0">Bạn có chắc chắn muốn tiếp tục không? Dữ liệu cũ có thể bị ghi đè.</p>
+                    <!-- Hiển thị tên file người dùng vừa chọn -->
+                    <div class="alert alert-light border mt-3 mb-0 py-2 px-3 small text-secondary">
+                        <i class="fas fa-file-excel text-success me-2"></i> <span id="selectedFileName" class="fw-semibold text-dark">Chưa có file nào được chọn</span>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal" id="cancelImportBtn">Hủy</button>
+                    <button type="button" class="btn btn-danger btn-sm px-3" id="confirmImportBtn">Xác nhận Import</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Server data for dashboard.js -->
     <div id="dashboardData" hidden>
         <div id="revenueData">
@@ -212,6 +262,8 @@
         </div>
     </div>
 
+
+
     <!-- Dashboard dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
@@ -219,6 +271,51 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
     <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const fileInput = document.getElementById('backupFileInput');
+                        const importBtn = document.getElementById('importBtn');
+                        const importForm = document.getElementById('importForm');
+                        const confirmImportBtn = document.getElementById('confirmImportBtn');
+                        const cancelImportBtn = document.getElementById('cancelImportBtn');
+                        const selectedFileName = document.getElementById('selectedFileName');
+
+                        const importModalElement = document.getElementById('importConfirmModal');
+                        const importModal = new bootstrap.Modal(importModalElement);
+
+                        // 1. Khi bấm nút "Import Data" -> Chỉ mở bảng chọn file của trình duyệt (không hiện modal ngay)
+                        importBtn.addEventListener('click', function (e) {
+                            e.preventDefault();
+                            fileInput.value = ''; // Reset lại input để bắt sự kiện change nếu chọn lại cùng 1 file
+                            fileInput.click();
+                        });
+
+                        // 2. Chỉ khi người dùng đã chọn xong file từ máy tính -> Bắt sự kiện change -> Hiện Modal
+                        fileInput.addEventListener('change', function () {
+                            if (fileInput.files.length > 0) {
+                                // Hiển thị tên file vừa chọn lên Modal
+                                selectedFileName.textContent = fileInput.files[0].name;
+                                // Bật cửa sổ Modal lên
+                                importModal.show();
+                            }
+                        });
+
+                        // 3. Khi bấm nút "Xác nhận Import" trong Modal -> Tiến hành submit form lên server
+                        confirmImportBtn.addEventListener('click', function () {
+                            importModal.hide();
+                            importForm.submit();
+                        });
+
+                        // 4. Khi bấm nút "Hủy" hoặc đóng Modal -> Xóa file đã chọn để trả về trạng thái sạch
+                        cancelImportBtn.addEventListener('click', function () {
+                            fileInput.value = '';
+                        });
+
+                        importModalElement.addEventListener('hidden.bs.modal', function () {
+                            if (!fileInput.value) {
+                                fileInput.value = '';
+                            }
+                        });
+                    });
                     $(document).ready(function () {
                         const urlParams = new URLSearchParams(window.location.search);
                         let fromDate = urlParams.get('from');
@@ -285,4 +382,6 @@
                         $('#filterForm').submit();
                     }
     </script>
+    <!-- Bootstrap 5 JS Bundle (Đã bao gồm Popper.js cho Popover, Modal, Tooltip) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </layout:layout>
