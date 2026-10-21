@@ -69,9 +69,18 @@ public class CustomerDAO {
     }
 
     public List<Customer> getCustomerByName(String name) {
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
-            return em.createNamedQuery("Customer.findByFullName", Customer.class).getResultList();
+        if (name == null || name.trim().isEmpty()) {
+            return List.of();
         }
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            String searchName = "%" + name.trim().toLowerCase(Locale.ROOT) + "%";
+            String jpql = "SELECT c FROM Customer c WHERE LOWER(c.fullName) LIKE :name";
+            TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
+            query.setParameter("name", searchName);
+            return query.getResultList();
+        } catch (Exception e) {
+        }
+        return List.of();
     }
 
     public List<Customer> getCustomerByPhone(String phone) {
@@ -213,7 +222,4 @@ public class CustomerDAO {
         return false;
     }
 
-    public static void main(String[] args) {
-        System.out.println(new CustomerDAO().getAllCustomers());
-    }
 }
