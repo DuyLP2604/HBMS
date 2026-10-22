@@ -105,15 +105,8 @@ public class Booking implements Serializable
     private Customer customerID;
     @OneToMany(mappedBy = "bookingID")
     private Collection<BookingDetail> bookingDetailCollection = new ArrayList<>();
-
-    @Column(name = "GuestCCCDs", insertable = false, updatable = false)
+    @Column(name = "GuestCCCDs")
     private String guestCCCDs;
-
-    public String getGuestCCCDs()
-    {
-        return guestCCCDs;
-    }
-
     public Booking()
     {
 
@@ -277,7 +270,13 @@ public class Booking implements Serializable
     {
         this.customerID = customerID;
     }
+    public String getGuestCCCDs() {
+        return guestCCCDs;
+    }
 
+    public void setGuestCCCDs(String guestCCCDs) {
+        this.guestCCCDs = guestCCCDs;
+    }
     @XmlTransient
     public Collection<BookingDetail> getBookingDetailCollection()
     {
