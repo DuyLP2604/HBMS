@@ -11,7 +11,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
-import java.math.BigDecimal;
 
 @WebServlet(name = "ServiceServlet", urlPatterns = {"/service"})
 public class ServiceServlet extends HttpServlet {
@@ -25,9 +24,20 @@ public class ServiceServlet extends HttpServlet {
         }
 
         String action = request.getParameter("action");
+        if ("orders".equalsIgnoreCase(action)) {
+            if (!canAccessServices(currentUser)) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
+                return;
+            }
+            ServiceDAO serviceDAO = new ServiceDAO();
+            request.setAttribute("orders", serviceDAO.getAllBookedServices());
+            request.getRequestDispatcher("/WEB-INF/views/service-orders.jsp").forward(request, response);
+            return;
+        }
+
         if ("manage".equalsIgnoreCase(action)) {
-            if (!canManageServices(currentUser)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied. Only staff or admin can manage services.");
+            if (!canAccessServices(currentUser)) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
                 return;
             }
             ServiceDAO serviceDAO = new ServiceDAO();
@@ -50,7 +60,6 @@ public class ServiceServlet extends HttpServlet {
             }
 
             request.getRequestDispatcher("/WEB-INF/views/service.jsp").forward(request, response);
-
         } catch (Exception exception) {
             throw new ServletException("Unable to load the service page.", exception);
         }
@@ -67,56 +76,44 @@ public class ServiceServlet extends HttpServlet {
         HttpSession session = request.getSession();
         String action = request.getParameter("action");
 
-        // Staff CRUD actions
         if ("create".equalsIgnoreCase(action)) {
-            if (!canManageServices(currentUser)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
-                return;
-            }
             try {
                 String serviceName = request.getParameter("serviceName");
-                BigDecimal unitPrice = new BigDecimal(request.getParameter("unitPrice"));
+                double unitPrice = parsePrice(request.getParameter("unitPrice"));
                 new ServiceDAO().createService(serviceName, unitPrice);
                 session.setAttribute("successMessage", "Tạo dịch vụ mới thành công!");
             } catch (Exception e) {
-                session.setAttribute("errorMessage", e.getMessage() != null ? e.getMessage() : "Không thể tạo dịch vụ mới.");
+                session.setAttribute("errorMessage", e.getMessage());
             }
             response.sendRedirect(request.getContextPath() + "/service?action=manage");
             return;
         }
 
         if ("updatePrice".equalsIgnoreCase(action)) {
-            if (!canManageServices(currentUser)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
-                return;
-            }
             try {
                 String serviceID = request.getParameter("serviceID");
-                BigDecimal unitPrice = new BigDecimal(request.getParameter("unitPrice"));
+                double unitPrice = parsePrice(request.getParameter("unitPrice"));
                 new ServiceDAO().updateServicePrice(serviceID, unitPrice);
-                session.setAttribute("successMessage", "Cập nhật đơn giá dịch vụ thành công!");
+                session.setAttribute("successMessage", "Cập nhật đơn giá thành công!");
             } catch (Exception e) {
-                session.setAttribute("errorMessage", e.getMessage() != null ? e.getMessage() : "Không thể cập nhật giá dịch vụ.");
+                session.setAttribute("errorMessage", e.getMessage());
             }
             response.sendRedirect(request.getContextPath() + "/service?action=manage");
             return;
         }
 
         if ("delete".equalsIgnoreCase(action)) {
-            if (!canManageServices(currentUser)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
-                return;
-            }
             try {
                 String serviceID = request.getParameter("serviceID");
                 new ServiceDAO().deleteService(serviceID);
                 session.setAttribute("successMessage", "Xóa dịch vụ thành công!");
             } catch (Exception e) {
-                session.setAttribute("errorMessage", e.getMessage() != null ? e.getMessage() : "Không thể xóa dịch vụ.");
+                session.setAttribute("errorMessage", e.getMessage());
             }
             response.sendRedirect(request.getContextPath() + "/service?action=manage");
             return;
         }
+
         String selectedServiceID = request.getParameter("selectedService");
         String quantityValue = request.getParameter("quantity");
         String inputBookingID = request.getParameter("bookingID");
@@ -137,10 +134,9 @@ public class ServiceServlet extends HttpServlet {
             }
 
             if (targetBooking == null) {
-                throw new IllegalStateException("Không tìm thấy đơn đặt phòng hợp lệ. Vui lòng đặt phòng trước khi chọn dịch vụ.");
+                throw new IllegalStateException("Không tìm thấy đơn đặt phòng hợp lệ.");
             }
 
-            // Customer chỉ được đặt vào booking của chính mình (Staff/Admin có thể hỗ trợ)
             if ("Customer".equalsIgnoreCase(currentUser.getRole())) {
                 if (targetBooking.getCustomerID() == null || targetBooking.getCustomerID().getUserID() == null
                         || targetBooking.getCustomerID().getUserID().getUserID() != currentUser.getUserID()) {
@@ -150,24 +146,29 @@ public class ServiceServlet extends HttpServlet {
 
             String status = targetBooking.getBookingStatus();
             if ("CHECKED_OUT".equals(status) || "CANCELLED".equals(status)) {
-                throw new IllegalStateException("Không thể thêm dịch vụ cho phòng đã trả hoặc đã hủy.");
+                throw new IllegalStateException("Đơn đặt phòng này đã hoàn tất hoặc bị hủy.");
             }
 
             ServiceDAO serviceDAO = new ServiceDAO();
             serviceDAO.insertBookingService(targetBooking.getBookingID(), selectedServiceID.trim(), quantity);
 
-            session.setAttribute("successMessage", "Đã thêm dịch vụ thành công vào đơn đặt phòng (" + targetBooking.getBookingID() + ").");
+            session.setAttribute("successMessage", "Thêm dịch vụ thành công!");
         } catch (IllegalArgumentException | IllegalStateException exception) {
             session.setAttribute("errorMessage", exception.getMessage() != null ? exception.getMessage() : "Không thể thêm dịch vụ.");
-        } catch (Exception exception) {
-            session.setAttribute("errorMessage", "Đã có lỗi xảy ra khi thêm dịch vụ. Vui lòng thử lại.");
         }
 
-        String redirectUrl = request.getContextPath() + "/service";
-        if (inputBookingID != null && !inputBookingID.trim().isEmpty()) {
-            redirectUrl += "?bookingID=" + inputBookingID.trim();
+        if ("Staff".equalsIgnoreCase(currentUser.getRole()) || "Admin".equalsIgnoreCase(currentUser.getRole())) {
+            response.sendRedirect(request.getContextPath() + "/checkout");
+        } else {
+            response.sendRedirect(request.getContextPath() + "/service");
         }
-        response.sendRedirect(redirectUrl);
+    }
+
+    private boolean canAccessServices(Users user) {
+        if (user == null) {
+            return false;
+        }
+        return "Admin".equalsIgnoreCase(user.getRole()) || "Staff".equalsIgnoreCase(user.getRole());
     }
 
     private Booking resolveTargetBooking(HttpServletRequest request, Users currentUser, BookingDAO bookingDAO) {
@@ -211,10 +212,18 @@ public class ServiceServlet extends HttpServlet {
         }
     }
 
-    private boolean canManageServices(Users user) {
-        if (user == null) {
-            return false;
+    private double parsePrice(String priceValue) {
+        if (priceValue == null || priceValue.trim().isEmpty()) {
+            return 0.0;
         }
-        return "Admin".equalsIgnoreCase(user.getRole()) || "Staff".equalsIgnoreCase(user.getRole());
+        try {
+            double price = Double.parseDouble(priceValue.trim());
+            if (price < 0) {
+                throw new IllegalArgumentException("Đơn giá không được âm.");
+            }
+            return price;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Đơn giá không hợp lệ.");
+        }
     }
 }

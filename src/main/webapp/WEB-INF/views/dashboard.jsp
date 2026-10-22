@@ -220,168 +220,168 @@
 
     <div class="modal fade" id="importConfirmModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content shadow">
-                <div class="modal-header bg-warning bg-opacity-10 py-3">
-                    <h5 class="modal-title fw-bold text-danger" id="importModalLabel">
-                        <i class="fas fa-exclamation-triangle me-2"></i> Xác nhận Import Dữ liệu
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content shad
+                 <div class="modal-header bg-warning bg-opacity-10 py-3">
+                <h5 class="modal-title fw-bold text-danger" id="importModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i> Xác nhận Import Dữ liệu
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <p class="mb-1 text-dark fw-medium">Hành động này sẽ nạp dữ liệu từ file Excel vào Database hệ thống.</p>
+                <p class="text-muted small mb-0">Bạn có chắc chắn muốn tiếp tục không? Dữ liệu cũ có thể bị ghi đè.</p>
+                <!-- Hiển thị tên file người dùng vừa chọn -->
+                <div class="alert alert-light border mt-3 mb-0 py-2 px-3 small text-secondary">
+                    <i class="fas fa-file-excel text-success me-2"></i> <span id="selectedFileName" class="fw-semibold text-dark">Chưa có file nào được chọn</span>
                 </div>
-                <div class="modal-body py-4">
-                    <p class="mb-1 text-dark fw-medium">Hành động này sẽ nạp dữ liệu từ file Excel vào Database hệ thống.</p>
-                    <p class="text-muted small mb-0">Bạn có chắc chắn muốn tiếp tục không? Dữ liệu cũ có thể bị ghi đè.</p>
-                    <!-- Hiển thị tên file người dùng vừa chọn -->
-                    <div class="alert alert-light border mt-3 mb-0 py-2 px-3 small text-secondary">
-                        <i class="fas fa-file-excel text-success me-2"></i> <span id="selectedFileName" class="fw-semibold text-dark">Chưa có file nào được chọn</span>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal" id="cancelImportBtn">Hủy</button>
-                    <button type="button" class="btn btn-danger btn-sm px-3" id="confirmImportBtn">Xác nhận Import</button>
-                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal" id="cancelImportBtn">Hủy</button>
+                <button type="button" class="btn btn-danger btn-sm px-3" id="confirmImportBtn">Xác nhận Import</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Server data for dashboard.js -->
-    <div id="dashboardData" hidden>
-        <div id="revenueData">
-            <c:forEach items="${revenueChart}" var="r">
-                <span class="revenue-data-item" data-day="${r.day}" data-revenue="${r.revenue}"></span>
-            </c:forEach>
-        </div>
-        <div id="utilizationData">
-            <c:forEach items="${roomUtilization.byRoomType}" var="u">
-                <span class="utilization-data-item" data-type="${fn:escapeXml(u.typeName)}" data-rate="${u.occupancyRate}" data-used="${u.usedRoomDays}" data-available="${u.availableRoomDays}"></span>
-            </c:forEach>
-        </div>
-        <div id="customerSourceData">
-            <c:forEach items="${customerSource}" var="c">
-                <span class="customer-data-item" data-country="${c.country}" data-total="${c.total}"></span>
-            </c:forEach>
-        </div>
+<!-- Server data for dashboard.js -->
+<div id="dashboardData" hidden>
+    <div id="revenueData">
+        <c:forEach items="${revenueChart}" var="r">
+            <span class="revenue-data-item" data-day="${r.day}" data-revenue="${r.revenue}"></span>
+        </c:forEach>
     </div>
+    <div id="utilizationData">
+        <c:forEach items="${roomUtilization.byRoomType}" var="u">
+            <span class="utilization-data-item" data-type="${fn:escapeXml(u.typeName)}" data-rate="${u.occupancyRate}" data-used="${u.usedRoomDays}" data-available="${u.availableRoomDays}"></span>
+        </c:forEach>
+    </div>
+    <div id="customerSourceData">
+        <c:forEach items="${customerSource}" var="c">
+            <span class="customer-data-item" data-country="${c.country}" data-total="${c.total}"></span>
+        </c:forEach>
+    </div>
+</div>
 
 
 
-    <!-- Dashboard dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<!-- Dashboard dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
-    <script>
-                    document.addEventListener('DOMContentLoaded', function () {
-                        const fileInput = document.getElementById('backupFileInput');
-                        const importBtn = document.getElementById('importBtn');
-                        const importForm = document.getElementById('importForm');
-                        const confirmImportBtn = document.getElementById('confirmImportBtn');
-                        const cancelImportBtn = document.getElementById('cancelImportBtn');
-                        const selectedFileName = document.getElementById('selectedFileName');
+<script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const fileInput = document.getElementById('backupFileInput');
+                    const importBtn = document.getElementById('importBtn');
+                    const importForm = document.getElementById('importForm');
+                    const confirmImportBtn = document.getElementById('confirmImportBtn');
+                    const cancelImportBtn = document.getElementById('cancelImportBtn');
+                    const selectedFileName = document.getElementById('selectedFileName');
 
-                        const importModalElement = document.getElementById('importConfirmModal');
-                        const importModal = new bootstrap.Modal(importModalElement);
+                    const importModalElement = document.getElementById('importConfirmModal');
+                    const importModal = new bootstrap.Modal(importModalElement);
 
-                        // 1. Khi bấm nút "Import Data" -> Chỉ mở bảng chọn file của trình duyệt (không hiện modal ngay)
-                        importBtn.addEventListener('click', function (e) {
-                            e.preventDefault();
-                            fileInput.value = ''; // Reset lại input để bắt sự kiện change nếu chọn lại cùng 1 file
-                            fileInput.click();
-                        });
+                    // 1. Khi bấm nút "Import Data" -> Chỉ mở bảng chọn file của trình duyệt (không hiện modal ngay)
+                    importBtn.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        fileInput.value = ''; // Reset lại input để bắt sự kiện change nếu chọn lại cùng 1 file
+                        fileInput.click();
+                    });
 
-                        // 2. Chỉ khi người dùng đã chọn xong file từ máy tính -> Bắt sự kiện change -> Hiện Modal
-                        fileInput.addEventListener('change', function () {
-                            if (fileInput.files.length > 0) {
-                                // Hiển thị tên file vừa chọn lên Modal
-                                selectedFileName.textContent = fileInput.files[0].name;
-                                // Bật cửa sổ Modal lên
-                                importModal.show();
-                            }
-                        });
+                    // 2. Chỉ khi người dùng đã chọn xong file từ máy tính -> Bắt sự kiện change -> Hiện Modal
+                    fileInput.addEventListener('change', function () {
+                        if (fileInput.files.length > 0) {
+                            // Hiển thị tên file vừa chọn lên Modal
+                            selectedFileName.textContent = fileInput.files[0].name;
+                            // Bật cửa sổ Modal lên
+                            importModal.show();
+                        }
+                    });
 
-                        // 3. Khi bấm nút "Xác nhận Import" trong Modal -> Tiến hành submit form lên server
-                        confirmImportBtn.addEventListener('click', function () {
-                            importModal.hide();
-                            importForm.submit();
-                        });
+                    // 3. Khi bấm nút "Xác nhận Import" trong Modal -> Tiến hành submit form lên server
+                    confirmImportBtn.addEventListener('click', function () {
+                        importModal.hide();
+                        importForm.submit();
+                    });
 
-                        // 4. Khi bấm nút "Hủy" hoặc đóng Modal -> Xóa file đã chọn để trả về trạng thái sạch
-                        cancelImportBtn.addEventListener('click', function () {
+                    // 4. Khi bấm nút "Hủy" hoặc đóng Modal -> Xóa file đã chọn để trả về trạng thái sạch
+                    cancelImportBtn.addEventListener('click', function () {
+                        fileInput.value = '';
+                    });
+
+                    importModalElement.addEventListener('hidden.bs.modal', function () {
+                        if (!fileInput.value) {
                             fileInput.value = '';
-                        });
-
-                        importModalElement.addEventListener('hidden.bs.modal', function () {
-                            if (!fileInput.value) {
-                                fileInput.value = '';
-                            }
-                        });
+                        }
                     });
-                    $(document).ready(function () {
-                        const urlParams = new URLSearchParams(window.location.search);
-                        let fromDate = urlParams.get('from');
-                        let toDate = urlParams.get('to');
+                });
+                $(document).ready(function () {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    let fromDate = urlParams.get('from');
+                    let toDate = urlParams.get('to');
 
-                        let start, end;
-                        let isResetState = false;
+                    let start, end;
+                    let isResetState = false;
 
-                        if (fromDate && toDate) {
-                            start = moment(fromDate, "YYYY-MM-DD");
-                            end = moment(toDate, "YYYY-MM-DD");
-                            if (fromDate === "2010-01-01") {
-                                isResetState = true;
-                            }
-                        } else {
-                            start = moment().subtract(29, 'days');
-                            end = moment();
+                    if (fromDate && toDate) {
+                        start = moment(fromDate, "YYYY-MM-DD");
+                        end = moment(toDate, "YYYY-MM-DD");
+                        if (fromDate === "2010-01-01") {
+                            isResetState = true;
                         }
-
-                        $('#from').val(start.format('YYYY-MM-DD'));
-                        $('#to').val(end.format('YYYY-MM-DD'));
-
-                        $('#dateRange').daterangepicker({
-                            startDate: start,
-                            endDate: end,
-                            autoApply: true,
-                            locale: {
-                                format: 'DD/MM/YYYY'
-                            }
-                        });
-                        if (isResetState || (!fromDate && !toDate)) {
-                            $('#dateRange').val('All Time');
-                        }
-
-                        $('#dateRange').on('apply.daterangepicker', function (ev, picker) {
-                            $('#from').val(picker.startDate.format('YYYY-MM-DD'));
-                            $('#to').val(picker.endDate.format('YYYY-MM-DD'));
-                            $('#filterForm').submit();
-                        });
-                    });
-
-                    function applyQuickFilter(type) {
-                        let start, end = moment();
-                        if (type === 'week') {
-                            start = moment().subtract(6, 'days');
-                        } else if (type === 'month') {
-                            start = moment().startOf('month');
-                        } else if (type === 'year') {
-                            start = moment().startOf('year');
-                        }
-
-                        $('#from').val(start.format('YYYY-MM-DD'));
-                        $('#to').val(end.format('YYYY-MM-DD'));
-
-                        $('#dateRange').data('daterangepicker').setStartDate(start);
-                        $('#dateRange').data('daterangepicker').setEndDate(end);
-                        $('#filterForm').submit();
+                    } else {
+                        start = moment().subtract(29, 'days');
+                        end = moment();
                     }
 
-                    // Nút Reset
-                    function resetFilter() {
-                        $('#from').val('2010-01-01');
-                        $('#to').val(moment().format('YYYY-MM-DD'));
-                        $('#filterForm').submit();
+                    $('#from').val(start.format('YYYY-MM-DD'));
+                    $('#to').val(end.format('YYYY-MM-DD'));
+
+                    $('#dateRange').daterangepicker({
+                        startDate: start,
+                        endDate: end,
+                        autoApply: true,
+                        locale: {
+                            format: 'DD/MM/YYYY'
+                        }
+                    });
+                    if (isResetState || (!fromDate && !toDate)) {
+                        $('#dateRange').val('All Time');
                     }
-    </script>
-    <!-- Bootstrap 5 JS Bundle (Đã bao gồm Popper.js cho Popover, Modal, Tooltip) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+                    $('#dateRange').on('apply.daterangepicker', function (ev, picker) {
+                        $('#from').val(picker.startDate.format('YYYY-MM-DD'));
+                        $('#to').val(picker.endDate.format('YYYY-MM-DD'));
+                        $('#filterForm').submit();
+                    });
+                });
+
+                function applyQuickFilter(type) {
+                    let start, end = moment();
+                    if (type === 'week') {
+                        start = moment().subtract(6, 'days');
+                    } else if (type === 'month') {
+                        start = moment().startOf('month');
+                    } else if (type === 'year') {
+                        start = moment().startOf('year');
+                    }
+
+                    $('#from').val(start.format('YYYY-MM-DD'));
+                    $('#to').val(end.format('YYYY-MM-DD'));
+
+                    $('#dateRange').data('daterangepicker').setStartDate(start);
+                    $('#dateRange').data('daterangepicker').setEndDate(end);
+                    $('#filterForm').submit();
+                }
+
+                // Nút Reset
+                function resetFilter() {
+                    $('#from').val('2010-01-01');
+                    $('#to').val(moment().format('YYYY-MM-DD'));
+                    $('#filterForm').submit();
+                }
+</script>
+<!-- Bootstrap 5 JS Bundle (Đã bao gồm Popper.js cho Popover, Modal, Tooltip) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </layout:layout>
