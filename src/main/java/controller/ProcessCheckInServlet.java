@@ -55,7 +55,8 @@ public class ProcessCheckInServlet extends HttpServlet {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            response.sendRedirect(request.getContextPath() + "/error.jsp");
+            session.setAttribute("errorMessage", "Lỗi tải form Check-in: " + e.toString());
+            response.sendRedirect(request.getContextPath() + "/staff/stays");
         }
     }
 
@@ -89,7 +90,6 @@ public class ProcessCheckInServlet extends HttpServlet {
                 }
 
                 bookingDAO.updateBookingCCCDs(bookingID, joinedCCCDs);
-
                 bookingDAO.updateStatus(bookingID, "CHECKED_IN", user.getUserID());
 
                 session.setAttribute("successMessage", "Check-in thành công cho Booking " + bookingID + "!");
@@ -98,7 +98,7 @@ public class ProcessCheckInServlet extends HttpServlet {
                 session.setAttribute("errorMessage", "Lỗi trong quá trình Check-in: " + e.getMessage());
             }
 
-            response.sendRedirect(request.getContextPath() + "/checkin");
+            response.sendRedirect(request.getContextPath() + "/staff/stays");
         }
     }
 }
