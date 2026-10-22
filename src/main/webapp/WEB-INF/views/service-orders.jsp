@@ -43,7 +43,6 @@
                                 <th class="text-end">Đơn giá</th>
                                 <th class="text-center">Số lượng</th>
                                 <th class="text-end">Thành tiền</th>
-                                <th class="text-center">Trạng thái phòng</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -91,11 +90,6 @@
                                             </td>
                                             <td class="text-end fw-bold text-danger">
                                                 <fmt:formatNumber value="${bs.unitPrice * bs.quantity}" type="number" groupingUsed="true" maxFractionDigits="0" /> VND
-                                            </td>
-                                            <td class="text-center">
-                                                <span class="badge bg-success">
-                                                    <c:out value="${bs.booking.bookingStatus}" />
-                                                </span>
                                             </td>
                                         </tr>
                                     </c:forEach>

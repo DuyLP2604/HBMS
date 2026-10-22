@@ -36,10 +36,7 @@
                 </div>
             </div>
 
-            <!-- Khung lưới chứa toàn bộ các ô chức năng -->
             <div class="staff-functions-grid">
-
-                <!-- 1. CÁC CHỨC NĂNG CHỈ DÀNH CHO RECEPTIONIST (Bao gồm Booking Overview) -->
                 <c:if test="${isReceptionist}">
 
                     <div class="staff-function-item">
