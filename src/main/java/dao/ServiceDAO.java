@@ -16,7 +16,7 @@ public class ServiceDAO {
     public List<Service> getAllServices() {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
-            String jpql = "SELECT s FROM Service s ORDER BY s.serviceName ASC";
+            String jpql = "SELECT s FROM Service s ORDER BY s.serviceID ASC";
             TypedQuery<Service> query = em.createQuery(jpql, Service.class);
             return query.getResultList();
         } finally {
@@ -128,57 +128,52 @@ public class ServiceDAO {
         }
     }
 
-    public void updateServicePrice(String serviceID, double unitPrice) {
-        if (serviceID == null || serviceID.trim().isEmpty()) {
-            throw new IllegalArgumentException("Mã dịch vụ không hợp lệ.");
-        }
-        if (unitPrice < 0) {
-            throw new IllegalArgumentException("Đơn giá dịch vụ không được âm.");
+    public void updateService(String serviceID, String serviceName, double unitPrice) {
+        if (serviceID == null || serviceName == null || serviceName.trim().isEmpty() || unitPrice < 0) {
+            throw new IllegalArgumentException("Thông tin dịch vụ không hợp lệ.");
         }
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
-            Service service = em.find(Service.class, serviceID.trim());
-            if (service == null) {
+            List<Service> list = em.createQuery("SELECT s FROM Service s WHERE TRIM(s.serviceID) = :sid", Service.class)
+                    .setParameter("sid", serviceID.trim())
+                    .getResultList();
+            if (list.isEmpty()) {
                 throw new IllegalArgumentException("Không tìm thấy dịch vụ: " + serviceID);
             }
+
+            Service service = list.get(0);
+            service.setServiceName(serviceName.trim());
             service.setUnitPrice(BigDecimal.valueOf(unitPrice));
+
             em.getTransaction().commit();
             PersistenceManager.getEMF().getCache().evictAll();
         } catch (Exception e) {
             rollback(em);
-            throw new IllegalStateException("Không thể cập nhật giá dịch vụ: " + e.getMessage(), e);
+            throw new IllegalStateException("Lỗi cập nhật: " + e.getMessage(), e);
         } finally {
             close(em);
         }
     }
 
     public void deleteService(String serviceID) {
-        if (serviceID == null || serviceID.trim().isEmpty()) {
-            throw new IllegalArgumentException("Mã dịch vụ không hợp lệ.");
-        }
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
-            Service service = em.find(Service.class, serviceID.trim());
-            if (service == null) {
-                throw new IllegalArgumentException("Không tìm thấy dịch vụ: " + serviceID);
-            }
-            Long count = em.createQuery("SELECT COUNT(bs) FROM BookingService bs WHERE bs.bookingServicePK.serviceID = :sid", Long.class)
+            Long count = em.createQuery("SELECT COUNT(bs) FROM BookingService bs WHERE TRIM(bs.bookingServicePK.serviceID) = :sid", Long.class)
                     .setParameter("sid", serviceID.trim())
                     .getSingleResult();
             if (count != null && count > 0) {
-                throw new IllegalStateException("Không thể xóa: Dịch vụ này đã có trong đơn đặt phòng của khách.");
+                throw new IllegalStateException("Dịch vụ này đã có khách đặt trong đơn phòng, không thể xóa để bảo toàn hóa đơn.");
             }
-            em.remove(service);
+            em.createQuery("DELETE FROM Service s WHERE TRIM(s.serviceID) = :sid")
+                    .setParameter("sid", serviceID.trim())
+                    .executeUpdate();
             em.getTransaction().commit();
             PersistenceManager.getEMF().getCache().evictAll();
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            rollback(em);
-            throw e;
         } catch (Exception e) {
             rollback(em);
-            throw new IllegalStateException("Không thể xóa dịch vụ: " + e.getMessage(), e);
+            throw new IllegalStateException(e.getMessage(), e);
         } finally {
             close(em);
         }

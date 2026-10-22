@@ -89,19 +89,20 @@ public class ServiceServlet extends HttpServlet {
             return;
         }
 
-        if ("updatePrice".equalsIgnoreCase(action)) {
+        if ("update".equalsIgnoreCase(action)) {
             try {
                 String serviceID = request.getParameter("serviceID");
+                String serviceName = request.getParameter("serviceName");
                 double unitPrice = parsePrice(request.getParameter("unitPrice"));
-                new ServiceDAO().updateServicePrice(serviceID, unitPrice);
-                session.setAttribute("successMessage", "Cập nhật đơn giá thành công!");
+
+                new ServiceDAO().updateService(serviceID, serviceName, unitPrice);
+                session.setAttribute("successMessage", "Cập nhật dịch vụ thành công!");
             } catch (Exception e) {
                 session.setAttribute("errorMessage", e.getMessage());
             }
             response.sendRedirect(request.getContextPath() + "/service?action=manage");
             return;
         }
-
         if ("delete".equalsIgnoreCase(action)) {
             try {
                 String serviceID = request.getParameter("serviceID");
