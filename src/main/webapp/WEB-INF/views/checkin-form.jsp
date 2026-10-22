@@ -55,12 +55,15 @@
                         
                         <form action="${pageContext.request.contextPath}/process-checkin" method="POST">
                             <input type="hidden" name="action" value="confirmCheckIn">
+                            <input type="hidden" name="csrfToken" value="${sessionScope.checkInCsrf}">
+                            <div class="form-check mb-3"><input type="checkbox" class="form-check-input" id="roomsReady" name="roomsReady" value="true" required>
+                                <label for="roomsReady" class="form-check-label">I verified all assigned rooms are clean, vacant and ready.</label></div>
                             <input type="hidden" name="bookingID" value="${booking.bookingID}">
 
                             <div id="cccd-container">
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold">1. CCCD (Require) <span class="text-danger">*</span></label>
-                                    <input type="text" name="cccd" class="form-control" placeholder="Enter the 12-digit CCCD number......" required pattern="[0-9]{9,12}" title="Please enter a valid CCCD number.">
+                                    <label class="form-label fw-bold">1. CCCD / Passport (Required) <span class="text-danger">*</span></label>
+                                    <input type="text" name="cccd" class="form-control" placeholder="Enter CCCD or passport number" required pattern="[A-Za-z0-9]{6,20}" maxlength="20" title="Enter 6–20 letters or digits.">
                                 </div>
                             </div>
 
@@ -98,7 +101,7 @@
                 div.className = "mb-3 input-group cccd-row";
                 div.innerHTML = `
                     <span class="input-group-text fw-bold">` + currentGuest + `. CCCD</span>
-                    <input type="text" name="cccd" class="form-control" placeholder="Nhập CCCD người đi cùng..." required pattern="[0-9]{9,12}">
+                    <input type="text" name="cccd" class="form-control" placeholder="Nhập CCCD người đi cùng..." required pattern="[A-Za-z0-9]{6,20}" maxlength="20">
                     <button class="btn btn-danger" type="button" onclick="removeCccdField(this)">
                         <i class="fa-solid fa-trash"></i>
                     </button>

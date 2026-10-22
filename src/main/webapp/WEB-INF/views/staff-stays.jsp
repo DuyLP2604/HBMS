@@ -23,7 +23,7 @@
             </div>
         </c:if>
 
-        <p class="small text-muted">Check-in: 14:00. From 14:15, unarrived bookings appear first. Refresh to see the latest status.</p>
+        <p class="small text-muted">Check-in: 14:00. From 14:15, unarrived advance bookings appear first. Same-day counter bookings are excluded from no-show. Refresh to see the latest status.</p>
         <div class="card shadow-sm border-0">
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -43,7 +43,7 @@
                                 <tr class="${noShowBookings[booking.bookingID] ? 'table-danger' : ''}">
                                     <td class="ps-4 fw-semibold text-primary"><c:out value="${booking.bookingID}" /></td>
                                     <td class="fw-medium"><c:out value="${booking.customerID.fullName}" /></td>
-                                    <td><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /> 14:00<br><small class="text-muted">Held until 14:15</small></td>
+                                    <td><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /> 14:00<br><c:choose><c:when test="${booking.walkIn}"><small class="text-muted">Walk-in · Guest at counter</small></c:when><c:otherwise><small class="text-muted">Held until 14:15</small></c:otherwise></c:choose></td>
                                     <td><fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" /></td>
                                     
                                     <td>

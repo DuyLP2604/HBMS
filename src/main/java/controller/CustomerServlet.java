@@ -69,6 +69,10 @@ public class CustomerServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Admin cannot add or edit customers.");
             return;
         }
+        boolean counter = "counter".equals(request.getParameter("flow"));
+        if (counter && !new dao.EmployeeDAO().isReceptionistByUserId(getSessionUser(request).getUserID())) {
+            response.sendError(403); return;
+        }
         CustomerDAO daoCus = new CustomerDAO();
         NationalityDAO daoNat = new NationalityDAO();
         if ("list".equalsIgnoreCase(action)) {
@@ -134,7 +138,15 @@ public class CustomerServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Admin cannot add or edit customers.");
             return;
         }
+        boolean counter = "counter".equals(request.getParameter("flow"));
+        if (counter && !new dao.EmployeeDAO().isReceptionistByUserId(getSessionUser(request).getUserID())) {
+            response.sendError(403); return;
+        }
         CustomerDAO daoCus = new CustomerDAO();
+        if (counter && (request.getSession().getAttribute("counterCsrf") == null
+                || !java.util.Objects.equals(request.getSession().getAttribute("counterCsrf"), request.getParameter("csrfToken")))) {
+            response.sendError(403); return;
+        }
         String name = trimToNull(request.getParameter("name"));
         String phone = trimToNull(request.getParameter("phone"));
         String email = trimToNull(request.getParameter("email"));
@@ -151,6 +163,23 @@ public class CustomerServlet extends HttpServlet {
             customer = new Customer();
         }
         String formUrl = "add".equalsIgnoreCase(action) ? "/customer?action=add" : "/customer?action=update&id=" + customer.getCustomerID();
+        if (counter) {
+            formUrl += "&flow=counter";
+            java.util.Map<String, String> values = new java.util.HashMap<>();
+            for (String key : new String[]{"name", "phone", "email", "address", "nation", "username"}) {
+                values.put(key, request.getParameter(key));
+            }
+            request.getSession().setAttribute("counterRegistration", values);
+            if (phone == null || !phone.matches("[+0-9 .-]{8,15}")) {
+                Flash.error(request, "Enter a valid phone number.");
+                response.sendRedirect(request.getContextPath() + formUrl); return;
+            }
+            if ("add".equalsIgnoreCase(action) && !daoCus.findByPhone(phone).isEmpty()) {
+                Flash.error(request, "This phone already has a customer profile. Please search and select the customer.");
+                response.sendRedirect(request.getContextPath() + "/staff/counter-booking?phone="
+                        + java.net.URLEncoder.encode(phone, java.nio.charset.StandardCharsets.UTF_8)); return;
+            }
+        }
         if (name == null || nationalityId == null) {
             Flash.error(request, "Full name and nationality are required.");
             response.sendRedirect(request.getContextPath() + formUrl);
@@ -210,6 +239,11 @@ public class CustomerServlet extends HttpServlet {
                 return;
             }
 
+            if (counter) {
+                request.getSession().removeAttribute("counterRegistration");
+                response.sendRedirect(request.getContextPath() + "/staff/counter-booking?customerID=" + customer.getCustomerID());
+                return;
+            }
             // Customer created successfully
             Flash.success(request, "Customer added successfully.");
 

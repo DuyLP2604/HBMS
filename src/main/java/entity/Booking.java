@@ -52,6 +52,9 @@ public class Booking implements Serializable
     @Column(name = "BookingDate")
     @Temporal(TemporalType.TIMESTAMP)
     private Date bookingDate;
+    @Column(name = "BookedByUserID", insertable = false, updatable = false)
+    private Integer bookedByUserID;
+
     @Column(name = "PaymentDeadline")
     @Temporal(TemporalType.TIMESTAMP)
     private Date paymentDeadline;
@@ -102,8 +105,15 @@ public class Booking implements Serializable
     private Customer customerID;
     @OneToMany(mappedBy = "bookingID")
     private Collection<BookingDetail> bookingDetailCollection = new ArrayList<>();
-    @Column(name = "GuestCCCDs")
+
+    @Column(name = "GuestCCCDs", insertable = false, updatable = false)
     private String guestCCCDs;
+
+    public String getGuestCCCDs()
+    {
+        return guestCCCDs;
+    }
+
     public Booking()
     {
 
@@ -138,6 +148,24 @@ public class Booking implements Serializable
     public void setBookingID(String bookingID)
     {
         this.bookingID = bookingID;
+    }
+
+    public Integer getBookedByUserID() {
+        return bookedByUserID;
+    }
+
+    public void setBookedByUserID(Integer bookedByUserID) {
+        this.bookedByUserID = bookedByUserID;
+    }
+
+    public boolean isWalkIn() {
+        if (bookedByUserID == null || customerID == null || customerID.getUserID() == null
+                || customerID.getUserID().getUserID() == null || bookingDate == null || checkInDate == null) {
+            return false;
+        }
+        return !bookedByUserID.equals(customerID.getUserID().getUserID())
+                && new java.sql.Date(bookingDate.getTime()).toLocalDate()
+                        .equals(new java.sql.Date(checkInDate.getTime()).toLocalDate());
     }
 
     public Date getBookingDate()
@@ -249,13 +277,7 @@ public class Booking implements Serializable
     {
         this.customerID = customerID;
     }
-    public String getGuestCCCDs() {
-        return guestCCCDs;
-    }
 
-    public void setGuestCCCDs(String guestCCCDs) {
-        this.guestCCCDs = guestCCCDs;
-    }
     @XmlTransient
     public Collection<BookingDetail> getBookingDetailCollection()
     {

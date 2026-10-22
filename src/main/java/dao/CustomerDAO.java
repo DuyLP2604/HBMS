@@ -1,5 +1,4 @@
 package dao;
-
 import entity.Customer;
 import entity.Nationality;
 import entity.Users;
@@ -8,134 +7,201 @@ import jakarta.persistence.TypedQuery;
 import java.util.List;
 import java.util.Locale;
 import util.PersistenceManager;
+public class CustomerDAO
+{
+    @SuppressWarnings("unchecked")
+    public List<Customer> findByPhone(String phone) {
+        if (phone == null || phone.trim().isEmpty()) {
+            return List.of();
+        }
 
-public class CustomerDAO {
+        String normalizedPhone = phone.replaceAll("[ .-]", "");
+        if (normalizedPhone.isEmpty()) {
+            return List.of();
+        }
 
-    public String generateCustomerID() {
+        String sql = "SELECT c.* FROM dbo.CUSTOMER c "
+                + "WHERE REPLACE(REPLACE(REPLACE(c.Phone, ' ', ''), '-', ''), '.', '') = ?";
+
         try (EntityManager em = PersistenceManager.createEntityManager()) {
+            return em.createNativeQuery(sql, Customer.class)
+                    .setParameter(1, normalizedPhone)
+                    .setHint("jakarta.persistence.cache.retrieveMode",
+                            jakarta.persistence.CacheRetrieveMode.BYPASS)
+                    .getResultList();
+        }
+    }
+
+    public String generateCustomerID()
+    {
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
             String jpql = "SELECT MAX(CAST(SUBSTRING(c.customerID, 3, LENGTH(c.customerID)) AS Integer)) FROM Customer c";
             TypedQuery<Integer> query = em.createQuery(jpql, Integer.class);
             Integer maxId = query.getSingleResult();
-            if (maxId != null) {
+            if (maxId != null)
+            {
                 return String.format("KH%02d", maxId + 1);
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
         }
         return "KH01";
     }
 
-    public boolean insertCustomer(Customer customer) {
+    public boolean insertCustomer(Customer customer)
+    {
         EntityManager em = PersistenceManager.createEntityManager();
-        try {
+        try
+        {
             em.getTransaction().begin();
             em.persist(customer);
             em.getTransaction().commit();
             return true;
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
-            if (em.getTransaction().isActive()) {
+            if (em.getTransaction().isActive())
+            {
                 em.getTransaction().rollback();
             }
-        } finally {
-            if (em.isOpen()) {
+        }
+        finally
+        {
+            if (em.isOpen())
+            {
                 em.close();
             }
         }
         return false;
     }
 
-    public List<Customer> getAllCustomers() {
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
+    public List<Customer> getAllCustomers()
+    {
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
             String jpql = "SELECT c FROM Customer c";
             TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
             return query.getResultList();
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
         }
         return List.of();
     }
 
-    public Customer getCustomerById(String id) {
-        if (id == null || id.trim().isEmpty()) {
+    public Customer getCustomerById(String id)
+    {
+        if (id == null || id.trim().isEmpty())
+        {
             return null;
         }
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
             return em.find(Customer.class, id.trim().toUpperCase(Locale.ROOT));
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
         }
         return null;
     }
 
-    public List<Customer> getCustomerByName(String name) {
-        if (name == null || name.trim().isEmpty()) {
+    public List<Customer> getCustomerByName(String name)
+    {
+        if (name == null || name.trim().isEmpty())
+        {
             return List.of();
         }
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
             String searchName = "%" + name.trim().toLowerCase(Locale.ROOT) + "%";
             String jpql = "SELECT c FROM Customer c WHERE LOWER(c.fullName) LIKE :name";
             TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
             query.setParameter("name", searchName);
             return query.getResultList();
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
         }
         return List.of();
     }
 
-    public List<Customer> getCustomerByPhone(String phone) {
-        if (phone == null || phone.trim().isEmpty()) {
+    public List<Customer> getCustomerByPhone(String phone)
+    {
+        if (phone == null || phone.trim().isEmpty())
+        {
             return List.of();
         }
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
             String searchPhone = "%" + phone.trim() + "%";
             String jpql = "SELECT c FROM Customer c WHERE c.phone LIKE :phone";
             TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
             query.setParameter("phone", searchPhone);
             return query.getResultList();
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
         }
         return List.of();
     }
 
-    public List<Customer> searchCustomerByKeyword(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
+    public List<Customer> searchCustomerByKeyword(String keyword)
+    {
+        if (keyword == null || keyword.trim().isEmpty())
+        {
             return List.of();
         }
         String value = keyword.trim();
         Customer customerById = getCustomerById(value);
-        if (customerById != null) {
+        if (customerById != null)
+        {
             return List.of(customerById);
         }
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
             String jpql = "SELECT c FROM Customer c WHERE LOWER(c.fullName) LIKE :name OR c.phone LIKE :phone";
             TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
             query.setParameter("name", "%" + value.toLowerCase(Locale.ROOT) + "%");
             query.setParameter("phone", "%" + value + "%");
             return query.getResultList();
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
         }
         return List.of();
     }
 
-    public boolean updateCustomer(Customer customer) {
-        if (customer == null || customer.getCustomerID() == null || customer.getCustomerID().isBlank()) {
+    public boolean updateCustomer(Customer customer)
+    {
+        if (customer == null || customer.getCustomerID() == null || customer.getCustomerID().isBlank())
+        {
             return false;
         }
         EntityManager em = PersistenceManager.createEntityManager();
-        try {
+        try
+        {
             em.getTransaction().begin();
             Customer existingCustomer = em.find(Customer.class, customer.getCustomerID());
-            if (existingCustomer == null) {
+            if (existingCustomer == null)
+            {
                 em.getTransaction().rollback();
                 return false;
             }
             Nationality nationality = null;
-            if (customer.getNationalityID() != null) {
+            if (customer.getNationalityID() != null)
+            {
                 nationality = em.find(Nationality.class, customer.getNationalityID().getNationalityID());
-                if (nationality == null) {
+                if (nationality == null)
+                {
                     throw new IllegalArgumentException("Invalid nationality.");
                 }
             }
@@ -146,62 +212,82 @@ public class CustomerDAO {
             existingCustomer.setNationalityID(nationality);
             em.getTransaction().commit();
             return true;
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
-            if (em.getTransaction().isActive()) {
+            if (em.getTransaction().isActive())
+            {
                 em.getTransaction().rollback();
             }
-        } finally {
-            if (em.isOpen()) {
+        }
+        finally
+        {
+            if (em.isOpen())
+            {
                 em.close();
             }
         }
         return false;
     }
 
-    public Customer getCustomerByUserId(int userId) {
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
+    public Customer getCustomerByUserId(int userId)
+    {
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
             String jpql = "SELECT c FROM Customer c WHERE c.userID.userID = :userId";
             TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
             query.setParameter("userId", userId);
             List<Customer> customers = query.setMaxResults(1).getResultList();
             return customers.isEmpty() ? null : customers.get(0);
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
         }
         return null;
     }
 
-    public Customer getCustomerByEmailOrPhone(String identifier) {
-        if (identifier == null || identifier.trim().isEmpty()) {
+    public Customer getCustomerByEmailOrPhone(String identifier)
+    {
+        if (identifier == null || identifier.trim().isEmpty())
+        {
             return null;
         }
         String value = identifier.trim();
-        try (EntityManager em = PersistenceManager.createEntityManager()) {
+        try (EntityManager em = PersistenceManager.createEntityManager())
+        {
             String jpql = "SELECT c FROM Customer c WHERE LOWER(c.email) = LOWER(:email) OR c.phone = :phone";
             TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
             query.setParameter("email", value);
             query.setParameter("phone", value);
             List<Customer> customers = query.setMaxResults(1).getResultList();
             return customers.isEmpty() ? null : customers.get(0);
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
         }
         return null;
     }
 
-    public boolean insertCustomerWithAccount(Customer customer, String username, String password) {
-        if (customer == null || customer.getCustomerID() == null || customer.getCustomerID().isBlank()) {
+    public boolean insertCustomerWithAccount(Customer customer, String username, String password)
+    {
+        if (customer == null || customer.getCustomerID() == null || customer.getCustomerID().isBlank())
+        {
             return false;
         }
         EntityManager em = PersistenceManager.createEntityManager();
-        try {
+        try
+        {
             em.getTransaction().begin();
             Users account = new UserDAO().insertUser(em, username, password, "Customer");
             customer.setUserID(account);
-            if (customer.getNationalityID() != null) {
+            if (customer.getNationalityID() != null)
+            {
                 Nationality nationality = em.find(Nationality.class, customer.getNationalityID().getNationalityID());
-                if (nationality == null) {
+                if (nationality == null)
+                {
                     throw new IllegalArgumentException("Invalid nationality.");
                 }
                 customer.setNationalityID(nationality);
@@ -209,17 +295,22 @@ public class CustomerDAO {
             em.persist(customer);
             em.getTransaction().commit();
             return true;
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             e.printStackTrace();
-            if (em.getTransaction().isActive()) {
+            if (em.getTransaction().isActive())
+            {
                 em.getTransaction().rollback();
             }
-        } finally {
-            if (em.isOpen()) {
+        }
+        finally
+        {
+            if (em.isOpen())
+            {
                 em.close();
             }
         }
         return false;
     }
-
 }

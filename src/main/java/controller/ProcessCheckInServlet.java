@@ -1,104 +1,91 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
- */
 package controller;
 
 import dao.BookingDAO;
+import dao.EmployeeDAO;
 import entity.Booking;
 import entity.Users;
-import java.io.IOException;
-import java.io.PrintWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import java.util.ArrayList;
-import java.util.List;
+import jakarta.servlet.http.*;
+import java.io.IOException;
+import java.sql.*;
+import java.util.*;
+import util.BookingTimePolicy;
+import util.PersistenceManager;
 
-/**
- *
- * @author Admin
- */
 @WebServlet(name = "ProcessCheckInServlet", urlPatterns = {"/process-checkin"})
 public class ProcessCheckInServlet extends HttpServlet {
-
-    private final BookingDAO bookingDAO = new BookingDAO();
-
-    @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login");
-            return;
-        }
-
-        String bookingID = request.getParameter("bookingID");
-        if (bookingID == null || bookingID.isBlank()) {
-            response.sendRedirect(request.getContextPath() + "/staff/stays");
-            return;
-        }
-
-        try {
-            Booking booking = bookingDAO.getByIdWithDetails(bookingID.trim());
-
-            if (booking != null) {
-                request.setAttribute("booking", booking);
-                request.getRequestDispatcher("/WEB-INF/views/checkin-form.jsp").forward(request, response);
-            } else {
-                session.setAttribute("errorMessage", "Booking information not found.");
-                response.sendRedirect(request.getContextPath() + "/staff/stays");
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            session.setAttribute("errorMessage", "Lỗi tải form Check-in: " + e.toString());
-            response.sendRedirect(request.getContextPath() + "/staff/stays");
-        }
+    private Users requireReceptionist(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        HttpSession session = req.getSession(false);
+        Object value = session == null ? null : session.getAttribute("user");
+        if (!(value instanceof Users)) { res.sendRedirect(req.getContextPath() + "/login"); return null; }
+        Users user = (Users) value;
+        if (!"Staff".equalsIgnoreCase(user.getRole()) || user.getUserID() == null
+                || !new EmployeeDAO().isReceptionistByUserId(user.getUserID())) { res.sendError(403); return null; }
+        res.setHeader("Cache-Control", "no-store");
+        return user;
     }
 
-    @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login");
-            return;
+    @Override protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+        if (requireReceptionist(req, res) == null) return;
+        Booking booking = new BookingDAO().getByIdWithDetails(req.getParameter("bookingID"));
+        if (booking == null) { res.sendError(404); return; }
+        java.time.LocalDate date = new java.sql.Date(booking.getCheckInDate().getTime()).toLocalDate();
+        if (!"ASSIGNED".equals(booking.getBookingStatus()) || !date.equals(BookingTimePolicy.now().toLocalDate())
+                || BookingTimePolicy.now().isBefore(BookingTimePolicy.checkInAt(date))) {
+            req.getSession().setAttribute("counterMessage", "Check-in requires assigned rooms and opens on the arrival date at 14:00.");
+            res.sendRedirect(req.getContextPath() + "/staff/counter-booking?bookingID=" + booking.getBookingID().trim()); return;
         }
+        synchronized (req.getSession()) {
+            if (req.getSession().getAttribute("checkInCsrf") == null)
+                req.getSession().setAttribute("checkInCsrf", UUID.randomUUID().toString());
+        }
+        req.setAttribute("booking", booking);
+        req.getRequestDispatcher("/WEB-INF/views/checkin-form.jsp").forward(req, res);
+    }
 
-        Users user = (Users) session.getAttribute("user");
-        String action = request.getParameter("action");
-
-        if ("confirmCheckIn".equals(action)) {
-            String bookingID = request.getParameter("bookingID");
-            String[] cccdArray = request.getParameterValues("cccd");
-
-            try {
-                String joinedCCCDs = "";
-                if (cccdArray != null && cccdArray.length > 0) {
-                    List<String> validList = new ArrayList<>();
-                    for (String cccd : cccdArray) {
-                        if (cccd != null && !cccd.isBlank()) {
-                            validList.add(cccd.trim());
-                        }
-                    }
-                    joinedCCCDs = String.join(", ", validList);
-                }
-
-                bookingDAO.updateBookingCCCDs(bookingID, joinedCCCDs);
-                bookingDAO.updateStatus(bookingID, "CHECKED_IN", user.getUserID());
-
-                session.setAttribute("successMessage", "Check-in thành công cho Booking " + bookingID + "!");
-            } catch (Exception e) {
-                e.printStackTrace();
-                session.setAttribute("errorMessage", "Lỗi trong quá trình Check-in: " + e.getMessage());
+    @Override protected void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
+        req.setCharacterEncoding("UTF-8");
+        Users actor = requireReceptionist(req, res);
+        if (actor == null) return;
+        HttpSession session = req.getSession(false);
+        if (session.getAttribute("checkInCsrf") == null
+                || !Objects.equals(session.getAttribute("checkInCsrf"), req.getParameter("csrfToken"))) { res.sendError(403); return; }
+        String id = req.getParameter("bookingID");
+        if (id == null || !id.trim().matches("BK[0-9]{4}")) { res.sendError(400); return; }
+        id = id.trim();
+        try {
+            if (!"confirmCheckIn".equals(req.getParameter("action")) || !"true".equals(req.getParameter("roomsReady")))
+                throw new IllegalArgumentException("Confirm that the assigned rooms are clean and ready.");
+            String[] documents = req.getParameterValues("cccd");
+            if (documents == null || documents.length == 0 || documents.length > 100)
+                throw new IllegalArgumentException("Enter valid guest identity documents.");
+            List<String> values = new ArrayList<>();
+            for (String value : documents) {
+                if (value == null || !value.trim().matches("[A-Za-z0-9]{6,20}"))
+                    throw new IllegalArgumentException("Use 6–20 letters or digits for a CCCD/passport number.");
+                if (values.contains(value.trim())) throw new IllegalArgumentException("Guest documents must not be duplicated.");
+                values.add(value.trim());
             }
-
-            response.sendRedirect(request.getContextPath() + "/staff/stays");
+            String joined = String.join(", ", values);
+            if (joined.length() > 1000) throw new IllegalArgumentException("Guest documents are too long.");
+            try (Connection connection = PersistenceManager.openConnection();
+                    PreparedStatement statement = connection.prepareStatement("EXEC dbo.SP_COUNTER_CHECKIN @BookingID=?, @ActorUserID=?, @GuestDocuments=?")) {
+                statement.setString(1, id); statement.setInt(2, actor.getUserID()); statement.setString(3, joined);
+                boolean result = statement.execute();
+                while (true) {
+                    if (result) { try (ResultSet rows = statement.getResultSet()) { while (rows.next()) { } } }
+                    else if (statement.getUpdateCount() == -1) break;
+                    result = statement.getMoreResults(Statement.CLOSE_CURRENT_RESULT);
+                }
+            }
+            PersistenceManager.getEMF().getCache().evictAll();
+            session.setAttribute("counterMessage", "Guest checked in successfully.");
+        } catch (IllegalArgumentException ex) { session.setAttribute("counterMessage", ex.getMessage()); }
+        catch (Exception ex) {
+            log("Unable to check in " + id, ex);
+            session.setAttribute("counterMessage", "Check-in could not be confirmed. Review the booking and assigned rooms before retrying.");
         }
+        res.sendRedirect(req.getContextPath() + "/staff/counter-booking?bookingID=" + id);
     }
 }

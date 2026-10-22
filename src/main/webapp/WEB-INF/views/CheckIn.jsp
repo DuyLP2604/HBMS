@@ -33,93 +33,17 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <c:forEach var="booking" items="${bookings}">
+                            <c:forEach var="booking" items="${bookings}" varStatus="bookingStatus">
                                 <tr>
-                                    <td class="fw-bold text-primary">${booking.bookingID}</td>
-                                    <td class="fw-medium">${booking.customerID.fullName}</td>
+                                    <td class="fw-bold text-primary"><c:out value="${booking.bookingID}" /></td>
+                                    <td class="fw-medium"><c:out value="${booking.customerID.fullName}" /></td>
                                     <td><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /></td>
                                     <td><fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" /></td>
                                     <td><span class="badge bg-success px-3 py-2 rounded-pill">Staying</span></td>
                                     <td>
-                                        <button type="button" class="btn btn-outline-info btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#detailModal_${booking.bookingID}">
+                                        <button type="button" class="btn btn-outline-info btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#detailModal_${bookingStatus.index}">
                                             <i class="fa-solid fa-eye me-1"></i> View Detail
                                         </button>
-                                        
-                                        <div class="modal fade text-start" id="detailModal_${booking.bookingID}" tabindex="-1" aria-labelledby="modalLabel_${booking.bookingID}" aria-hidden="true">
-                                          <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content border-0 shadow">
-                                              <div class="modal-header bg-info text-white">
-                                                <h5 class="modal-title" id="modalLabel_${booking.bookingID}">
-                                                    <i class="fa-solid fa-address-card me-2"></i>Chi tiết Lưu trú
-                                                </h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                              </div>
-                                              <div class="modal-body p-4">
-                                                <div class="row mb-2">
-                                                    <div class="col-4 text-muted">Mã Booking:</div>
-                                                    <div class="col-8 fw-bold text-primary">${booking.bookingID}</div>
-                                                </div>
-                                                <div class="row mb-2">
-                                                    <div class="col-4 text-muted">Khách hàng:</div>
-                                                    <div class="col-8 fw-bold">${booking.customerID.fullName}</div>
-                                                </div>
-                                                <div class="row mb-2">
-                                                    <div class="col-4 text-muted">Điện thoại:</div>
-                                                    <div class="col-8">${booking.customerID.phone}</div>
-                                                </div>
-                                                <div class="row mb-2">
-                                                    <div class="col-4 text-muted">Email:</div>
-                                                    <div class="col-8">${booking.customerID.email}</div>
-                                                </div>
-                                                
-                                                <hr class="my-3">
-                                                <h6 class="fw-bold text-success mb-3"><i class="fa-regular fa-id-card me-1"></i> Danh sách CCCD theo phòng:</h6>
-                                                
-                                                <c:choose>
-                                                    <c:when test="${not empty booking.guestCCCDs}">
-                                                        <c:set var="cccdList" value="${fn:split(booking.guestCCCDs, ',')}" />
-                                                        <c:set var="cccdIndex" value="0" />
-                                                        
-                                                        <c:forEach var="detail" items="${booking.bookingDetailCollection}" varStatus="detailStatus">
-                                                            <c:forEach var="assignment" items="${detail.roomAssignmentCollection}" varStatus="roomStatus">
-                                                                <div class="mb-3 ps-3 border-start border-3 border-success">
-                                                                    <div class="fw-bold text-dark mb-2">
-                                                                        <i class="fa-solid fa-door-closed text-primary me-2"></i>Phòng ${assignment.roomID.roomNumber} <span class="text-muted fw-normal">(${detail.roomTypeID.typeName})</span>
-                                                                    </div>
-                                                                    
-                                                                    <%-- Phân bổ 1 CCCD làm người đại diện cho phòng này --%>
-                                                                    <c:if test="${cccdIndex < fn:length(cccdList)}">
-                                                                        <div class="bg-light border rounded px-3 py-2 mb-2 font-monospace text-dark shadow-sm">
-                                                                            <i class="fa-solid fa-user-tie text-primary me-2"></i> Đại diện: ${cccdList[cccdIndex].trim()}
-                                                                        </div>
-                                                                        <c:set var="cccdIndex" value="${cccdIndex + 1}" />
-                                                                    </c:if>
-                                                                    
-                                                                    <%-- Nếu đây là phòng cuối cùng trong booking, hiển thị toàn bộ những người đi cùng còn lại --%>
-                                                                    <c:if test="${detailStatus.last and roomStatus.last and cccdIndex < fn:length(cccdList)}">
-                                                                        <c:forEach begin="${cccdIndex}" end="${fn:length(cccdList) - 1}" var="i">
-                                                                            <div class="bg-light border rounded px-3 py-2 mb-2 font-monospace text-dark shadow-sm ms-4">
-                                                                                <i class="fa-solid fa-user-check text-success me-2"></i> Đi cùng: ${cccdList[i].trim()}
-                                                                            </div>
-                                                                        </c:forEach>
-                                                                    </c:if>
-                                                                </div>
-                                                            </c:forEach>
-                                                        </c:forEach>
-                                                    </c:when>
-                                                    <c:otherwise>
-                                                        <div class="text-danger fst-italic px-2">Chưa có dữ liệu CCCD</div>
-                                                    </c:otherwise>
-                                                </c:choose>
-                                              </div>
-                                              <div class="modal-footer bg-light">
-                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        <!-- Kết thúc Modal -->
-                                        
                                     </td>
                                 </tr>
                             </c:forEach>
@@ -144,4 +68,73 @@
             </a>
         </div>
     </div>
+
+    <c:forEach var="booking" items="${bookings}" varStatus="bookingStatus">
+        <div class="modal fade text-start" id="detailModal_${bookingStatus.index}" tabindex="-1" aria-labelledby="modalLabel_${bookingStatus.index}" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+              <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalLabel_${bookingStatus.index}">
+                    <i class="fa-solid fa-address-card me-2"></i>Chi tiết Lưu trú
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body p-4">
+                <div class="row mb-2">
+                    <div class="col-4 text-muted">Mã Booking:</div>
+                    <div class="col-8 fw-bold text-primary"><c:out value="${booking.bookingID}" /></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-4 text-muted">Khách hàng:</div>
+                    <div class="col-8 fw-bold"><c:out value="${booking.customerID.fullName}" /></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-4 text-muted">Điện thoại:</div>
+                    <div class="col-8"><c:out value="${booking.customerID.phone}" /></div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-4 text-muted">Email:</div>
+                    <div class="col-8"><c:out value="${booking.customerID.email}" /></div>
+                </div>
+                
+                <hr class="my-3">
+                <h6 class="fw-bold text-success mb-3">Phòng đã gán</h6>
+                <c:set var="hasAssignedRoom" value="${false}" />
+                <c:forEach var="detail" items="${booking.bookingDetailCollection}">
+                    <c:forEach var="assignment" items="${detail.roomAssignmentCollection}">
+                        <c:set var="hasAssignedRoom" value="${true}" />
+                        <div class="mb-2 ps-3 border-start border-3 border-success">
+                            Phòng <strong><c:out value="${assignment.roomID.roomNumber}" /></strong>
+                            (<c:out value="${detail.roomTypeID.typeName}" />)
+                        </div>
+                    </c:forEach>
+                </c:forEach>
+                <c:if test="${not hasAssignedRoom}">
+                    <p class="text-muted">Chưa có dữ liệu phòng được gán.</p>
+                </c:if>
+                <hr class="my-3">
+                <h6 class="fw-bold text-success mb-3">Giấy tờ khách trong booking</h6>
+                <c:choose>
+                    <c:when test="${not empty fn:trim(booking.guestCCCDs)}">
+                        <ul class="list-group">
+                            <c:forEach var="document" items="${fn:split(booking.guestCCCDs, ',')}">
+                                <c:if test="${not empty fn:trim(document)}">
+                                    <li class="list-group-item font-monospace"><c:out value="${fn:trim(document)}" /></li>
+                                </c:if>
+                            </c:forEach>
+                        </ul>
+                    </c:when>
+                    <c:otherwise>
+                        <p class="text-muted">Chưa có dữ liệu giấy tờ.</p>
+                    </c:otherwise>
+                </c:choose>
+              </div>
+              <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+    </c:forEach>
 </layout:layout>

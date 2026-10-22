@@ -61,7 +61,7 @@ public final class BookingTimePolicy
 
     public static boolean isNoShow(Booking booking, LocalDateTime now)
     {
-        return booking != null && booking.getCheckInDate() != null
+        return booking != null && booking.getCheckInDate() != null && !booking.isWalkIn()
                 && ("CONFIRMED".equals(booking.getBookingStatus()) || "ASSIGNED".equals(booking.getBookingStatus()))
                 && !now.isBefore(stayDate(booking).atTime(NO_SHOW_TIME));
     }

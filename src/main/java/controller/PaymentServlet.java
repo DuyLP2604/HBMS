@@ -63,7 +63,7 @@ public class PaymentServlet extends HttpServlet
             paymentRequest = service.createPaymentRequest(bookingID, user.getUserID());
             booking = service.getBookingForPayment(bookingID, user.getUserID());
             summary = service.getPaymentSummary(bookingID, user.getUserID());
-            methods = new PaymentmethodDAO().getAll().stream().filter(method -> method.getMethodID() != null && !"PT01".equals(method.getMethodID().trim())).collect(Collectors.toList());
+            methods = new PaymentmethodDAO().getAll().stream().filter(method -> method.getMethodID() != null && !"PT01".equals(method.getMethodID().trim()) && !"PT10".equals(method.getMethodID().trim())).collect(Collectors.toList());
         }
         catch (IllegalArgumentException exception)
         {

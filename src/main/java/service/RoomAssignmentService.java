@@ -27,7 +27,9 @@ public class RoomAssignmentService {
             = Arrays.asList(
                     "CONFIRMED",
                     "ASSIGNED",
-                    "CHECKED_IN"
+                    "CHECKED_IN",
+                    "CHECKED_OUT",
+                    "PENDING_PAYMENT"
             );
 
     private final EmployeeDAO employeeDAO
@@ -54,6 +56,8 @@ public class RoomAssignmentService {
                     "CONFIRMED"
             );
 
+            query.setHint("jakarta.persistence.cache.retrieveMode", jakarta.persistence.CacheRetrieveMode.BYPASS);
+            query.setHint("jakarta.persistence.cache.storeMode", jakarta.persistence.CacheStoreMode.REFRESH);
             return query.getResultList();
         } finally {
             if (em.isOpen()) {
@@ -99,6 +103,8 @@ public class RoomAssignmentService {
                     bookingID
             );
 
+            query.setHint("jakarta.persistence.cache.retrieveMode", jakarta.persistence.CacheRetrieveMode.BYPASS);
+            query.setHint("jakarta.persistence.cache.storeMode", jakarta.persistence.CacheStoreMode.REFRESH);
             return query.getResultList();
         } finally {
             if (em.isOpen()) {
@@ -172,6 +178,8 @@ public class RoomAssignmentService {
                     booking.getCheckOutDate()
             );
 
+            query.setHint("jakarta.persistence.cache.retrieveMode", jakarta.persistence.CacheRetrieveMode.BYPASS);
+            query.setHint("jakarta.persistence.cache.storeMode", jakarta.persistence.CacheStoreMode.REFRESH);
             return query.getResultList();
         } finally {
             if (em.isOpen()) {
@@ -180,168 +188,115 @@ public class RoomAssignmentService {
         }
     }
 
-    public void assignRooms(
-            String bookingID,
-            Map<Integer, List<String>> selectedRooms,
-            int userID) {
-
-        EntityManager em = PersistenceManager.createEntityManager();
-
+    public void assignRooms(String bookingID, Map<Integer, List<String>> selectedRooms, int userID) {
         if (!employeeDAO.isReceptionistByUserId(userID)) {
-            throw new SecurityException(
-                    "Only receptionists can assign rooms."
-            );
+            throw new SecurityException("Only receptionists can assign rooms.");
         }
-
+        List<BookingDetail> details = getBookingDetails(bookingID);
+        if (details.isEmpty() || selectedRooms == null || selectedRooms.size() != details.size()) {
+            throw new IllegalArgumentException("Select rooms for every requested room type.");
+        }
+        Set<String> unique = new HashSet<>();
+        for (BookingDetail detail : details) {
+            List<String> rooms = selectedRooms.get(detail.getBookingDetailID());
+            if (rooms == null || rooms.size() != detail.getQuantity()) {
+                throw new IllegalArgumentException("Select exactly " + detail.getQuantity() + " room(s) for "
+                        + detail.getRoomTypeID().getTypeName() + ".");
+            }
+            for (String room : rooms) {
+                if (room == null || room.isBlank() || room.trim().length() > 3 || !unique.add(room.trim())) {
+                    throw new IllegalArgumentException("Each selected room must be valid and used only once.");
+                }
+            }
+        }
+        try (java.sql.Connection connection = PersistenceManager.openConnection()) {
+            writeAssignments(connection, bookingID, details, selectedRooms, userID);
+        } catch (java.sql.SQLException ex) {
+            throw new IllegalStateException(assignmentError(ex), ex);
+        }
         try {
-            em.getTransaction().begin();
+            PersistenceManager.getEMF().getCache().evictAll();
+        } catch (RuntimeException ex) {
+            java.util.logging.Logger.getLogger(RoomAssignmentService.class.getName())
+                    .log(java.util.logging.Level.WARNING, "Assignment committed, but cache refresh failed.", ex);
+        }
+    }
 
-            Booking booking = em.find(
-                    Booking.class,
-                    bookingID,
-                    LockModeType.PESSIMISTIC_WRITE
-            );
-
-            if (booking == null) {
-                throw new IllegalStateException(
-                        "The requested booking was not found."
-                );
-            }
-
-            if (!"CONFIRMED".equals(
-                    booking.getBookingStatus())) {
-
-                throw new IllegalStateException(
-                        "Only confirmed bookings can be assigned."
-                );
-            }
-
-            Employee employee = findEmployeeByUserID(
-                    em,
-                    userID
-            );
-
-            if (employee == null) {
-                throw new IllegalStateException(
-                        "No employee profile is associated with this account."
-                );
-            }
-
-            List<BookingDetail> details
-                    = loadDetails(
-                            em,
-                            bookingID
-                    );
-
-            if (details.isEmpty()) {
-                throw new IllegalStateException(
-                        "This booking does not contain any room requests."
-                );
-            }
-
-            Long existingAssignments
-                    = countAssignments(
-                            em,
-                            bookingID
-                    );
-
-            if (existingAssignments > 0) {
-                throw new IllegalStateException(
-                        "Rooms have already been assigned to this booking."
-                );
-            }
-
-            Set<String> allSelectedRoomIDs
-                    = new HashSet<>();
-
+    void writeAssignments(java.sql.Connection connection, String bookingID, List<BookingDetail> details,
+            Map<Integer, List<String>> selectedRooms, int userID) throws java.sql.SQLException {
+        connection.setAutoCommit(false);
+        try {
+            // Reading a real table starts the SQL Server JDBC implicit transaction before the transaction-owned lock.
+            executeAssignment(connection,
+                    "SELECT TOP (1) UserID FROM dbo.USERS; "
+                    + "DECLARE @LockResult int; "
+                    + "EXEC @LockResult = sys.sp_getapplock @Resource = N'HBMS:booking-wallet-write', "
+                    + "@LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000; "
+                    + "IF @LockResult < 0 THROW 51000, 'System busy. Please retry the request.', 1;",
+                    null, null, userID);
             for (BookingDetail detail : details) {
-                List<String> roomIDs
-                        = selectedRooms.get(
-                                detail.getBookingDetailID()
-                        );
-
-                if (roomIDs == null) {
-                    throw new IllegalArgumentException(
-                            "Please select rooms for "
-                            + detail.getRoomTypeID()
-                                    .getTypeName()
-                            + "."
-                    );
-                }
-
-                Set<String> uniqueRoomIDs
-                        = new HashSet<>(roomIDs);
-
-                if (uniqueRoomIDs.size()
-                        != detail.getQuantity()) {
-
-                    throw new IllegalArgumentException(
-                            "Please select exactly "
-                            + detail.getQuantity()
-                            + " room(s) for "
-                            + detail.getRoomTypeID()
-                                    .getTypeName()
-                            + "."
-                    );
-                }
-
-                for (String roomID : uniqueRoomIDs) {
-                    if (!allSelectedRoomIDs.add(roomID)) {
-                        throw new IllegalArgumentException(
-                                "The same room cannot be assigned twice."
-                        );
-                    }
-
-                    Room room = em.find(
-                            Room.class,
-                            roomID,
-                            LockModeType.PESSIMISTIC_WRITE
-                    );
-
-                    validateRoom(
-                            em,
-                            room,
-                            detail,
-                            booking
-                    );
-
-                    RoomAssignment assignment
-                            = new RoomAssignment();
-
-                    assignment.setBookingDetailID(detail);
-                    assignment.setRoomID(room);
-                    assignment.setEmployeeID(employee);
-                    assignment.setAssignedAt(new Date());
-
-                    em.persist(assignment);
+                for (String room : selectedRooms.get(detail.getBookingDetailID())) {
+                    executeAssignment(connection,
+                            "EXEC dbo.SP_ASSIGN_ROOM @BookingDetailID=?, @RoomID=?, @ActorUserID=?",
+                            detail.getBookingDetailID(), room.trim(), userID);
                 }
             }
-
-            booking.setBookingStatus("ASSIGNED");
-
-            em.flush();
-            em.getTransaction().commit();
-        } catch (Exception ex) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
+            try (java.sql.PreparedStatement statement = connection.prepareStatement(
+                    "EXEC dbo.SP_SET_BOOKING_STATUS @BookingID=?, @NewStatus='ASSIGNED', @ActorUserID=?")) {
+                statement.setString(1, bookingID);
+                statement.setInt(2, userID);
+                drainAssignment(statement);
             }
+            connection.commit();
+        } catch (java.sql.SQLException | RuntimeException ex) {
+            try { connection.rollback(); } catch (java.sql.SQLException rollback) { ex.addSuppressed(rollback); }
+            throw ex;
+        }
+    }
 
-            if (ex instanceof IllegalArgumentException) {
-                throw (IllegalArgumentException) ex;
-            }
+    static String assignmentError(java.sql.SQLException error) {
+        String suffix = " (SQL error " + error.getErrorCode() + ").";
+        switch (error.getErrorCode()) {
+            case 51000:
+            case 1205:
+            case 1222:
+                return "The booking system is busy. Reload and retry" + suffix;
+            case 229:
+                return "The application database account lacks permission to assign rooms" + suffix;
+            case 208:
+            case 2812:
+                return "A required database table or procedure is missing. Check the database migration" + suffix;
+            case 51066:
+                return "The current user is not recognized as a receptionist by the database" + suffix;
+            case 51067:
+            case 51063:
+                return "This booking no longer accepts room assignment. Reload its current status" + suffix;
+            case 51064:
+                return "All requested rooms must be assigned before completing this step" + suffix;
+            case 2601:
+            case 2627:
+                return "A selected room has already been assigned to this booking. Reload its current assignments" + suffix;
+            default:
+                return "Room assignment could not be saved" + suffix + " Check the server log for the database error.";
+        }
+    }
 
-            if (ex instanceof IllegalStateException) {
-                throw (IllegalStateException) ex;
+    private void executeAssignment(java.sql.Connection connection, String sql, Integer detailID,
+            String roomID, int userID) throws java.sql.SQLException {
+        try (java.sql.PreparedStatement statement = connection.prepareStatement(sql)) {
+            if (detailID != null) {
+                statement.setInt(1, detailID); statement.setString(2, roomID); statement.setInt(3, userID);
             }
+            drainAssignment(statement);
+        }
+    }
 
-            throw new RuntimeException(
-                    "Unable to assign rooms.",
-                    ex
-            );
-        } finally {
-            if (em.isOpen()) {
-                em.close();
-            }
+    private void drainAssignment(java.sql.PreparedStatement statement) throws java.sql.SQLException {
+        boolean result = statement.execute();
+        while (true) {
+            if (result) { try (java.sql.ResultSet rows = statement.getResultSet()) { while (rows.next()) { } } }
+            else if (statement.getUpdateCount() == -1) break;
+            result = statement.getMoreResults(java.sql.Statement.CLOSE_CURRENT_RESULT);
         }
     }
 
