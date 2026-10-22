@@ -7,7 +7,6 @@
 <layout:layout title="Hotel Services" pageCss="service.css" useBootstrap="true" bodyClass="bg-light">
     <div class="container-fluid px-lg-5 my-4">
 
-        <%-- Thông báo Flash/Session --%>
         <c:if test="${not empty sessionScope.successMessage}">
             <div class="alert alert-success alert-dismissible py-2 mb-3 fade show shadow-sm">
                 <i class="fa-solid fa-circle-check me-2"></i><c:out value="${sessionScope.successMessage}" />
@@ -59,7 +58,7 @@
             </div>
         </div>
 
-        <%-- Banner Đặc quyền Buffet Sáng (Mặc định có đặt phòng là có buffet sáng) --%>
+
         <div class="alert alert-success border-success-subtle d-flex align-items-center mb-4 shadow-sm" role="alert">
             <i class="fa-solid fa-utensils fs-3 text-success me-3"></i>
             <div>
@@ -69,7 +68,6 @@
         </div>
 
         <div class="row g-4">
-            <%-- Cột bên trái: Chọn dịch vụ bổ sung --%>
             <div class="col-lg-5 col-md-6">
                 <div class="card shadow-sm sticky-top" style="top: 20px; z-index: 1;">
                     <div class="card-header bg-primary text-white py-3">
@@ -154,7 +152,6 @@
                 </div>
             </div>
 
-            <%-- Cột bên phải: Danh sách dịch vụ đã đặt của phòng --%>
             <div class="col-lg-7 col-md-6">
                 <div class="card shadow-sm">
                     <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
@@ -231,4 +228,4 @@
 
         </div>
     </div>
-</layout:layout>
+</layout:layout>

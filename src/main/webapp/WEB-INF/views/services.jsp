@@ -5,16 +5,13 @@
 
 <layout:layout title="Service Management" pageCss="service.css" useBootstrap="true" bodyClass="bg-light">
     <div class="container my-5">
-        <%-- Header & Điều hướng --%>
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
             <div>
                 <h1 class="h3 mb-1"><i class="fa-solid fa-bell-concierge text-warning me-2"></i>Service Management</h1>
                 <p class="text-muted mb-0">Quản lý danh mục dịch vụ của khách sạn: xem danh sách, cập nhật đơn giá, tạo mới hoặc xóa dịch vụ.</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="${pageContext.request.contextPath}/staff/dashboard" class="btn btn-outline-secondary">
-                    <i class="fa-solid fa-arrow-left me-1"></i>Dashboard
-                </a><c:if test="${sessionScope.user.role == 'Admin'}">
+                <c:if test="${sessionScope.user.role == 'Admin'}">
                     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createServiceModal">
                         <i class="fa-solid fa-plus me-1"></i>Tạo Service mới
                     </button>
@@ -56,23 +53,27 @@
                         </thead>
                         <tbody>
                             <c:forEach var="s" items="${services}">
+                                <c:set var="cleanID" value="${s.serviceID.trim()}" />
                                 <tr>
-                                    <td class="text-center fw-bold"><code>${s.serviceID}</code></td>
-                                    <td><strong>${s.serviceName}</strong></td>
-                                    <td class="text-end text-primary fw-bold">
-                                        <fmt:formatNumber value="${s.unitPrice}" type="number" groupingUsed="true" /> đ
+                                    <td class="text-center fw-bold text-primary">${cleanID}</td>
+                                    <td class="fw-semibold text-dark">${s.serviceName}</td>
+                                    <td class="text-end fw-bold">
+                                        <fmt:formatNumber value="${s.unitPrice}" type="number" /> VND
                                     </td>
-                                    <%-- CHỈ ADMIN MỚI CÓ NÚT SỬA VÀ XÓA --%>
                                     <c:if test="${sessionScope.user.role == 'Admin'}">
                                         <td class="text-center">
-                                            <button type="button" class="btn btn-outline-primary btn-sm me-1"
-                                                    data-bs-toggle="modal" data-bs-target="#editPriceModal_${s.serviceID}">
-                                                <i class="fa-solid fa-pen-to-square me-1"></i>Sửa giá
-                                            </button>
-                                            <button type="button" class="btn btn-outline-danger btn-sm"
-                                                    data-bs-toggle="modal" data-bs-target="#deleteServiceModal_${s.serviceID}">
-                                                <i class="fa-solid fa-trash-can me-1"></i>Xóa
-                                            </button>
+                                            <div class="d-flex justify-content-center gap-2">
+                                                <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-semibold"
+                                                        data-bs-toggle="modal" data-bs-target="#editModal_${cleanID}">
+                                                    <i class="fa-solid fa-pen-to-square me-1"></i>Cập nhật
+                                                </button>
+                                                <form action="${pageContext.request.contextPath}/service" method="post" class="m-0"
+                                                      onsubmit="return confirm('Bạn có chắc muốn xóa dịch vụ ${s.serviceName}?');">
+                                                    <input type="hidden" name="action" value="delete">
+                                                    <input type="hidden" name="serviceID" value="${cleanID}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </c:if>
                                 </tr>
@@ -112,4 +113,38 @@
             </div>
         </div>
     </div>
+    <c:if test="${sessionScope.user.role == 'Admin'}">
+        <c:forEach var="s" items="${services}">
+            <c:set var="cleanID" value="${s.serviceID.trim()}" />
+            <div class="modal fade" id="editModal_${s.serviceID}">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form action="${pageContext.request.contextPath}/service" method="post">
+                            <input type="hidden" name="action" value="update">
+                            <input type="hidden" name="serviceID" value="${s.serviceID}">
+
+                            <div class="modal-header bg-warning text-dark">
+                                <h5 class="modal-title fw-bold">Cập nhật dịch vụ</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Tên dịch vụ</label>
+                                    <input type="text" name="serviceName" value="${s.serviceName}" class="form-control" required="required">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Đơn giá (VND)</label>
+                                    <input type="text" name="unitPrice" value="${s.unitPrice}" class="form-control" required="required">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                <button type="submit" class="btn btn-warning fw-bold">Lưu thay đổi</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </c:forEach>
+    </c:if>
 </layout:layout>
