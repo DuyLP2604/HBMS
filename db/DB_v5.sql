@@ -228,6 +228,7 @@ CREATE TABLE BOOKING (
     CheckInDate DATE NOT NULL,
     CheckOutDate DATE NOT NULL,
     BookingStatus VARCHAR(30) NOT NULL,
+	GuestCCCDs VARCHAR(500) NULL,
     CustomerID CHAR(6) NOT NULL,
     TotalAmount DECIMAL(12,2) NOT NULL
         CONSTRAINT DF_BOOKING_TotalAmount DEFAULT 0,

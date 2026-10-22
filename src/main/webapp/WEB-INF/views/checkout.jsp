@@ -10,10 +10,12 @@
                 <h2 class="fw-bold text-dark mb-1">Checkout &amp; Billing</h2>
                 <p class="text-secondary mb-0">Review booking charges, complete checkout, and print issued invoices.</p>
             </div>
-            <a href="${pageContext.request.contextPath}/CheckoutEmployee" class="btn btn-primary">Checkout Management</a>
         </div>
+        
         <div class="row g-4">
-            <div class="col-lg-8">
+            <!-- CỘT TRÁI -->
+            <div class="col-lg-7">
+                <!-- Bảng 1: Currently Checked-in -->
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-header bg-white text-primary fw-bold text-uppercase py-3">Currently Checked-in Bookings</div>
                     <div class="card-body p-0">
@@ -21,14 +23,11 @@
                             <table class="table table-hover table-custom text-center align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
+                                        <!-- Đã bỏ: Hotel, Nationality, Check-in, Check-out -->
                                         <th>Booking ID</th>
-                                        <th>Hotel</th>
                                         <th>Customer</th>
-                                        <th>Nationality</th>
                                         <th>Room(s)</th>
                                         <th>Room Type(s)</th>
-                                        <th>Check-in</th>
-                                        <th>Check-out</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -39,24 +38,22 @@
                                         </c:url>
                                         <tr>
                                             <td class="fw-bold text-secondary"><c:out value="${room.bookingID}" /></td>
-                                            <td><c:out value="${room.hotelName}" /></td>
                                             <td><c:out value="${room.customerName}" /></td>
-                                            <td><c:out value="${room.nationality}" /></td>
                                             <td><span class="badge bg-secondary fs-6"><c:out value="${room.roomNumber}" /></span></td>
                                             <td><c:out value="${room.roomType}" /></td>
-                                            <td><c:out value="${room.checkInDate}" /></td>
-                                            <td><c:out value="${room.checkOutDate}" /></td>
                                             <td><a href="<c:out value='${selectBookingUrl}' />" class="btn btn-sm btn-outline-primary px-3">Select</a></td>
                                         </tr>
                                     </c:forEach>
                                     <c:if test="${empty occupiedRooms}">
-                                        <tr><td colspan="9" class="text-muted py-4">No checked-in bookings found.</td></tr>
+                                        <tr><td colspan="5" class="text-muted py-4">No checked-in bookings found.</td></tr>
                                     </c:if>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+
+                <!-- Bảng 2: Top 10 Invoices -->
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-white text-primary fw-bold text-uppercase py-3">10 Most Recent Issued Invoices</div>
                     <div class="card-body p-0">
@@ -64,13 +61,11 @@
                             <table class="table table-hover table-custom text-center align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
+                                        <!-- Đã bỏ: Booking ID, Hotel, Invoice Date -->
                                         <th>Invoice ID</th>
-                                        <th>Booking ID</th>
-                                        <th>Hotel</th>
                                         <th>Customer</th>
                                         <th>Room(s)</th>
                                         <th>Total (VND)</th>
-                                        <th>Invoice Date</th>
                                         <th>Action</th>
                                     </tr>
                                 </thead>
@@ -82,17 +77,14 @@
                                         </c:url>
                                         <tr>
                                             <td class="fw-bold text-secondary"><c:out value="${inv.invoiceID}" /></td>
-                                            <td><c:out value="${inv.bookingID}" /></td>
-                                            <td><c:out value="${inv.hotelName}" /></td>
                                             <td><c:out value="${inv.customerName}" /></td>
                                             <td><span class="badge bg-info text-dark"><c:out value="${inv.roomNumber}" /></span></td>
                                             <td class="text-success fw-bold"><fmt:formatNumber value="${inv.totalAmount}" type="number" maxFractionDigits="2" /></td>
-                                            <td><c:out value="${inv.invoiceDate}" /></td>
                                             <td><a href="<c:out value='${printInvoiceUrl}' />" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">View / Print</a></td>
                                         </tr>
                                     </c:forEach>
                                     <c:if test="${empty paidInvoices}">
-                                        <tr><td colspan="8" class="text-muted py-4">No completed invoices found.</td></tr>
+                                        <tr><td colspan="5" class="text-muted py-4">No completed invoices found.</td></tr>
                                     </c:if>
                                 </tbody>
                             </table>
@@ -100,69 +92,55 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-4">
+
+            <!-- CỘT PHẢI (Booking Charges & Checkout) -->
+            <div class="col-lg-5">
                 <c:choose>
-                    <c:when test="${not empty selectedRoom}">
-                        <div class="card shadow-sm border-0 mb-4">
-                            <div class="card-header bg-white text-primary fw-bold text-uppercase py-3">Recorded Services</div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table text-center align-middle mb-0">
-                                        <thead class="table-light">
-                                            <tr><th>Service</th><th>Unit Price</th><th>Quantity</th><th>Subtotal</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            <c:forEach var="srv" items="${bookingServices}">
-                                                <tr>
-                                                    <td><c:out value="${srv.serviceName}" /></td>
-                                                    <td><fmt:formatNumber value="${srv.unitPrice}" type="number" maxFractionDigits="2" /></td>
-                                                    <td><c:out value="${srv.quantity}" /></td>
-                                                    <td class="fw-bold"><fmt:formatNumber value="${srv.subtotal}" type="number" maxFractionDigits="2" /></td>
-                                                </tr>
-                                            </c:forEach>
-                                            <c:if test="${empty bookingServices}">
-                                                <tr><td colspan="4" class="text-muted py-3">No services recorded for this booking.</td></tr>
-                                            </c:if>
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <p class="small text-muted px-3 py-2 mb-0">Amounts are shown in VND.</p>
-                            </div>
-                        </div>
+                    <c:when test="${not empty invoiceDTO}">
                         <div class="card shadow-sm border-0 border-top border-success border-4">
                             <div class="card-header bg-white text-success fw-bold text-uppercase py-3">Booking Charges &amp; Checkout</div>
                             <div class="card-body">
                                 <div class="bg-light p-3 rounded mb-3">
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Booking:</span><strong><c:out value="${selectedRoom.bookingID}" /></strong></div>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Customer:</span><strong><c:out value="${selectedRoom.customerName}" /></strong></div>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Room(s):</span><strong><c:out value="${selectedRoom.roomNumber}" /></strong></div>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Check-in:</span><strong><c:out value="${selectedRoom.checkInDate}" /></strong></div>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Check-out:</span><strong><c:out value="${selectedRoom.checkOutDate}" /></strong></div>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Booking status:</span><strong><c:out value="${bookingSummary.bookingStatus}" /></strong></div>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Payment status:</span><strong><c:out value="${bookingSummary.paymentStatus}" /></strong></div>
+                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Booking:</span><strong><c:out value="${invoiceDTO.bookingID}" /></strong></div>
+                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Customer:</span><strong><c:out value="${invoiceDTO.customerName}" /></strong></div>
+                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Room(s):</span><strong><c:out value="${invoiceDTO.roomNumber}" /></strong></div>
+                                    
+                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Days of night:</span><strong><c:out value="${invoiceDTO.daysOfNight}" /></strong></div>
+                                    <div class="d-flex justify-content-between gap-2 mb-2">
+                                        <span>Services used:</span>
+                                        <strong class="text-end"><c:out value="${invoiceDTO.usedServices}" /></strong>
+                                    </div>
                                     <hr>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Room charges:</span><strong><fmt:formatNumber value="${roomTotal}" type="number" maxFractionDigits="2" /> VND</strong></div>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Service charges:</span><strong><fmt:formatNumber value="${serviceTotal}" type="number" maxFractionDigits="2" /> VND</strong></div>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Total:</span><strong><fmt:formatNumber value="${grandTotal}" type="number" maxFractionDigits="2" /> VND</strong></div>
-                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Amount paid:</span><strong><fmt:formatNumber value="${paidAmount}" type="number" maxFractionDigits="2" /> VND</strong></div>
+                                    
+                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Room charges:</span><strong><fmt:formatNumber value="${invoiceDTO.roomCharges}" type="number" maxFractionDigits="2" /> VND</strong></div>
+                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Service charges:</span><strong><fmt:formatNumber value="${invoiceDTO.serviceCharges}" type="number" maxFractionDigits="2" /> VND</strong></div>
+                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Total:</span><strong><fmt:formatNumber value="${invoiceDTO.grandTotal}" type="number" maxFractionDigits="2" /> VND</strong></div>
+                                    <div class="d-flex justify-content-between gap-2 mb-2"><span>Amount paid:</span><strong><fmt:formatNumber value="${invoiceDTO.paidAmount}" type="number" maxFractionDigits="2" /> VND</strong></div>
                                     <hr>
-                                    <div class="d-flex justify-content-between gap-2"><strong>Remaining:</strong><strong class="${remainingAmount gt 0 ? 'text-danger' : 'text-success'}"><fmt:formatNumber value="${remainingAmount}" type="number" maxFractionDigits="2" /> VND</strong></div>
+                                    <div class="d-flex justify-content-between gap-2">
+                                        <strong>Remaining:</strong>
+                                        <strong class="${invoiceDTO.remainingAmount gt 0 ? 'text-danger' : 'text-success'}">
+                                            <fmt:formatNumber value="${invoiceDTO.remainingAmount}" type="number" maxFractionDigits="2" /> VND
+                                        </strong>
+                                    </div>
                                 </div>
-                                <c:if test="${remainingAmount gt 0}">
-                                    <div class="alert alert-warning">Complete the remaining payment before checkout.</div>
-                                </c:if>
-                                <c:choose>
-                                    <c:when test="${bookingSummary.bookingStatus eq 'CHECKED_IN' or bookingSummary.bookingStatus eq 'CHECKED_OUT'}">
-                                        <c:url var="checkoutDetailsUrl" value="/CheckoutEmployee">
-                                            <c:param name="action" value="detail" />
-                                            <c:param name="bookingID" value="${selectedRoom.bookingID}" />
-                                        </c:url>
-                                        <a href="<c:out value='${checkoutDetailsUrl}' />" class="btn btn-success w-100">View Checkout Details</a>
-                                    </c:when>
-                                    <c:otherwise>
-                                        <div class="alert alert-info mb-0">This booking is not ready for checkout.</div>
-                                    </c:otherwise>
-                                </c:choose>
+
+                                <form action="${pageContext.request.contextPath}/invoice" method="post" id="checkoutForm">
+                                    <input type="hidden" name="action" value="print" />
+                                    <input type="hidden" name="bookingID" value="${invoiceDTO.bookingID}" />
+                                    
+                                    <div class="form-check mb-3 mt-3">
+                                        <input class="form-check-input border-secondary" type="checkbox" id="paymentConfirmed" onchange="toggleButtons()">
+                                        <label class="form-check-label fw-bold" for="paymentConfirmed">
+                                            KH đã thanh toán thành công
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" id="printBtn" class="btn btn-success flex-grow-1" disabled>Print Invoice</button>
+                                        <a href="${pageContext.request.contextPath}/invoice" id="exitBtn" class="btn btn-secondary flex-grow-1 disabled-link" aria-disabled="true">Exit</a>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </c:when>
@@ -173,4 +151,31 @@
             </div>
         </div>
     </div>
+
+    <!-- Khai báo style nhỏ để vô hiệu hóa thẻ <a> -->
+    <style>
+        .disabled-link {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+    </style>
+
+    <!-- Script điều khiển bật/tắt 2 nút bằng Checkbox -->
+    <script>
+        function toggleButtons() {
+            const isChecked = document.getElementById('paymentConfirmed').checked;
+            const printBtn = document.getElementById('printBtn');
+            const exitBtn = document.getElementById('exitBtn');
+            
+            printBtn.disabled = !isChecked;
+            
+            if (isChecked) {
+                exitBtn.classList.remove('disabled-link');
+                exitBtn.removeAttribute('aria-disabled');
+            } else {
+                exitBtn.classList.add('disabled-link');
+                exitBtn.setAttribute('aria-disabled', 'true');
+            }
+        }
+    </script>
 </layout:layout>

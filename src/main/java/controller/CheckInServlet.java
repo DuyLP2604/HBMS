@@ -27,7 +27,7 @@ public class CheckInServlet extends HttpServlet
         }
         try
         {
-            List<Booking> checkedInBookings = bookingDAO.getByStatus("CHECKED_IN");
+            List<Booking> checkedInBookings = bookingDAO.getByStatusWithDetails("CHECKED_IN");
             request.setAttribute("bookings", checkedInBookings);
             request.getRequestDispatcher("/WEB-INF/views/CheckIn.jsp").forward(request, response);
         }

@@ -533,7 +533,7 @@ public class WorkSheetService {
         header.createCell(5).setCellValue("EmployeeID");
         header.createCell(6).setCellValue("BookingID");
 
-        List<Invoice> list = new InvoiceDAO().getAll();
+        List<Invoice> list = new DAOFramework<>(Invoice.class).getAll();
         int rowIdx = 1;
         for (Invoice i : list) {
             Row row = sheet.createRow(rowIdx++);
