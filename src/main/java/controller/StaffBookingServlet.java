@@ -45,6 +45,10 @@ public class StaffBookingServlet extends HttpServlet {
             return;
         }
 
+        synchronized (session) {
+            if (session.getAttribute("roomAssignmentCsrf") == null)
+                session.setAttribute("roomAssignmentCsrf", UUID.randomUUID().toString());
+        }
         moveFlashMessage(request, session);
         synchronized (session)
         {
@@ -70,7 +74,7 @@ public class StaffBookingServlet extends HttpServlet {
             );
             request.setAttribute("noShowBookings", BookingTimePolicy.prepareStaffList(bookings, BookingTimePolicy.now()));
 
-            request.getRequestDispatcher(
+        request.getRequestDispatcher(
                     "/WEB-INF/views/staff-bookings.jsp"
             ).forward(request, response);
 

@@ -245,6 +245,8 @@ public class BookingLifecycleService
                 return "This booking can no longer be cancelled after check-in.";
             case 51007:
                 return "Your wallet is unavailable. The cancellation was not completed.";
+            case 51009:
+                return "Walk-in guests have already arrived at the counter. Use staff cancellation if needed.";
             case 51008:
                 return "No-show cancellation is available from 14:15 on the check-in date, only for guests who have not checked in. Reload the list.";
             case 51063:

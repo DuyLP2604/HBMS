@@ -13,29 +13,30 @@
                     <div class="card-body p-4">
                         <form id="addCustomerForm" action="${pageContext.request.contextPath}/customer?action=add" method="post">
                             <input type="hidden" name="createAccount" value="true">
+                            <c:if test="${param.flow eq 'counter'}"><input type="hidden" name="flow" value="counter"><input type="hidden" name="csrfToken" value="${fn:escapeXml(sessionScope.counterCsrf)}"></c:if>
                             <div class="row g-3">
                                 <div class="col-12">
                                     <label for="name" class="form-label fw-semibold">Full Name *</label>
-                                    <input type="text" id="name" name="name" class="form-control" maxlength="100" placeholder="Enter full name..." required>
+                                    <input type="text" id="name" name="name" value="${fn:escapeXml(sessionScope.counterRegistration.name)}" class="form-control" maxlength="100" placeholder="Enter full name..." required>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="phone" class="form-label fw-semibold">Phone Number</label>
-                                    <input type="tel" id="phone" name="phone" class="form-control" maxlength="15" placeholder="Enter phone number...">
+                                    <input type="tel" id="phone" name="phone" value="${fn:escapeXml(empty sessionScope.counterRegistration ? param.phone : sessionScope.counterRegistration.phone)}" class="form-control" maxlength="15" placeholder="Enter phone number...">
                                 </div>
                                 <div class="col-md-6">
                                     <label for="email" class="form-label fw-semibold">Email</label>
-                                    <input type="email" id="email" name="email" class="form-control" maxlength="100" placeholder="Enter email...">
+                                    <input type="email" id="email" name="email" value="${fn:escapeXml(sessionScope.counterRegistration.email)}" class="form-control" maxlength="100" placeholder="Enter email...">
                                 </div>
                                 <div class="col-12">
                                     <label for="address" class="form-label fw-semibold">Address</label>
-                                    <input type="text" id="address" name="address" class="form-control" maxlength="200" placeholder="Enter address...">
+                                    <input type="text" id="address" name="address" value="${fn:escapeXml(sessionScope.counterRegistration.address)}" class="form-control" maxlength="200" placeholder="Enter address...">
                                 </div>
                                 <div class="col-12">
                                     <label for="nation" class="form-label fw-semibold">Nationality *</label>
                                     <select id="nation" name="nation" class="form-select" required>
                                         <option value="" disabled selected>Select nationality</option>
                                         <c:forEach items="${listNat}" var="n">
-                                            <option value="${fn:escapeXml(n.nationalityID)}"><c:out value="${n.nationalityName}" /></option>
+                                            <option value="${fn:escapeXml(n.nationalityID)}" ${sessionScope.counterRegistration.nation eq n.nationalityID ? 'selected' : ''}><c:out value="${n.nationalityName}" /></option>
                                         </c:forEach>
                                     </select>
                                 </div>
@@ -46,7 +47,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label for="username" class="form-label fw-semibold">Username *</label>
-                                    <input type="text" id="username" name="username" class="form-control" maxlength="50" autocomplete="off" placeholder="Enter username..." required>
+                                    <input type="text" id="username" name="username" value="${fn:escapeXml(sessionScope.counterRegistration.username)}" class="form-control" maxlength="50" autocomplete="off" placeholder="Enter username..." required>
                                 </div>
                                 <div class="col-md-6">
                                     <label for="password" class="form-label fw-semibold">Password *</label>

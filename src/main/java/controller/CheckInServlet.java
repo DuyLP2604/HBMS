@@ -34,7 +34,7 @@ public class CheckInServlet extends HttpServlet
         catch (Exception ex)
         {
             log("Unable to load checked-in bookings.", ex);
-            response.sendRedirect(request.getContextPath() + "/error.jsp");
+            throw new ServletException("Unable to load checked-in bookings.", ex);
         }
     }
 

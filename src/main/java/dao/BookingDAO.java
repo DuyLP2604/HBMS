@@ -257,7 +257,7 @@ public class BookingDAO extends DAOFramework<Booking>
         requireActor(actorUserID);
         String id = required(bookingID, "Booking ID", 6);
         String value = required(reason, "Cancellation reason", 30).toUpperCase(Locale.ROOT);
-        if (!Set.of("CUSTOMER_REQUEST", "STAFF_REQUEST").contains(value))
+        if (!Set.of("CUSTOMER_REQUEST", "STAFF_REQUEST", "NO_SHOW").contains(value))
         {
             throw new IllegalArgumentException("Use expirePendingBookings for payment timeouts.");
         }

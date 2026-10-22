@@ -61,6 +61,10 @@ public class RoomAssignmentServlet extends HttpServlet {
             return;
         }
 
+        if (session.getAttribute("roomAssignmentCsrf") == null || !java.util.Objects.equals(
+                session.getAttribute("roomAssignmentCsrf"), request.getParameter("csrfToken"))) {
+            response.sendError(403); return;
+        }
         String bookingID = trimParameter(
                 request.getParameter("bookingID")
         );
@@ -131,7 +135,8 @@ public class RoomAssignmentServlet extends HttpServlet {
 
             response.sendRedirect(
                     request.getContextPath()
-                    + "/staff/stays"
+                    + ("counter".equals(request.getParameter("flow"))
+                        ? "/staff/counter-booking?bookingID=" + bookingID : "/staff/stays")
             );
 
         } catch (SecurityException ex) {
@@ -143,6 +148,7 @@ public class RoomAssignmentServlet extends HttpServlet {
         } catch (IllegalArgumentException
                 | IllegalStateException ex) {
 
+            log("Room assignment failed for booking " + bookingID, ex);
             session.setAttribute(
                     "assignmentError",
                     ex.getMessage()
@@ -151,7 +157,7 @@ public class RoomAssignmentServlet extends HttpServlet {
             response.sendRedirect(
                     request.getContextPath()
                     + "/staff/bookings?bookingID="
-                    + bookingID
+                    + bookingID + ("counter".equals(request.getParameter("flow")) ? "&flow=counter" : "")
             );
 
         } catch (Exception ex) {
@@ -165,7 +171,7 @@ public class RoomAssignmentServlet extends HttpServlet {
             response.sendRedirect(
                     request.getContextPath()
                     + "/staff/bookings?bookingID="
-                    + bookingID
+                    + bookingID + ("counter".equals(request.getParameter("flow")) ? "&flow=counter" : "")
             );
         }
     }

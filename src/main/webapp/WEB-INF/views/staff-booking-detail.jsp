@@ -22,6 +22,8 @@
         </div>
         <form action="${pageContext.request.contextPath}/staff/room-assignments" method="post">
             <input type="hidden" name="bookingID" value="${booking.bookingID}">
+            <input type="hidden" name="flow" value="${param.flow eq 'counter' ? 'counter' : ''}">
+            <input type="hidden" name="csrfToken" value="${sessionScope.roomAssignmentCsrf}">
             <c:forEach var="detail" items="${details}">
                 <div class="card shadow-sm mb-4">
                     <div class="card-body">

@@ -39,6 +39,27 @@
             <div class="staff-functions-grid">
                 <c:if test="${isReceptionist}">
 
+                    <div class="staff-function-item">
+                        <div class="card staff-function-card staff-card-blue">
+                            <div class="card-body staff-card-body">
+                                <div class="staff-function-icon"><i class="fa-solid fa-user-plus" aria-hidden="true"></i></div>
+                                <h3 class="staff-card-title">Book for Customer</h3>
+                                <p class="staff-card-description">Find or register a guest, book at the counter and collect payment.</p>
+                                <a href="${pageContext.request.contextPath}/staff/counter-booking" class="btn staff-function-link"><span>Book for Customer</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="staff-function-item">
+                        <div class="card staff-function-card staff-card-blue">
+                            <div class="card-body staff-card-body">
+                                <div class="staff-function-icon"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i></div>
+                                <h3 class="staff-card-title">Booking Overview</h3>
+                                <p class="staff-card-description">Browse all bookings and view the customer account for each booking.</p>
+                                <a href="${pageContext.request.contextPath}/booking-overview" class="btn staff-function-link"><span>View Bookings</span><i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="staff-function-item">
                         <div class="card staff-function-card staff-card-blue">

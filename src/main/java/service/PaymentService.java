@@ -117,6 +117,39 @@ public class PaymentService
 
     public Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet)
     {
+        return processPayment(paymentRequest, methodID, userID, useWallet, userID, false);
+    }
+
+    public Payment collectAtCounter(PaymentRequest paymentRequest, String methodID, int actorUserID,
+            boolean useWallet, boolean walletAuthorized, String reference) {
+        if (!new dao.EmployeeDAO().isReceptionistByUserId(actorUserID)) {
+            throw new SecurityException("Only receptionists can collect counter payments.");
+        }
+        if (useWallet && !walletAuthorized) {
+            throw new IllegalArgumentException("The customer must authorize wallet use.");
+        }
+        if (!java.util.Set.of("PT01", "PT09", "PT10").contains(methodID)) {
+            throw new IllegalArgumentException("Choose Cash, Internal Wallet or VietQR.");
+        }
+        if (useWallet && paymentRequest.getOfferedWalletAmount().compareTo(paymentRequest.getAmount()) >= 0) {
+            methodID = "PT09";
+        }
+        synchronized (paymentRequest) {
+            if (paymentRequest.methodID == null) {
+                paymentRequest.transactionCode = "PT10".equals(methodID) ? reference : "COUNTER-" + UUID.randomUUID();
+            } else if ("PT10".equals(methodID) && !paymentRequest.transactionCode.equals(reference)) {
+                throw new IllegalArgumentException("Retry with the same bank reference or reload the page.");
+            }
+            if (paymentRequest.transactionCode == null || paymentRequest.transactionCode.isBlank()
+                    || paymentRequest.transactionCode.length() > 100) {
+                throw new IllegalArgumentException("Enter a bank transaction reference (maximum 100 characters).");
+            }
+            return processPayment(paymentRequest, methodID, paymentRequest.getUserID(), useWallet, actorUserID, walletAuthorized);
+        }
+    }
+
+    private Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID,
+            boolean useWallet, int actorUserID, boolean walletAuthorized) {
         if (paymentRequest == null || paymentRequest.getUserID() != userID || userID <= 0)
         {
             throw new IllegalArgumentException("The payment request is invalid. Reload the payment page.");
@@ -143,7 +176,10 @@ public class PaymentService
         {
             throw new IllegalArgumentException("Please select a valid payment method.");
         }
-        if ("PT01".equals(selectedMethod))
+        if ("PT10".equals(selectedMethod) && actorUserID == userID) {
+            throw new IllegalArgumentException("VietQR counter transfers must be verified by a receptionist.");
+        }
+        if ("PT01".equals(selectedMethod) && actorUserID == userID)
         {
             throw new IllegalArgumentException("Cash payments must be recorded by staff.");
         }
@@ -171,6 +207,8 @@ public class PaymentService
             {
                 throw new IllegalArgumentException("The selected payment method does not exist.");
             }
+            paymentRequest.actorUserID = actorUserID;
+            paymentRequest.walletAuthorizedBy = walletAuthorized ? userID : null;
             paymentRequest.methodID = selectedMethod;
             paymentRequest.walletAmount = walletAmount;
             try (Connection connection = PersistenceManager.openConnection())
@@ -184,7 +222,7 @@ public class PaymentService
                     {
                         paymentRequest.paymentID = generatePaymentID(connection);
                     }
-                    execute(connection, "EXEC dbo.SP_RECORD_PAYMENT @PaymentID = ?, @BookingID = ?, @ActorUserID = ?, @PaymentType = ?, @Amount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAmount = ?;", paymentRequest);
+                    execute(connection, "EXEC dbo.SP_RECORD_PAYMENT @PaymentID = ?, @BookingID = ?, @ActorUserID = ?, @PaymentType = ?, @Amount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAmount = ?, @WalletAuthorizedBy = ?;", paymentRequest);
                     Payment payment = readPayment(connection, paymentRequest, booking, method);
                     connection.commit();
                     return payment;
@@ -257,12 +295,14 @@ public class PaymentService
             {
                 statement.setString(1, request.paymentID);
                 statement.setString(2, request.bookingID);
-                statement.setInt(3, request.userID);
+                statement.setInt(3, request.actorUserID);
                 statement.setString(4, request.paymentType);
                 statement.setBigDecimal(5, request.amount);
                 statement.setString(6, request.methodID);
                 statement.setString(7, request.transactionCode);
                 statement.setBigDecimal(8, request.walletAmount);
+                if (request.walletAuthorizedBy == null) statement.setNull(9, java.sql.Types.INTEGER);
+                else statement.setInt(9, request.walletAuthorizedBy);
             }
             boolean hasResult = statement.execute();
             while (true)
@@ -354,7 +394,9 @@ public class PaymentService
         private final String paymentType;
         private final BigDecimal amount;
         private final BigDecimal walletBalance;
-        private final String transactionCode = "SIM-" + UUID.randomUUID();
+        private String transactionCode = "SIM-" + UUID.randomUUID();
+        private int actorUserID;
+        private Integer walletAuthorizedBy;
         private String paymentID;
         private String methodID;
         private BigDecimal walletAmount;
