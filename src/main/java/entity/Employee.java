@@ -35,6 +35,31 @@ import java.util.Collection;
 })
 public class Employee implements Serializable {
 
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 100)
+    @Column(name = "FullName")
+    private String fullName;
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 50)
+    @Column(name = "Position")
+    private String position;
+    @Size(max = 20)
+    @Column(name = "Shift")
+    private String shift;
+    @Size(max = 200)
+    @Column(name = "Address")
+    private String address;
+    // @Pattern(regexp="^\\(?(\\d{3})\\)?[- ]?(\\d{3})[- ]?(\\d{4})$", message="Invalid phone/fax format, should be as xxx-xxx-xxxx")//if the field contains phone or fax number consider using this annotation to enforce field validation
+    @Size(max = 20)
+    @Column(name = "Phone")
+    private String phone;
+    // @Pattern(regexp="[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", message="Invalid email")//if the field contains email address consider using this annotation to enforce field validation
+    @Size(max = 100)
+    @Column(name = "Email")
+    private String email;
+
     private static final long serialVersionUID = 1L;
 
     @Id
@@ -44,37 +69,10 @@ public class Employee implements Serializable {
     @Column(name = "EmployeeID")
     private String employeeID;
 
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 100)
-    @Column(name = "FullName")
-    private String fullName;
-
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 50)
-    @Column(name = "Position")
-    private String position;
 
     @Column(name = "Salary")
     private BigDecimal salary;
 
-    @Size(max = 20)
-    @Column(name = "Shift")
-    private String shift;
-
-    @Size(max = 200)
-    @Column(name = "Address")
-    private String address;
-
-    @Size(max = 20)
-    @Column(name = "Phone")
-    private String phone;
-
-    @Email(message = "Invalid email address.")
-    @Size(max = 100)
-    @Column(name = "Email", length = 100, nullable = true)
-    private String email;
 
     @JoinColumn(name = "UserID", referencedColumnName = "UserID")
     @OneToOne(optional = false)
@@ -107,21 +105,6 @@ public class Employee implements Serializable {
         this.employeeID = employeeID;
     }
 
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getPosition() {
-        return position;
-    }
-
-    public void setPosition(String position) {
-        this.position = position;
-    }
 
     public BigDecimal getSalary() {
         return salary;
@@ -131,37 +114,6 @@ public class Employee implements Serializable {
         this.salary = salary;
     }
 
-    public String getShift() {
-        return shift;
-    }
-
-    public void setShift(String shift) {
-        this.shift = shift;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
 
     public Users getUserID() {
         return userID;
@@ -212,5 +164,53 @@ public class Employee implements Serializable {
     @Override
     public String toString() {
         return "entity.Employee[ employeeID=" + employeeID + " ]";
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
+
+    public String getShift() {
+        return shift;
+    }
+
+    public void setShift(String shift) {
+        this.shift = shift;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 }

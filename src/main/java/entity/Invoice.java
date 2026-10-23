@@ -5,6 +5,7 @@
 package entity;
 
 import jakarta.persistence.Basic;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -41,17 +42,8 @@ import java.util.Date;
     @NamedQuery(name = "Invoice.findByStatus", query = "SELECT i FROM Invoice i WHERE i.status = :status")})
 public class Invoice implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-
-    @Id
     @Basic(optional = false)
     @NotNull
-    @Size(min = 1, max = 6)
-    @Column(name = "InvoiceID")
-    private String invoiceID;
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 30)
     @Column(name = "InvoiceDate")
     @Temporal(TemporalType.DATE)
     private Date invoiceDate;
@@ -65,6 +57,17 @@ public class Invoice implements Serializable {
     @Size(min = 1, max = 30)
     @Column(name = "Status")
     private String status;
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "invoice")
+    private Collection<InvoiceTransaction> invoiceTransactionCollection;
+
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 6)
+    @Column(name = "InvoiceID")
+    private String invoiceID;
     @JoinColumn(name = "BookingID", referencedColumnName = "BookingID")
     @OneToOne(optional = false)
     private Booking bookingID;
@@ -99,29 +102,6 @@ public class Invoice implements Serializable {
         this.invoiceID = invoiceID;
     }
 
-    public Date getInvoiceDate() {
-        return invoiceDate;
-    }
-
-    public void setInvoiceDate(Date invoiceDate) {
-        this.invoiceDate = invoiceDate;
-    }
-
-    public BigDecimal getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
 
     public Booking getBookingID() {
         return bookingID;
@@ -179,6 +159,39 @@ public class Invoice implements Serializable {
     @Override
     public String toString() {
         return "entity.Invoice[ invoiceID=" + invoiceID + " ]";
+    }
+
+    public Date getInvoiceDate() {
+        return invoiceDate;
+    }
+
+    public void setInvoiceDate(Date invoiceDate) {
+        this.invoiceDate = invoiceDate;
+    }
+
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    @XmlTransient
+    public Collection<InvoiceTransaction> getInvoiceTransactionCollection() {
+        return invoiceTransactionCollection;
+    }
+
+    public void setInvoiceTransactionCollection(Collection<InvoiceTransaction> invoiceTransactionCollection) {
+        this.invoiceTransactionCollection = invoiceTransactionCollection;
     }
 
 }

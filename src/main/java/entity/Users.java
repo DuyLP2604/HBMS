@@ -13,12 +13,15 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
+import jakarta.xml.bind.annotation.XmlTransient;
 import java.io.Serializable;
+import java.util.Collection;
 
 /**
  *
@@ -50,11 +53,16 @@ public class Users implements Serializable {
     @Size(min = 1, max = 50)
     @Column(name = "Role")
     private String role;
+    @OneToOne(cascade = CascadeType.ALL, mappedBy = "users")
+    private UserBookingControl userBookingControl;
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "userID")
+    private Collection<BookingLockHistory> bookingLockHistoryCollection;
+    @OneToMany(mappedBy = "cancelledByUserID")
+    private Collection<Booking> bookingCollection;
 
     @Basic(optional = false)
     @Column(name = "MustChangePassword", nullable = false)
     private boolean mustChangePassword;
-
 
     private static final long serialVersionUID = 1L;
     @Id
@@ -88,7 +96,6 @@ public class Users implements Serializable {
     public void setUserID(Integer userID) {
         this.userID = userID;
     }
-
 
     public Employee getEmployee() {
         return employee;
@@ -131,6 +138,44 @@ public class Users implements Serializable {
         return "entity.Users[ userID=" + userID + " ]";
     }
 
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public boolean getMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
+
+    public UserBookingControl getUserBookingControl() {
+        return userBookingControl;
+    }
+
+    public void setUserBookingControl(UserBookingControl userBookingControl) {
+        this.userBookingControl = userBookingControl;
+    }
+
+    @XmlTransient
+    public Collection<BookingLockHistory> getBookingLockHistoryCollection() {
+        return bookingLockHistoryCollection;
+    }
+
+    public void setBookingLockHistoryCollection(Collection<BookingLockHistory> bookingLockHistoryCollection) {
+        this.bookingLockHistoryCollection = bookingLockHistoryCollection;
+    }
+
+    @XmlTransient
+    public Collection<Booking> getBookingCollection() {
+        return bookingCollection;
+    }
+
+    public void setBookingCollection(Collection<Booking> bookingCollection) {
+        this.bookingCollection = bookingCollection;
+    }
+
     public String getUsername() {
         return username;
     }
@@ -153,18 +198,6 @@ public class Users implements Serializable {
 
     public void setRole(String role) {
         this.role = role;
-    }
-
-    public boolean isMustChangePassword() {
-        return mustChangePassword;
-    }
-
-    public boolean getMustChangePassword() {
-        return mustChangePassword;
-    }
-
-    public void setMustChangePassword(boolean mustChangePassword) {
-        this.mustChangePassword = mustChangePassword;
     }
 
 }

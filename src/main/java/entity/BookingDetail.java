@@ -36,32 +36,30 @@ import java.util.Collection;
 })
 public class BookingDetail implements Serializable
 {
+
+    @Basic(optional = false)
+    @NotNull
+    @Column(name = "Quantity")
+    private int quantity;
+    @Basic(optional = false)
+    @NotNull
+    @Column(name = "GuestCount")
+    private int guestCount;
+    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
+    @Basic(optional = false)
+    @NotNull
+    @Column(name = "UnitPrice")
+    private BigDecimal unitPrice;
+    @Basic(optional = false)
+    @NotNull
+    @Column(name = "Subtotal")
+    private BigDecimal subtotal;
     private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Basic(optional = false)
     @Column(name = "BookingDetailID")
     private Integer bookingDetailID;
-    @Basic(optional = false)
-    @Min(1)
-    @Column(name = "Quantity")
-    private int quantity;
-    @Basic(optional = false)
-    @Min(1)
-    @Column(name = "GuestCount")
-    private int guestCount;
-    @Basic(optional = false)
-    @NotNull
-    @DecimalMin("0.00")
-    @Digits(integer = 10, fraction = 2)
-    @Column(name = "UnitPrice", precision = 12, scale = 2)
-    private BigDecimal unitPrice;
-    @Basic(optional = false)
-    @NotNull
-    @DecimalMin("0.00")
-    @Digits(integer = 10, fraction = 2)
-    @Column(name = "Subtotal", precision = 12, scale = 2)
-    private BigDecimal subtotal;
     @JoinColumn(name = "BookingID", referencedColumnName = "BookingID")
     @ManyToOne(optional = false)
     private Booking bookingID;
@@ -100,45 +98,6 @@ public class BookingDetail implements Serializable
         this.bookingDetailID = bookingDetailID;
     }
 
-    public int getQuantity()
-    {
-        return quantity;
-    }
-
-    public void setQuantity(int quantity)
-    {
-        this.quantity = quantity;
-    }
-
-    public int getGuestCount()
-    {
-        return guestCount;
-    }
-
-    public void setGuestCount(int guestCount)
-    {
-        this.guestCount = guestCount;
-    }
-
-    public BigDecimal getUnitPrice()
-    {
-        return unitPrice;
-    }
-
-    public void setUnitPrice(BigDecimal unitPrice)
-    {
-        this.unitPrice = unitPrice;
-    }
-
-    public BigDecimal getSubtotal()
-    {
-        return subtotal;
-    }
-
-    public void setSubtotal(BigDecimal subtotal)
-    {
-        this.subtotal = subtotal;
-    }
 
     public Booking getBookingID()
     {
@@ -196,5 +155,37 @@ public class BookingDetail implements Serializable
     public String toString()
     {
         return "entity.BookingDetail[ bookingDetailID=" + bookingDetailID + " ]";
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public int getGuestCount() {
+        return guestCount;
+    }
+
+    public void setGuestCount(int guestCount) {
+        this.guestCount = guestCount;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
+    }
+
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
+    }
+
+    public BigDecimal getSubtotal() {
+        return subtotal;
+    }
+
+    public void setSubtotal(BigDecimal subtotal) {
+        this.subtotal = subtotal;
     }
 }
