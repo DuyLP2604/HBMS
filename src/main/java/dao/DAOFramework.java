@@ -46,6 +46,40 @@ public class DAOFramework<T> {
         }
     }
 
+    public boolean save(T entity) {
+        requireDirectWriteAllowed();
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            // Trích xuất ID
+            Object id = PersistenceManager.getEMF().getPersistenceUnitUtil().getIdentifier(entity);
+
+            boolean exists = false;
+            if (id != null) {
+                T found = em.find(entityClass, id,
+                        java.util.Collections.singletonMap("jakarta.persistence.cache.retrieveMode", CacheRetrieveMode.BYPASS));
+                exists = (found != null);
+            }
+
+            if (exists) {
+                em.merge(entity);
+            } else {
+                em.persist(entity);
+            }
+
+            em.getTransaction().commit();
+            return true;
+        } catch (Exception exception) {
+            exception.printStackTrace();
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            return false;
+        } finally {
+            em.close();
+        }
+    }
+
     public T getById(String id) {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
             return getById(id, em);
@@ -114,7 +148,7 @@ public class DAOFramework<T> {
         }
     }
 
-    public boolean saveAll(List<T> entities, boolean isImport) {
+    public boolean saveAll(List<T> entities, boolean isImport, EntityManager em) {
         if (entities == null || entities.isEmpty()) {
             return true;
         }
@@ -123,31 +157,37 @@ public class DAOFramework<T> {
             requireDirectWriteAllowed();
         }
 
-        EntityManager em = PersistenceManager.createEntityManager();
         try {
-            em.getTransaction().begin();
-
             int batchSize = 50; // Tránh tràn bộ nhớ
             for (int i = 0; i < entities.size(); i++) {
                 T entity = entities.get(i);
-                em.merge(entity); // Merge đóng vai trò Upsert
+                // Trích xuất ID
+                Object id = PersistenceManager.getEMF().getPersistenceUnitUtil().getIdentifier(entity);
+
+                boolean exists = false;
+                if (id != null) {
+                    T found = em.find(entityClass, id,
+                            java.util.Collections.singletonMap("jakarta.persistence.cache.retrieveMode", CacheRetrieveMode.BYPASS));
+                    exists = (found != null);
+                }
+
+                if (exists) {
+                    em.merge(entity);
+                } else {
+                    em.persist(entity);
+                }
 
                 if (i > 0 && i % batchSize == 0) {
                     em.flush();
                     em.clear();
                 }
             }
-
-            em.getTransaction().commit();
             return true;
         } catch (Exception exception) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
+            System.out.println(exception.getMessage());
             return false;
-        } finally {
-            em.close();
         }
+
     }
 
     private void requireDirectWriteAllowed() {

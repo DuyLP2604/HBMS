@@ -93,9 +93,6 @@ public class WalletTransaction implements Serializable {
     @JoinColumn(name = "TransactionID", referencedColumnName = "TransactionID", insertable = false, updatable = false)
     @ManyToOne(optional = false)
     private Transaction transactionID;
-    @ManyToOne
-    @JoinColumn(name = "BookingID", referencedColumnName = "BookingID", insertable = false, updatable = false)
-    private Booking booking;
 
     public WalletTransaction() {
     }

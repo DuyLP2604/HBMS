@@ -1,95 +1,58 @@
 package service;
 
+import dao.DAOFramework;
+import entity.*;
 import jakarta.persistence.EntityManager;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
-import static org.apache.poi.ss.usermodel.CellType.BOOLEAN;
-import static org.apache.poi.ss.usermodel.CellType.FORMULA;
-import static org.apache.poi.ss.usermodel.CellType.NUMERIC;
-import static org.apache.poi.ss.usermodel.CellType.STRING;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 
-/**
- * Service xử lý Import toàn bộ Database từ file Excel (.xlsx). BẢN ĐẶC BIỆT: Sử
- * dụng Native SQL để vượt qua các Trigger, Constraint và các cột
- * Identity/Computed khắt khe của Database.
- */
 public class ImportDataService {
 
     private final SimpleDateFormat sdfDatetime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd");
 
-    // ==========================================
-    // 2. CHỨC NĂNG IMPORT (PHỤC HỒI DB TỪ EXCEL)
-    // ==========================================
     public void importDB(InputStream in, EntityManager em) throws Exception {
         boolean isMyTx = false;
         if (!em.getTransaction().isActive()) {
             em.getTransaction().begin();
             isMyTx = true;
         }
-
         try (Workbook workbook = WorkbookFactory.create(in)) {
-
-            // 1. TẠM THỜI VÔ HIỆU HÓA CÁC RÀO CẢN CỦA DB
-            disableConstraintsAndTriggers(em);
-
-            // 2. XÓA DỮ LIỆU CŨ (Nếu cần) - Tùy bạn quyết định có bật lên không
-            // clearAllData(em);
-            // 3. THỰC HIỆN IMPORT TỪNG SHEET BẰNG NATIVE SQL
-            // Master Data
             importHotelSheet(workbook.getSheet("HOTEL"), em);
             importNationalitySheet(workbook.getSheet("NATIONALITY"), em);
             importRoomTypeSheet(workbook.getSheet("ROOM_TYPE"), em);
             importServiceSheet(workbook.getSheet("SERVICE"), em);
             importPaymentMethodSheet(workbook.getSheet("PAYMENTMETHOD"), em);
-
-            // Tài khoản & Người dùng (Cần IDENTITY_INSERT cho USERS)
             importUsersSheet(workbook.getSheet("USERS"), em);
             importEmployeeSheet(workbook.getSheet("EMPLOYEE"), em);
             importCustomerSheet(workbook.getSheet("CUSTOMER"), em);
             importUserBookingControlSheet(workbook.getSheet("USER_BOOKING_CONTROL"), em);
-            // Cần IDENTITY_INSERT cho CUSTOMER_WALLET
             importCustomerWalletSheet(workbook.getSheet("CUSTOMER_WALLET"), em);
-
-            // Dữ liệu độc lập
             importRoomSheet(workbook.getSheet("ROOM"), em);
-            // Cần IDENTITY_INSERT cho COMPLAINT
             importComplaintSheet(workbook.getSheet("COMPLAINT"), em);
-
-            // Giao dịch chính
             importBookingSheet(workbook.getSheet("BOOKING"), em);
-            // Cần IDENTITY_INSERT cho BOOKING_DETAIL
             importBookingDetailSheet(workbook.getSheet("BOOKING_DETAIL"), em);
             importBookingServiceSheet(workbook.getSheet("BOOKING_SERVICE"), em);
-            // Cần IDENTITY_INSERT cho ROOM_ASSIGNMENT
             importRoomAssignmentSheet(workbook.getSheet("ROOM_ASSIGNMENT"), em);
-
-            // Giao dịch thanh toán & Hoàn tiền
-            // Cần IDENTITY_INSERT cho TRANSACTION
             importTransactionSheet(workbook.getSheet("TRANSACTION"), em);
+            em.flush(); // Xả lệnh xuống DB để findTransactionByCode có thể truy vấn ngay
             importPaymentSheet(workbook.getSheet("PAYMENT"), em);
-            // Cần IDENTITY_INSERT cho BOOKING_REFUND
             importBookingRefundSheet(workbook.getSheet("BOOKING_REFUND"), em);
             importRefundPaymentSheet(workbook.getSheet("REFUND_PAYMENT"), em);
-            // Cần IDENTITY_INSERT cho WALLET_TRANSACTION
             importWalletTransactionSheet(workbook.getSheet("WALLET_TRANSACTION"), em);
-            // Cần IDENTITY_INSERT cho BOOKING_LOCK_HISTORY
             importBookingLockHistorySheet(workbook.getSheet("BOOKING_LOCK_HISTORY"), em);
-
-            // Hóa đơn
             importInvoiceSheet(workbook.getSheet("INVOICE"), em);
             importInvoiceTransactionSheet(workbook.getSheet("INVOICE_TRANSACTION"), em);
-
-            // 4. BẬT LẠI CÁC RÀO CẢN CỦA DB
-            enableConstraintsAndTriggers(em);
 
             if (isMyTx) {
                 em.getTransaction().commit();
@@ -103,161 +66,163 @@ public class ImportDataService {
     }
 
     // ==========================================
-    // CÁC HÀM IMPORT TỪNG SHEET (Gen Native SQL)
+    // HÀM HELPER AN TOÀN THAY THẾ CHO getReference
     // ==========================================
+    private <T> T getSafeEntity(EntityManager em, Class<T> entityClass, Object id) {
+        if (id == null || id.toString().trim().isEmpty()) {
+            return null;
+        }
+        T entity = em.find(entityClass, id);
+        if (entity == null) {
+            throw new RuntimeException("Lỗi dữ liệu Excel: Không tìm thấy " + entityClass.getSimpleName() + " có ID = '" + id + "' trong database. Vui lòng kiểm tra lại tính liên kết trong file Excel!");
+        }
+        return entity;
+    }
+
     private void importHotelSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO HOTEL (HotelName, HotelImage, RoomImage, PoolImage, RestaurantImage, Address) VALUES (?, ?, ?, ?, ?, ?)";
+        List<Hotel> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String name = getCellValue(row.getCell(0));
             if (name.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, name)
-                    .setParameter(2, nullIfEmpty(getCellValue(row.getCell(1))))
-                    .setParameter(3, nullIfEmpty(getCellValue(row.getCell(2))))
-                    .setParameter(4, nullIfEmpty(getCellValue(row.getCell(3))))
-                    .setParameter(5, nullIfEmpty(getCellValue(row.getCell(4))))
-                    .setParameter(6, getCellValue(row.getCell(5)))
-                    .executeUpdate();
+            Hotel h = new Hotel();
+            h.setHotelName(name);
+            h.setHotelImage(nullIfEmpty(getCellValue(row.getCell(1))));
+            h.setRoomImage(nullIfEmpty(getCellValue(row.getCell(2))));
+            h.setPoolImage(nullIfEmpty(getCellValue(row.getCell(3))));
+            h.setRestaurantImage(nullIfEmpty(getCellValue(row.getCell(4))));
+            h.setAddress(getCellValue(row.getCell(5)));
+            list.add(h);
         }
+        new DAOFramework<>(Hotel.class).saveAll(list, true, em);
     }
 
     private void importNationalitySheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO NATIONALITY (NationalityID, NationalityName) VALUES (?, ?)";
+        List<Nationality> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String id = getCellValue(row.getCell(0));
             if (id.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .executeUpdate();
+            Nationality n = new Nationality();
+            n.setNationalityID(id);
+            n.setNationalityName(getCellValue(row.getCell(1)));
+            list.add(n);
         }
+        new DAOFramework<>(Nationality.class).saveAll(list, true, em);
     }
 
     private void importRoomTypeSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO ROOM_TYPE (RoomTypeID, TypeName, Capacity, Price, RoomTypeImage, Description) VALUES (?, ?, ?, ?, ?, ?)";
+        List<RoomType> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String id = getCellValue(row.getCell(0));
             if (id.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, parseInteger(getCellValue(row.getCell(2))))
-                    .setParameter(4, parseBigDecimal(getCellValue(row.getCell(3))))
-                    .setParameter(5, nullIfEmpty(getCellValue(row.getCell(4))))
-                    .setParameter(6, nullIfEmpty(getCellValue(row.getCell(5))))
-                    .executeUpdate();
+            RoomType rt = new RoomType();
+            rt.setRoomTypeID(id);
+            rt.setTypeName(getCellValue(row.getCell(1)));
+            rt.setCapacity(parseInteger(getCellValue(row.getCell(2))));
+            rt.setPrice(parseBigDecimal(getCellValue(row.getCell(3))));
+            rt.setRoomTypeImage(nullIfEmpty(getCellValue(row.getCell(4))));
+            rt.setDescription(nullIfEmpty(getCellValue(row.getCell(5))));
+            list.add(rt);
         }
+        new DAOFramework<>(RoomType.class).saveAll(list, true, em);
     }
 
     private void importServiceSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO SERVICE (ServiceID, ServiceName, UnitPrice) VALUES (?, ?, ?)";
+        List<Service> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String id = getCellValue(row.getCell(0));
             if (id.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, parseBigDecimal(getCellValue(row.getCell(2))))
-                    .executeUpdate();
+            Service s = new Service();
+            s.setServiceID(id);
+            s.setServiceName(getCellValue(row.getCell(1)));
+            s.setUnitPrice(parseBigDecimal(getCellValue(row.getCell(2))));
+            list.add(s);
         }
+        new DAOFramework<>(Service.class).saveAll(list, true, em);
     }
 
     private void importPaymentMethodSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO PAYMENTMETHOD (MethodID, MethodName) VALUES (?, ?)";
+        List<Paymentmethod> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String id = getCellValue(row.getCell(0));
             if (id.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .executeUpdate();
+            Paymentmethod pm = new Paymentmethod();
+            pm.setMethodID(id);
+            pm.setMethodName(getCellValue(row.getCell(1)));
+            list.add(pm);
         }
+        new DAOFramework<>(Paymentmethod.class).saveAll(list, true, em);
     }
 
     private void importUsersSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        em.createNativeQuery("SET IDENTITY_INSERT USERS ON").executeUpdate();
-        String sql = "INSERT INTO USERS (UserID, Username, Password, Role, MustChangePassword) VALUES (?, ?, ?, ?, ?)";
-
+        List<Users> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Integer id = parseInteger(getCellValue(row.getCell(0)));
             if (id == null) {
                 continue;
             }
-
+            Users u = new Users();
+            u.setUserID(id);
+            u.setUsername(getCellValue(row.getCell(1)));
+            u.setPassword(getCellValue(row.getCell(2)));
+            u.setRole(getCellValue(row.getCell(3)));
             String mcpStr = getCellValue(row.getCell(4));
-            boolean mcp = mcpStr.equalsIgnoreCase("true") || mcpStr.equals("1");
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, getCellValue(row.getCell(2)))
-                    .setParameter(4, getCellValue(row.getCell(3)))
-                    .setParameter(5, mcp ? 1 : 0)
-                    .executeUpdate();
+            u.setMustChangePassword(mcpStr.equalsIgnoreCase("true") || mcpStr.equals("1"));
+            list.add(u);
         }
+        em.createNativeQuery("SET IDENTITY_INSERT USERS ON").executeUpdate();
+        new DAOFramework<>(Users.class).saveAll(list, true, em);
         em.createNativeQuery("SET IDENTITY_INSERT USERS OFF").executeUpdate();
     }
 
@@ -265,118 +230,117 @@ public class ImportDataService {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO EMPLOYEE (EmployeeID, FullName, Position, Salary, Shift, Address, Phone, Email, UserID) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        List<Employee> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String id = getCellValue(row.getCell(0));
             if (id.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, getCellValue(row.getCell(2)))
-                    .setParameter(4, parseBigDecimal(getCellValue(row.getCell(3))))
-                    .setParameter(5, nullIfEmpty(getCellValue(row.getCell(4))))
-                    .setParameter(6, nullIfEmpty(getCellValue(row.getCell(5))))
-                    .setParameter(7, nullIfEmpty(getCellValue(row.getCell(6))))
-                    .setParameter(8, nullIfEmpty(getCellValue(row.getCell(7))))
-                    .setParameter(9, parseInteger(getCellValue(row.getCell(8))))
-                    .executeUpdate();
+            Employee e = new Employee();
+            e.setEmployeeID(id);
+            e.setFullName(getCellValue(row.getCell(1)));
+            e.setPosition(getCellValue(row.getCell(2)));
+            e.setSalary(parseBigDecimal(getCellValue(row.getCell(3))));
+            e.setShift(nullIfEmpty(getCellValue(row.getCell(4))));
+            e.setAddress(nullIfEmpty(getCellValue(row.getCell(5))));
+            e.setPhone(nullIfEmpty(getCellValue(row.getCell(6))));
+            e.setEmail(nullIfEmpty(getCellValue(row.getCell(7))));
+            Integer userId = parseInteger(getCellValue(row.getCell(8)));
+            if (userId != null) {
+                e.setUserID(getSafeEntity(em, Users.class, userId));
+            }
+            list.add(e);
         }
+        new DAOFramework<>(Employee.class).saveAll(list, true, em);
     }
 
     private void importCustomerSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO CUSTOMER (CustomerID, FullName, Phone, Email, Address, NationalityID, UserID) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        List<Customer> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String id = getCellValue(row.getCell(0));
             if (id.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, nullIfEmpty(getCellValue(row.getCell(2))))
-                    .setParameter(4, nullIfEmpty(getCellValue(row.getCell(3))))
-                    .setParameter(5, nullIfEmpty(getCellValue(row.getCell(4))))
-                    .setParameter(6, nullIfEmpty(getCellValue(row.getCell(5))))
-                    .setParameter(7, parseInteger(getCellValue(row.getCell(6))))
-                    .executeUpdate();
+            Customer c = new Customer();
+            c.setCustomerID(id);
+            c.setFullName(getCellValue(row.getCell(1)));
+            c.setPhone(nullIfEmpty(getCellValue(row.getCell(2))));
+            c.setEmail(nullIfEmpty(getCellValue(row.getCell(3))));
+            c.setAddress(nullIfEmpty(getCellValue(row.getCell(4))));
+            String natId = nullIfEmpty(getCellValue(row.getCell(5)));
+            if (natId != null) {
+                c.setNationalityID(getSafeEntity(em, Nationality.class, natId));
+            }
+            Integer userId = parseInteger(getCellValue(row.getCell(6)));
+            if (userId != null) {
+                c.setUserID(getSafeEntity(em, Users.class, userId));
+            }
+            list.add(c);
         }
+        new DAOFramework<>(Customer.class).saveAll(list, true, em);
     }
 
     private void importUserBookingControlSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO USER_BOOKING_CONTROL (UserID, WindowStartedAt, ConsecutiveCancellationCount, CancellationCountInWindow, PenaltyLevel, BookingLockedUntil, UpdatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        List<UserBookingControl> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Integer uId = parseInteger(getCellValue(row.getCell(0)));
             if (uId == null) {
                 continue;
             }
-
-            // Xóa bản ghi cũ do Trigger sinh ra (nếu có)
-            em.createNativeQuery("DELETE FROM USER_BOOKING_CONTROL WHERE UserID = ?").setParameter(1, uId).executeUpdate();
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, uId)
-                    .setParameter(2, getDateCellValue(row.getCell(1)))
-                    .setParameter(3, parseInteger(getCellValue(row.getCell(2)), 0))
-                    .setParameter(4, parseInteger(getCellValue(row.getCell(3)), 0))
-                    .setParameter(5, parseInteger(getCellValue(row.getCell(4)), 0))
-                    .setParameter(6, getDateCellValue(row.getCell(5)))
-                    .setParameter(7, getDateCellValue(row.getCell(6)))
-                    .executeUpdate();
+            UserBookingControl u = new UserBookingControl();
+            u.setUserID(uId);
+            u.setWindowStartedAt(getDateCellValue(row.getCell(1)));
+            u.setConsecutiveCancellationCount(parseInteger(getCellValue(row.getCell(2)), 0));
+            u.setCancellationCountInWindow(parseInteger(getCellValue(row.getCell(3)), 0));
+            u.setPenaltyLevel(parseShort(getCellValue(row.getCell(4)), 0));
+            u.setBookingLockedUntil(getDateCellValue(row.getCell(5)));
+            u.setUpdatedAt(getDateCellValue(row.getCell(6)));
+            list.add(u);
         }
+        new DAOFramework<>(UserBookingControl.class).saveAll(list, true, em);
     }
 
     private void importCustomerWalletSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        em.createNativeQuery("SET IDENTITY_INSERT CUSTOMER_WALLET ON").executeUpdate();
-        String sql = "INSERT INTO CUSTOMER_WALLET (WalletID, CustomerID, CreatedAt) VALUES (?, ?, ?)";
+        List<CustomerWallet> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Long wId = parseLong(getCellValue(row.getCell(0)));
             String cusId = getCellValue(row.getCell(1));
             if (wId == null || cusId.isEmpty()) {
                 continue;
             }
-
-            // Xóa bản ghi cũ do Trigger sinh ra (nếu có)
-            em.createNativeQuery("DELETE FROM CUSTOMER_WALLET WHERE CustomerID = ?").setParameter(1, cusId).executeUpdate();
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, wId)
-                    .setParameter(2, cusId)
-                    .setParameter(3, getDateCellValue(row.getCell(2)))
-                    .executeUpdate();
+            CustomerWallet cw = new CustomerWallet();
+            cw.setWalletID(wId);
+            cw.setCustomerID(getSafeEntity(em, Customer.class, cusId));
+            cw.setCreatedAt(getDateCellValue(row.getCell(2)));
+            list.add(cw);
         }
+        em.createNativeQuery("SET IDENTITY_INSERT CUSTOMER_WALLET ON").executeUpdate();
+        new DAOFramework<>(CustomerWallet.class).saveAll(list, true, em);
         em.createNativeQuery("SET IDENTITY_INSERT CUSTOMER_WALLET OFF").executeUpdate();
     }
 
@@ -384,56 +348,60 @@ public class ImportDataService {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO ROOM (RoomID, RoomNumber, RoomImage, Status, RoomTypeID) VALUES (?, ?, ?, ?, ?)";
+        List<Room> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String id = getCellValue(row.getCell(0));
             if (id.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, nullIfEmpty(getCellValue(row.getCell(2))))
-                    .setParameter(4, getCellValue(row.getCell(3)))
-                    .setParameter(5, getCellValue(row.getCell(4)))
-                    .executeUpdate();
+            Room r = new Room();
+            r.setRoomID(id);
+            r.setRoomNumber(getCellValue(row.getCell(1)));
+            r.setRoomImage(nullIfEmpty(getCellValue(row.getCell(2))));
+            r.setStatus(getCellValue(row.getCell(3)));
+            String rtId = getCellValue(row.getCell(4));
+            if (!rtId.isEmpty()) {
+                r.setRoomTypeID(getSafeEntity(em, RoomType.class, rtId));
+            }
+            list.add(r);
         }
+        new DAOFramework<>(Room.class).saveAll(list, true, em);
     }
 
     private void importComplaintSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        em.createNativeQuery("SET IDENTITY_INSERT COMPLAINT ON").executeUpdate();
-        String sql = "INSERT INTO COMPLAINT (ComplaintID, Title, Content, CreatedAt, Status, CustomerID, ReplyMessage, EmployeeID) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        List<Complaint> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Integer id = parseInteger(getCellValue(row.getCell(0)));
             if (id == null) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, getCellValue(row.getCell(2)))
-                    .setParameter(4, getDateCellValue(row.getCell(3)))
-                    .setParameter(5, getCellValue(row.getCell(4)))
-                    .setParameter(6, nullIfEmpty(getCellValue(row.getCell(5))))
-                    .setParameter(7, nullIfEmpty(getCellValue(row.getCell(6))))
-                    .setParameter(8, nullIfEmpty(getCellValue(row.getCell(7))))
-                    .executeUpdate();
+            Complaint c = new Complaint();
+            c.setComplaintID(id);
+            c.setTitle(getCellValue(row.getCell(1)));
+            c.setContent(getCellValue(row.getCell(2)));
+            c.setCreatedAt(getDateCellValue(row.getCell(3)));
+            c.setStatus(getCellValue(row.getCell(4)));
+            String cusId = nullIfEmpty(getCellValue(row.getCell(5)));
+            if (cusId != null) {
+                c.setCustomerID(getSafeEntity(em, Customer.class, cusId));
+            }
+            c.setReplyMessage(nullIfEmpty(getCellValue(row.getCell(6))));
+            c.setEmployeeID(nullIfEmpty(getCellValue(row.getCell(7))));
+            list.add(c);
         }
+        em.createNativeQuery("SET IDENTITY_INSERT COMPLAINT ON").executeUpdate();
+        new DAOFramework<>(Complaint.class).saveAll(list, true, em);
         em.createNativeQuery("SET IDENTITY_INSERT COMPLAINT OFF").executeUpdate();
     }
 
@@ -441,69 +409,70 @@ public class ImportDataService {
         if (sheet == null) {
             return;
         }
-        // Bỏ qua RefundDeadline, CheckInAt, NoShowDeadline vì chúng là Computed Column
-        String sql = "INSERT INTO BOOKING (BookingID, PaymentOption, FirstPaidAt, BookingAmountAtFirstPayment, CancelledAt, CancellationReason, CancelledByUserID, BookingDate, PaymentDeadline, CheckInDate, CheckOutDate, BookingStatus, CustomerID, TotalAmount) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
+        List<Booking> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String id = getCellValue(row.getCell(0));
             if (id.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, getDateCellValue(row.getCell(2)))
-                    .setParameter(4, parseBigDecimal(getCellValue(row.getCell(3))))
-                    .setParameter(5, getDateCellValue(row.getCell(4)))
-                    .setParameter(6, nullIfEmpty(getCellValue(row.getCell(5))))
-                    .setParameter(7, parseInteger(getCellValue(row.getCell(6))))
-                    .setParameter(8, getDateCellValue(row.getCell(7)))
-                    .setParameter(9, getDateCellValue(row.getCell(8)))
-                    .setParameter(10, getDateCellValue(row.getCell(9))) // CheckInDate
-                    .setParameter(11, getDateCellValue(row.getCell(10))) // CheckOutDate
-                    .setParameter(12, getCellValue(row.getCell(11)))
-                    .setParameter(13, getCellValue(row.getCell(12)))
-                    .setParameter(14, parseBigDecimal(getCellValue(row.getCell(13))))
-                    .executeUpdate();
+            Booking b = new Booking();
+            b.setBookingID(id);
+            b.setPaymentOption(getCellValue(row.getCell(1)));
+            b.setFirstPaidAt(getDateCellValue(row.getCell(2)));
+            b.setBookingAmountAtFirstPayment(parseBigDecimal(getCellValue(row.getCell(3))));
+            b.setCancelledAt(getDateCellValue(row.getCell(4)));
+            b.setCancellationReason(nullIfEmpty(getCellValue(row.getCell(5))));
+            Integer uId = parseInteger(getCellValue(row.getCell(6)));
+            if (uId != null) {
+                b.setCancelledByUserID(getSafeEntity(em, Users.class, uId));
+            }
+            b.setBookingDate(getDateCellValue(row.getCell(7)));
+            b.setPaymentDeadline(getDateCellValue(row.getCell(8)));
+            b.setCheckInDate(getDateCellValue(row.getCell(9)));
+            b.setCheckOutDate(getDateCellValue(row.getCell(10)));
+            b.setBookingStatus(getCellValue(row.getCell(11)));
+            String cusId = getCellValue(row.getCell(12));
+            if (!cusId.isEmpty()) {
+                b.setCustomerID(getSafeEntity(em, Customer.class, cusId));
+            }
+            b.setTotalAmount(parseBigDecimal(getCellValue(row.getCell(13))));
+            list.add(b);
         }
+        new DAOFramework<>(Booking.class).saveAll(list, true, em);
     }
 
     private void importBookingDetailSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        em.createNativeQuery("SET IDENTITY_INSERT BOOKING_DETAIL ON").executeUpdate();
-        String sql = "INSERT INTO BOOKING_DETAIL (BookingDetailID, BookingID, RoomTypeID, Quantity, GuestCount, UnitPrice, Subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        List<BookingDetail> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Integer id = parseInteger(getCellValue(row.getCell(0)));
             String bId = getCellValue(row.getCell(1));
             String rtId = getCellValue(row.getCell(2));
             if (id == null || bId.isEmpty() || rtId.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, bId)
-                    .setParameter(3, rtId)
-                    .setParameter(4, parseInteger(getCellValue(row.getCell(3))))
-                    .setParameter(5, parseInteger(getCellValue(row.getCell(4))))
-                    .setParameter(6, parseBigDecimal(getCellValue(row.getCell(5))))
-                    .setParameter(7, parseBigDecimal(getCellValue(row.getCell(6))))
-                    .executeUpdate();
+            BookingDetail bd = new BookingDetail();
+            bd.setBookingDetailID(id);
+            bd.setBookingID(getSafeEntity(em, Booking.class, bId));
+            bd.setRoomTypeID(getSafeEntity(em, RoomType.class, rtId));
+            bd.setQuantity(parseInteger(getCellValue(row.getCell(3))));
+            bd.setGuestCount(parseInteger(getCellValue(row.getCell(4))));
+            bd.setUnitPrice(parseBigDecimal(getCellValue(row.getCell(5))));
+            bd.setSubtotal(parseBigDecimal(getCellValue(row.getCell(6))));
+            list.add(bd);
         }
+        em.createNativeQuery("SET IDENTITY_INSERT BOOKING_DETAIL ON").executeUpdate();
+        new DAOFramework<>(BookingDetail.class).saveAll(list, true, em);
         em.createNativeQuery("SET IDENTITY_INSERT BOOKING_DETAIL OFF").executeUpdate();
     }
 
@@ -511,54 +480,60 @@ public class ImportDataService {
         if (sheet == null) {
             return;
         }
-        String sql = "INSERT INTO BOOKING_SERVICE (BookingID, ServiceID, Quantity, UnitPrice, Subtotal) VALUES (?, ?, ?, ?, ?)";
+        List<BookingService> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String bId = getCellValue(row.getCell(0));
             String sId = getCellValue(row.getCell(1));
             if (bId.isEmpty() || sId.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, bId)
-                    .setParameter(2, sId)
-                    .setParameter(3, parseInteger(getCellValue(row.getCell(2))))
-                    .setParameter(4, parseBigDecimal(getCellValue(row.getCell(3))))
-                    .setParameter(5, parseBigDecimal(getCellValue(row.getCell(4))))
-                    .executeUpdate();
+            BookingService bs = new BookingService();
+            bs.setBookingServicePK(new BookingServicePK(bId, sId));
+            bs.setQuantity(parseInteger(getCellValue(row.getCell(2))));
+            bs.setUnitPrice(parseBigDecimal(getCellValue(row.getCell(3))));
+            bs.setSubtotal(parseBigDecimal(getCellValue(row.getCell(4))));
+            list.add(bs);
         }
+        new DAOFramework<>(BookingService.class).saveAll(list, true, em);
     }
 
     private void importRoomAssignmentSheet(Sheet sheet, EntityManager em) {
         if (sheet == null) {
             return;
         }
-        em.createNativeQuery("SET IDENTITY_INSERT ROOM_ASSIGNMENT ON").executeUpdate();
-        String sql = "INSERT INTO ROOM_ASSIGNMENT (AssignmentID, BookingDetailID, RoomID, EmployeeID, AssignedAt) VALUES (?, ?, ?, ?, ?)";
+        List<RoomAssignment> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Integer id = parseInteger(getCellValue(row.getCell(0)));
             if (id == null) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, parseInteger(getCellValue(row.getCell(1))))
-                    .setParameter(3, getCellValue(row.getCell(2)))
-                    .setParameter(4, nullIfEmpty(getCellValue(row.getCell(3))))
-                    .setParameter(5, getDateCellValue(row.getCell(4)))
-                    .executeUpdate();
+            RoomAssignment ra = new RoomAssignment();
+            ra.setAssignmentID(id);
+            Integer bdId = parseInteger(getCellValue(row.getCell(1)));
+            if (bdId != null) {
+                ra.setBookingDetailID(getSafeEntity(em, BookingDetail.class, bdId));
+            }
+            String rId = getCellValue(row.getCell(2));
+            if (!rId.isEmpty()) {
+                ra.setRoomID(getSafeEntity(em, Room.class, rId)); // <-- Nếu R08 vắng mặt, nó sẽ chết tại đây và báo lỗi cụ thể!
+            }
+            String empId = nullIfEmpty(getCellValue(row.getCell(3)));
+            if (empId != null) {
+                ra.setEmployeeID(getSafeEntity(em, Employee.class, empId));
+            }
+            ra.setAssignedAt(getDateCellValue(row.getCell(4)));
+            list.add(ra);
         }
+        em.createNativeQuery("SET IDENTITY_INSERT ROOM_ASSIGNMENT ON").executeUpdate();
+        new DAOFramework<>(RoomAssignment.class).saveAll(list, true, em);
         em.createNativeQuery("SET IDENTITY_INSERT ROOM_ASSIGNMENT OFF").executeUpdate();
     }
 
@@ -566,27 +541,26 @@ public class ImportDataService {
         if (sheet == null) {
             return;
         }
-        em.createNativeQuery("SET IDENTITY_INSERT [TRANSACTION] ON").executeUpdate();
-        String sql = "INSERT INTO [TRANSACTION] (id, TransactionID, TransactionType, TransactionValue) VALUES (?, ?, ?, ?)";
+        List<entity.Transaction> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Long id = parseLong(getCellValue(row.getCell(0)));
             String txId = getCellValue(row.getCell(1));
             if (id == null || txId.isEmpty()) {
                 continue;
             }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, txId)
-                    .setParameter(3, getCellValue(row.getCell(2)))
-                    .setParameter(4, parseBigDecimal(getCellValue(row.getCell(3))))
-                    .executeUpdate();
+            entity.Transaction t = new entity.Transaction();
+            t.setId(id);
+            t.setTransactionID(txId);
+            t.setTransactionType(getCellValue(row.getCell(2)));
+            t.setTransactionValue(parseBigDecimal(getCellValue(row.getCell(3))));
+            list.add(t);
         }
+        em.createNativeQuery("SET IDENTITY_INSERT [TRANSACTION] ON").executeUpdate();
+        new DAOFramework<>(entity.Transaction.class).saveAll(list, true, em);
         em.createNativeQuery("SET IDENTITY_INSERT [TRANSACTION] OFF").executeUpdate();
     }
 
@@ -594,32 +568,236 @@ public class ImportDataService {
         if (sheet == null) {
             return;
         }
-        // Bỏ qua ExternalAmount vì là Computed Column
-        String sql = "INSERT INTO PAYMENT (PaymentID, BookingID, PaymentType, PaymentTime, Amount, Status, MethodID, TransactionCode, TransactionID, WalletAmount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        List<Payment> list = new ArrayList<>();
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (isRowEmpty(row)) {
                 continue;
             }
-
             String id = getCellValue(row.getCell(0));
             if (id.isEmpty()) {
                 continue;
             }
+            Payment p = new Payment();
+            p.setPaymentID(id);
+            p.setBookingID(getSafeEntity(em, Booking.class, getCellValue(row.getCell(1))));
+            p.setPaymentType(getCellValue(row.getCell(2)));
+            p.setPaymentTime(getDateCellValue(row.getCell(3)));
+            p.setAmount(parseBigDecimal(getCellValue(row.getCell(4))));
+            p.setWalletAmount(parseBigDecimal(getCellValue(row.getCell(5))));
+            p.setStatus(getCellValue(row.getCell(6)));
+            String methId = nullIfEmpty(getCellValue(row.getCell(7)));
+            if (methId != null) {
+                p.setMethodID(getSafeEntity(em, Paymentmethod.class, methId));
+            }
+            p.setTransactionCode(nullIfEmpty(getCellValue(row.getCell(8))));
+            String txId = nullIfEmpty(getCellValue(row.getCell(9)));
+            if (txId != null) {
+                p.setTransactionID(findTransactionByCode(em, txId));
+            }
+            list.add(p);
+        }
+        new DAOFramework<>(Payment.class).saveAll(list, true, em);
+    }
 
+//    private void importBookingRefundSheet(Sheet sheet, EntityManager em) {
+//        if (sheet == null) {
+//            return;
+//        }
+//        List<BookingRefund> list = new ArrayList<>();
+//        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+//            Row row = sheet.getRow(i);
+//            if (isRowEmpty(row)) {
+//                continue;
+//            }
+//            Long id = parseLong(getCellValue(row.getCell(0)));
+//            if (id == null) {
+//                continue;
+//            }
+//            BookingRefund r = new BookingRefund();
+//            r.setRefundID(id);
+//            r.setBooking(getSafeEntity(em, Booking.class, getCellValue(row.getCell(1))));
+//            Long wId = parseLong(getCellValue(row.getCell(3)));
+//            if (wId != null) {
+//                r.setCustomerWallet(getSafeEntity(em, CustomerWallet.class, wId));
+//            }
+//            r.setAmount(parseBigDecimal(getCellValue(row.getCell(4))));
+//            r.setRefundedAt(getDateCellValue(row.getCell(5)));
+//            String txId = nullIfEmpty(getCellValue(row.getCell(6)));
+//            if (txId != null) {
+//                r.setTransactionID(findTransactionByCode(em, txId));
+//            }
+//            list.add(r);
+//        }
+//        em.createNativeQuery("SET IDENTITY_INSERT BOOKING_REFUND ON").executeUpdate();
+//        new DAOFramework<>(BookingRefund.class).saveAll(list, true, em);
+//        em.createNativeQuery("SET IDENTITY_INSERT BOOKING_REFUND OFF").executeUpdate();
+//    }
+    private void importRefundPaymentSheet(Sheet sheet, EntityManager em) {
+        if (sheet == null) {
+            return;
+        }
+        String sql = "MERGE INTO REFUND_PAYMENT AS Target "
+                + "USING (VALUES (?, ?, ?, ?)) AS Source (RefundID, BookingID, PaymentID, Amount) "
+                + "ON Target.RefundID = Source.RefundID AND Target.PaymentID = Source.PaymentID "
+                + "WHEN MATCHED THEN "
+                + "  UPDATE SET Target.BookingID = Source.BookingID, Target.Amount = Source.Amount "
+                + "WHEN NOT MATCHED THEN "
+                + "  INSERT (RefundID, BookingID, PaymentID, Amount) VALUES (Source.RefundID, Source.BookingID, Source.PaymentID, Source.Amount);";
+        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (isRowEmpty(row)) {
+                continue;
+            }
+            Long rId = parseLong(getCellValue(row.getCell(0)));
+            String pId = getCellValue(row.getCell(2));
+            if (rId == null || pId.isEmpty()) {
+                continue;
+            }
             em.createNativeQuery(sql)
-                    .setParameter(1, id)
+                    .setParameter(1, rId)
                     .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, getCellValue(row.getCell(2)))
-                    .setParameter(4, getDateCellValue(row.getCell(3)))
-                    .setParameter(5, parseBigDecimal(getCellValue(row.getCell(4))))
-                    .setParameter(6, getCellValue(row.getCell(6))) // Status ở index 6
-                    .setParameter(7, nullIfEmpty(getCellValue(row.getCell(7))))
-                    .setParameter(8, nullIfEmpty(getCellValue(row.getCell(8))))
-                    .setParameter(9, nullIfEmpty(getCellValue(row.getCell(9))))
-                    .setParameter(10, parseBigDecimal(getCellValue(row.getCell(5)))) // WalletAmount ở index 5
+                    .setParameter(3, pId)
+                    .setParameter(4, parseBigDecimal(getCellValue(row.getCell(3))))
                     .executeUpdate();
         }
+    }
+
+//    private void importWalletTransactionSheet(Sheet sheet, EntityManager em) {
+//        if (sheet == null) {
+//            return;
+//        }
+//        List<WalletTransaction> list = new ArrayList<>();
+//        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+//            Row row = sheet.getRow(i);
+//            if (isRowEmpty(row)) {
+//                continue;
+//            }
+//            Long id = parseLong(getCellValue(row.getCell(0)));
+//            if (id == null) {
+//                continue;
+//            }
+//            WalletTransaction wt = new WalletTransaction();
+//            wt.setWalletTransactionID(id);
+//            Long wId = parseLong(getCellValue(row.getCell(1)));
+//            if (wId != null) {
+//                wt.setWalletID(getSafeEntity(em, CustomerWallet.class, wId));
+//            }
+//            wt.setTransactionType(getCellValue(row.getCell(2)));
+//            wt.setAmount(parseBigDecimal(getCellValue(row.getCell(3))));
+//            wt.setTransactionTime(getDateCellValue(row.getCell(4)));
+//            Long refId = parseLong(getCellValue(row.getCell(5)));
+//            if (refId != null) {
+//                wt.setBookingRefund(getSafeEntity(em, BookingRefund.class, refId));
+//            }
+//            String payId = nullIfEmpty(getCellValue(row.getCell(6)));
+//            if (payId != null) {
+//                wt.setPayment(getSafeEntity(em, Payment.class, payId));
+//            }
+//            String txId = nullIfEmpty(getCellValue(row.getCell(7)));
+//            if (txId != null) {
+//                wt.setTransactionID(findTransactionByCode(em, txId));
+//            }
+//            list.add(wt);
+//        }
+//        em.createNativeQuery("SET IDENTITY_INSERT WALLET_TRANSACTION ON").executeUpdate();
+//        new DAOFramework<>(WalletTransaction.class).saveAll(list, true, em);
+//        em.createNativeQuery("SET IDENTITY_INSERT WALLET_TRANSACTION OFF").executeUpdate();
+//    }
+//    private void importBookingLockHistorySheet(Sheet sheet, EntityManager em) {
+//        if (sheet == null) {
+//            return;
+//        }
+//        List<BookingLockHistory> list = new ArrayList<>();
+//        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+//            Row row = sheet.getRow(i);
+//            if (isRowEmpty(row)) {
+//                continue;
+//            }
+//            Long id = parseLong(getCellValue(row.getCell(0)));
+//            if (id == null) {
+//                continue;
+//            }
+//            BookingLockHistory h = new BookingLockHistory();
+//            h.setLockHistoryID(id);
+//            Integer uId = parseInteger(getCellValue(row.getCell(1)));
+//            if (uId != null) {
+//                h.setUserID(getSafeEntity(em, Users.class, uId));
+//            }
+//            String bId = nullIfEmpty(getCellValue(row.getCell(2)));
+//            if (bId != null) {
+//                h.setTriggerBookingID(getSafeEntity(em, Booking.class, bId));
+//            }
+//            h.setPenaltyLevel(parseShort(getCellValue(row.getCell(3)), 0));
+//            h.setLockedAt(getDateCellValue(row.getCell(4)));
+//            h.setLockedUntil(getDateCellValue(row.getCell(5)));
+//            h.setDurationMinutes(parseInteger(getCellValue(row.getCell(6))));
+//            list.add(h);
+//        }
+//        em.createNativeQuery("SET IDENTITY_INSERT BOOKING_LOCK_HISTORY ON").executeUpdate();
+//        new DAOFramework<>(BookingLockHistory.class).saveAll(list, true, em);
+//        em.createNativeQuery("SET IDENTITY_INSERT BOOKING_LOCK_HISTORY OFF").executeUpdate();
+//    }
+    private void importInvoiceSheet(Sheet sheet, EntityManager em) {
+        if (sheet == null) {
+            return;
+        }
+        List<Invoice> list = new ArrayList<>();
+        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (isRowEmpty(row)) {
+                continue;
+            }
+            String id = getCellValue(row.getCell(0));
+            if (id.isEmpty()) {
+                continue;
+            }
+            Invoice invoice = new Invoice();
+            invoice.setInvoiceID(id);
+            invoice.setInvoiceDate(getDateCellValue(row.getCell(1)));
+            invoice.setTotalAmount(parseBigDecimal(getCellValue(row.getCell(2))));
+            invoice.setStatus(getCellValue(row.getCell(3)));
+            String repId = nullIfEmpty(getCellValue(row.getCell(4)));
+            if (repId != null) {
+                invoice.setReplacedInvoiceID(getSafeEntity(em, Invoice.class, repId));
+            }
+            String empId = nullIfEmpty(getCellValue(row.getCell(5)));
+            if (empId != null) {
+                invoice.setEmployeeID(getSafeEntity(em, Employee.class, empId));
+            }
+            String bId = nullIfEmpty(getCellValue(row.getCell(6)));
+            if (bId != null) {
+                invoice.setBookingID(getSafeEntity(em, Booking.class, bId));
+            }
+            list.add(invoice);
+        }
+        new DAOFramework<>(Invoice.class).saveAll(list, true, em);
+    }
+
+    private void importInvoiceTransactionSheet(Sheet sheet, EntityManager em) {
+        if (sheet == null) {
+            return;
+        }
+        List<InvoiceTransaction> list = new ArrayList<>();
+        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (isRowEmpty(row)) {
+                continue;
+            }
+            String iId = getCellValue(row.getCell(0));
+            String bId = getCellValue(row.getCell(1));
+            String pId = getCellValue(row.getCell(2));
+            String txId = getCellValue(row.getCell(3));
+            if (iId.isEmpty() || bId.isEmpty()) {
+                continue;
+            }
+            InvoiceTransaction it = new InvoiceTransaction();
+            it.setInvoiceTransactionPK(new InvoiceTransactionPK(iId, txId));
+            it.setInvoice(getSafeEntity(em, Invoice.class, iId));
+            it.setPayment(getSafeEntity(em, Payment.class, pId));
+            list.add(it);
+        }
+        new DAOFramework<>(InvoiceTransaction.class).saveAll(list, true, em);
     }
 
     private void importBookingRefundSheet(Sheet sheet, EntityManager em) {
@@ -633,7 +811,6 @@ public class ImportDataService {
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Long id = parseLong(getCellValue(row.getCell(0)));
             if (id == null) {
                 continue;
@@ -646,36 +823,10 @@ public class ImportDataService {
                     .setParameter(4, parseLong(getCellValue(row.getCell(3))))
                     .setParameter(5, parseBigDecimal(getCellValue(row.getCell(4))))
                     .setParameter(6, getDateCellValue(row.getCell(5)))
-                    .setParameter(7, getCellValue(row.getCell(6)))
+                    .setParameter(7, nullIfEmpty(getCellValue(row.getCell(6))))
                     .executeUpdate();
         }
         em.createNativeQuery("SET IDENTITY_INSERT BOOKING_REFUND OFF").executeUpdate();
-    }
-
-    private void importRefundPaymentSheet(Sheet sheet, EntityManager em) {
-        if (sheet == null) {
-            return;
-        }
-        String sql = "INSERT INTO REFUND_PAYMENT (RefundID, BookingID, PaymentID, Amount) VALUES (?, ?, ?, ?)";
-        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-            Row row = sheet.getRow(i);
-            if (isRowEmpty(row)) {
-                continue;
-            }
-
-            Long rId = parseLong(getCellValue(row.getCell(0)));
-            String pId = getCellValue(row.getCell(2));
-            if (rId == null || pId.isEmpty()) {
-                continue;
-            }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, rId)
-                    .setParameter(2, getCellValue(row.getCell(1)))
-                    .setParameter(3, pId)
-                    .setParameter(4, parseBigDecimal(getCellValue(row.getCell(3))))
-                    .executeUpdate();
-        }
     }
 
     private void importWalletTransactionSheet(Sheet sheet, EntityManager em) {
@@ -689,7 +840,6 @@ public class ImportDataService {
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Long id = parseLong(getCellValue(row.getCell(0)));
             if (id == null) {
                 continue;
@@ -703,7 +853,7 @@ public class ImportDataService {
                     .setParameter(5, getDateCellValue(row.getCell(4)))
                     .setParameter(6, parseLong(getCellValue(row.getCell(5))))
                     .setParameter(7, nullIfEmpty(getCellValue(row.getCell(6))))
-                    .setParameter(8, getCellValue(row.getCell(7)))
+                    .setParameter(8, nullIfEmpty(getCellValue(row.getCell(7))))
                     .executeUpdate();
         }
         em.createNativeQuery("SET IDENTITY_INSERT WALLET_TRANSACTION OFF").executeUpdate();
@@ -720,7 +870,6 @@ public class ImportDataService {
             if (isRowEmpty(row)) {
                 continue;
             }
-
             Long id = parseLong(getCellValue(row.getCell(0)));
             if (id == null) {
                 continue;
@@ -729,8 +878,8 @@ public class ImportDataService {
             em.createNativeQuery(sql)
                     .setParameter(1, id)
                     .setParameter(2, parseInteger(getCellValue(row.getCell(1))))
-                    .setParameter(3, getCellValue(row.getCell(2)))
-                    .setParameter(4, parseInteger(getCellValue(row.getCell(3))))
+                    .setParameter(3, nullIfEmpty(getCellValue(row.getCell(2))))
+                    .setParameter(4, parseShort(getCellValue(row.getCell(3)), 0))
                     .setParameter(5, getDateCellValue(row.getCell(4)))
                     .setParameter(6, getDateCellValue(row.getCell(5)))
                     .setParameter(7, parseInteger(getCellValue(row.getCell(6))))
@@ -739,75 +888,9 @@ public class ImportDataService {
         em.createNativeQuery("SET IDENTITY_INSERT BOOKING_LOCK_HISTORY OFF").executeUpdate();
     }
 
-    private void importInvoiceSheet(Sheet sheet, EntityManager em) {
-        if (sheet == null) {
-            return;
-        }
-        String sql = "INSERT INTO INVOICE (InvoiceID, InvoiceDate, TotalAmount, Status, ReplacedInvoiceID, EmployeeID, BookingID) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-            Row row = sheet.getRow(i);
-            if (isRowEmpty(row)) {
-                continue;
-            }
-
-            String id = getCellValue(row.getCell(0));
-            if (id.isEmpty()) {
-                continue;
-            }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, id)
-                    .setParameter(2, getDateCellValue(row.getCell(1)))
-                    .setParameter(3, parseBigDecimal(getCellValue(row.getCell(2))))
-                    .setParameter(4, getCellValue(row.getCell(3)))
-                    .setParameter(5, nullIfEmpty(getCellValue(row.getCell(4))))
-                    .setParameter(6, nullIfEmpty(getCellValue(row.getCell(5))))
-                    .setParameter(7, getCellValue(row.getCell(6)))
-                    .executeUpdate();
-        }
-    }
-
-    private void importInvoiceTransactionSheet(Sheet sheet, EntityManager em) {
-        if (sheet == null) {
-            return;
-        }
-        String sql = "INSERT INTO INVOICE_TRANSACTION (InvoiceID, BookingID, PaymentID, TransactionID) VALUES (?, ?, ?, ?)";
-        for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-            Row row = sheet.getRow(i);
-            if (isRowEmpty(row)) {
-                continue;
-            }
-
-            String iId = getCellValue(row.getCell(0));
-            String bId = getCellValue(row.getCell(1));
-            if (iId.isEmpty() || bId.isEmpty()) {
-                continue;
-            }
-
-            em.createNativeQuery(sql)
-                    .setParameter(1, iId)
-                    .setParameter(2, bId)
-                    .setParameter(3, getCellValue(row.getCell(2)))
-                    .setParameter(4, getCellValue(row.getCell(3)))
-                    .executeUpdate();
-        }
-    }
-
     // ==========================================
     // CÁC HÀM TIỆN ÍCH DÙNG CHUNG
     // ==========================================
-    private void disableConstraintsAndTriggers(EntityManager em) {
-        // Tắt toàn bộ Check Constraints và Foreign Keys
-        em.createNativeQuery("EXEC sp_MSforeachtable \"ALTER TABLE ? NOCHECK CONSTRAINT all\"").executeUpdate();
-        // Tắt toàn bộ Triggers để tránh sinh dữ liệu phụ đè lên file Excel
-        em.createNativeQuery("EXEC sp_MSforeachtable \"DISABLE TRIGGER all ON ?\"").executeUpdate();
-    }
-
-    private void enableConstraintsAndTriggers(EntityManager em) {
-        em.createNativeQuery("EXEC sp_MSforeachtable \"ALTER TABLE ? WITH CHECK CHECK CONSTRAINT all\"").executeUpdate();
-        em.createNativeQuery("EXEC sp_MSforeachtable \"ENABLE TRIGGER all ON ?\"").executeUpdate();
-    }
-
     private String nullIfEmpty(String str) {
         return (str == null || str.trim().isEmpty()) ? null : str.trim();
     }
@@ -816,13 +899,18 @@ public class ImportDataService {
         return parseInteger(str, null);
     }
 
+    private Short parseShort(String str, Integer defaultVal) {
+        Integer val = parseInteger(str, defaultVal);
+        return val == null ? null : val.shortValue();
+    }
+
     private Integer parseInteger(String str, Integer defaultVal) {
         if (str == null || str.trim().isEmpty()) {
             return defaultVal;
         }
         try {
             return (int) Double.parseDouble(str);
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
             return defaultVal;
         }
     }
@@ -860,7 +948,6 @@ public class ImportDataService {
         }
     }
 
-    // Đọc giá trị Cell an toàn thành String
     private String getCellValue(Cell cell) {
         if (cell == null) {
             return "";
@@ -887,7 +974,6 @@ public class ImportDataService {
         }
     }
 
-    // Kiểm tra dòng rỗng
     private boolean isRowEmpty(Row row) {
         if (row == null) {
             return true;
@@ -899,5 +985,19 @@ public class ImportDataService {
             }
         }
         return true;
+    }
+
+    private entity.Transaction findTransactionByCode(EntityManager em, String txCode) {
+        if (txCode == null || txCode.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return em.createQuery("SELECT t FROM Transaction t WHERE t.transactionID = :txCode", entity.Transaction.class)
+                    .setParameter("txCode", txCode.trim())
+                    .setMaxResults(1)
+                    .getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

@@ -64,7 +64,7 @@ public class Payment implements Serializable {
     @NotNull
     @Column(name = "WalletAmount")
     private BigDecimal walletAmount;
-    @Column(name = "ExternalAmount")
+    @Column(name = "ExternalAmount", insertable = false, updatable = false)
     private BigDecimal externalAmount;
     @JoinTable(name = "REFUND_PAYMENT", joinColumns = {
         @JoinColumn(name = "BookingID", referencedColumnName = "BookingID"),

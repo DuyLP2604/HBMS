@@ -62,16 +62,13 @@ public class BookingRefund implements Serializable {
     private Date refundedAt;
     @ManyToMany(mappedBy = "bookingRefundCollection")
     private Collection<Payment> paymentCollection;
-    @JoinColumns({
-        @JoinColumn(name = "CustomerID", referencedColumnName = "CustomerID"),
-        @JoinColumn(name = "BookingID", referencedColumnName = "BookingID", insertable = false, updatable = false)
-    })
+    @JoinColumn(name = "BookingID", referencedColumnName = "BookingID")
     @ManyToOne(optional = false)
     private Booking booking;
-    @JoinColumns({
-        @JoinColumn(name = "CustomerID", referencedColumnName = "CustomerID", insertable = false, updatable = false),
-        @JoinColumn(name = "WalletID", referencedColumnName = "WalletID")
-    })
+    @JoinColumn(name = "CustomerID", referencedColumnName = "CustomerID")
+    @ManyToOne(optional = false)
+    private Customer customer;
+    @JoinColumn(name = "WalletID", referencedColumnName = "WalletID")
     @ManyToOne(optional = false)
     private CustomerWallet customerWallet;
     @JoinColumn(name = "TransactionID", referencedColumnName = "TransactionID")
@@ -188,6 +185,14 @@ public class BookingRefund implements Serializable {
             return false;
         }
         return true;
+    }
+
+    public Customer getCustomer() {
+        return customer;
+    }
+
+    public void setCustomer(Customer customer) {
+        this.customer = customer;
     }
 
     @Override

@@ -29,7 +29,7 @@ import java.util.Collection;
  * @author Asus
  */
 @Entity
-@Table(name = "TRANSACTION")
+@Table(name = "[TRANSACTION]")
 @XmlRootElement
 @NamedQueries({
     @NamedQuery(name = "Transaction.findAll", query = "SELECT t FROM Transaction t"),

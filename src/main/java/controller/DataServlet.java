@@ -12,7 +12,8 @@ import jakarta.servlet.http.Part;
 import java.io.IOException;
 import util.PersistenceManager;
 import jakarta.persistence.EntityManager;
-import service.WorkSheetService;
+import service.ExportDataService;
+import service.ImportDataService;
 import util.flash.Flash;
 
 @WebServlet(name = "DataServlet", urlPatterns = {"/data"})
@@ -23,39 +24,26 @@ import util.flash.Flash;
 )
 public class DataServlet extends HttpServlet {
 
-    private boolean requireAdmin(HttpSession session) throws IOException {
-        if (session == null) {
-            return false;
-        }
-        Users u = (Users) session.getAttribute("user");
-        if (u == null || !"Admin".equalsIgnoreCase(u.getRole())) {
-            return false;
-        }
-        return true;
-    }
-
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!requireAdmin(request.getSession())) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only Admin can Backup/Restore Database.");
             return;
         }
-        WorkSheetService backupService = new WorkSheetService();
-        String action = request.getParameter("action");
-        if (action == null || action.trim().isEmpty()) {
-            action = "exportFullDB";
-        }
 
-        if ("exportFullDB".equals(action)) {
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            response.setHeader("Content-Disposition", "attachment; filename=\"HBMS_Full_Backup_" + System.currentTimeMillis() + ".xlsx\"");
-            try {
-                backupService.exportDatabase(response.getOutputStream());
-            } catch (Exception e) {
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Lỗi khi xuất dữ liệu Backup.");
-            }
-        } else {
+        ExportDataService backupService = new ExportDataService();
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=\"HBMS_Full_Backup_" + System.currentTimeMillis() + ".xlsx\"");
+
+        try {
+            backupService.exportDB(response.getOutputStream());
+            response.getOutputStream().flush(); // Đẩy toàn bộ dữ liệu ra luồng
             response.sendRedirect(request.getContextPath() + "/dashboard");
+        } catch (Exception e) {
+            if (!response.isCommitted()) {
+                response.reset(); // Xóa sạch header cũ đang bị lỗi
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Lỗi khi xuất dữ liệu Backup: " + e.getMessage());
+            }
         }
     }
 
@@ -71,7 +59,7 @@ public class DataServlet extends HttpServlet {
             action = "importFullDB";
         }
 
-        WorkSheetService backupService = new WorkSheetService();
+        ImportDataService backupService = new ImportDataService();
         if ("importFullDB".equals(action)) {
             try {
                 Part filePart = request.getPart("backupFile");
@@ -79,7 +67,7 @@ public class DataServlet extends HttpServlet {
                     EntityManager em = PersistenceManager.createEntityManager();
                     em.getTransaction().begin();
                     try {
-                        backupService.importDatabase(filePart.getInputStream(), em);
+                        backupService.importDB(filePart.getInputStream(), em);
                         em.getTransaction().commit();
                         Flash.success(request, "Phục hồi dữ liệu từ Excel thành công!");
                     } catch (Exception e) {
@@ -113,5 +101,16 @@ public class DataServlet extends HttpServlet {
         }
 
         response.sendRedirect(request.getContextPath() + "/dashboard");
+    }
+
+    private boolean requireAdmin(HttpSession session) throws IOException {
+        if (session == null) {
+            return false;
+        }
+        Users u = (Users) session.getAttribute("user");
+        if (u == null || !"Admin".equalsIgnoreCase(u.getRole())) {
+            return false;
+        }
+        return true;
     }
 }

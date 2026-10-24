@@ -15,7 +15,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlTransient;
@@ -74,10 +73,10 @@ public class Booking implements Serializable {
     @NotNull
     @Column(name = "TotalAmount")
     private BigDecimal totalAmount;
-    @Column(name = "CheckInAt")
+    @Column(name = "CheckInAt", insertable = false, updatable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date checkInAt;
-    @Column(name = "NoShowDeadline")
+    @Column(name = "NoShowDeadline", insertable = false, updatable = false)
     @Temporal(TemporalType.TIMESTAMP)
     private Date noShowDeadline;
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "booking")
@@ -330,5 +329,20 @@ public class Booking implements Serializable {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public void setFirstPaidAt(Date dateCellValue) {
+    }
+
+    public void setBookingAmountAtFirstPayment(BigDecimal parseBigDecimal) {
+        this.bookingAmountAtFirstPayment = parseBigDecimal;
+    }
+
+    public void setCancelledAt(Date dateCellValue) {
+        this.cancelledAt = dateCellValue;
+    }
+
+    public void setCancelledByUserID(Users cancelledByUserID) {
+        this.cancelledByUserID = cancelledByUserID;
     }
 }
