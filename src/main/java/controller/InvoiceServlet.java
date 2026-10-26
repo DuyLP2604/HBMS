@@ -1,3 +1,4 @@
+
 import dao.BookingDAO;
 import dao.InvoiceDAO;
 import dto.InvoiceDTO;
@@ -16,135 +17,129 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-
-
-
 @WebServlet(name = "InvoiceServlet", urlPatterns = {"/invoice"})
-public class InvoiceServlet extends HttpServlet
-{
+public class InvoiceServlet extends HttpServlet {
+
     private final InvoiceDAO invoiceDAO = new InvoiceDAO();
     private final BookingDAO bookingDAO = new BookingDAO();
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
-    {
-        if (requireStaff(request, response) == null)
-        {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        if (requireStaff(request, response) == null) {
             return;
         }
 
         String action = request.getParameter("action");
         boolean print = "print".equals(action);
 
-        if (action != null && !action.isBlank() && !"list".equals(action) && !print)
-        {
+        if (action != null && !action.isBlank() && !"list".equals(action) && !print) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unsupported invoice action.");
             return;
         }
 
         String bookingID = request.getParameter("bookingId");
-        if (bookingID == null || bookingID.isBlank())
-        {
+        if (bookingID == null || bookingID.isBlank()) {
             bookingID = request.getParameter("bookingID");
         }
-        if (bookingID != null)
-        {
+        if (bookingID != null) {
             bookingID = bookingID.trim();
         }
 
-        if (bookingID != null && bookingID.length() > 6)
-        {
+        if (bookingID != null && bookingID.length() > 6) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "A valid booking ID is required.");
             return;
         }
 
         // Nếu bấm "Select" (có bookingID) -> Tính toán và ném vào InvoiceDTO
-        if (bookingID != null && !bookingID.isEmpty())
-        {
-            try
-            {
+        if (bookingID != null && !bookingID.isEmpty()) {
+            try {
                 Map<String, Object> summary = bookingDAO.getPaymentSummary(bookingID);
-                if (summary != null && !summary.isEmpty())
-                {
+                if (summary != null && !summary.isEmpty()) {
                     Map<String, String> roomDetail = invoiceDAO.getRoomDetailByBooking(bookingID);
                     List<Map<String, String>> services = invoiceDAO.getServicesByBooking(bookingID);
-                    
+
                     if (roomDetail != null && !roomDetail.isEmpty()) {
                         InvoiceDTO invoiceDTO = new InvoiceDTO(roomDetail, services, summary);
                         request.setAttribute("invoiceDTO", invoiceDTO);
+
+                        if (print) {
+                            Map<String, String> invoice
+                                    = invoiceDAO.getInvoiceByBooking(bookingID);
+
+                            request.setAttribute("invoice", invoice);
+                            request.setAttribute("selectedRoom", roomDetail);
+                            request.setAttribute("bookingSummary", summary);
+                            request.setAttribute("bookingServices", services);
+
+                            request.setAttribute("roomTotal", invoiceDTO.getRoomCharges());
+                            request.setAttribute("paidAmount", invoiceDTO.getPaidAmount());
+                            request.setAttribute("remainingAmount", invoiceDTO.getRemainingAmount());
+
+                            if (invoice != null && !invoice.isEmpty()) {
+                                request.setAttribute("invoiceID", invoice.get("invoiceID"));
+                                request.setAttribute("invoiceDate", invoice.get("invoiceDate"));
+                                request.setAttribute(
+                                        "grandTotal",
+                                        new BigDecimal(invoice.get("totalAmount"))
+                                );
+                            }
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 throw new ServletException("Unable to load the booking details.", ex);
             }
         }
 
         // Tải danh sách 2 bảng
-        try
-        {
+        try {
             request.setAttribute("occupiedRooms", invoiceDAO.getOccupiedRooms());
             request.setAttribute("paidInvoices", invoiceDAO.getPaidInvoices());
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             throw new ServletException("Unable to load the invoice list.", ex);
         }
-        
+
         // Điều hướng: Nếu không phải action in ấn, luôn hiển thị checkout.jsp (Dashboard)
         request.getRequestDispatcher(print ? "/WEB-INF/views/invoice.jsp" : "/WEB-INF/views/checkout.jsp").forward(request, response);
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
-    {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         Users user = requireStaff(request, response);
-        if (user == null)
-        {
+        if (user == null) {
             return;
         }
 
         String action = request.getParameter("action");
-        if ("print".equals(action))
-        {
+        if ("print".equals(action)) {
             String bookingID = request.getParameter("bookingID");
-            try 
-            {
+            try {
                 // Thực thi lưu CSDL khi bấm "Print Invoice"
                 invoiceDAO.processCheckout(bookingID, user.getUserID());
-            } 
-            catch (Exception e) 
-            {
+            } catch (Exception e) {
                 log("Error saving invoice for booking " + bookingID, e);
             }
-            
+
             // Xong xuôi thì tải lại trang Dashboard
             response.sendRedirect(request.getContextPath() + "/invoice");
-        }
-        else 
-        {
+        } else {
             response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Invalid action.");
         }
     }
 
-    private Users requireStaff(HttpServletRequest request, HttpServletResponse response) throws IOException
-    {
+    private Users requireStaff(HttpServletRequest request, HttpServletResponse response) throws IOException {
         HttpSession session = request.getSession(false);
         Object sessionUser = session == null ? null : session.getAttribute("user");
-        if (!(sessionUser instanceof Users))
-        {
+        if (!(sessionUser instanceof Users)) {
             response.sendRedirect(request.getContextPath() + "/login");
             return null;
         }
         Users user = (Users) sessionUser;
-        if (!"Staff".equalsIgnoreCase(user.getRole()) && !"Admin".equalsIgnoreCase(user.getRole()))
-        {
+        if (!"Staff".equalsIgnoreCase(user.getRole()) && !"Admin".equalsIgnoreCase(user.getRole())) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only staff or admin can access invoices.");
             return null;
         }
-        if (user.getUserID() == null || user.getUserID() <= 0)
-        {
+        if (user.getUserID() == null || user.getUserID() <= 0) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Your login session is invalid. Please log in again.");
             return null;
         }
@@ -152,8 +147,7 @@ public class InvoiceServlet extends HttpServlet
     }
 
     @Override
-    public String getServletInfo()
-    {
+    public String getServletInfo() {
         return "Invoice viewing and printing servlet";
     }
 }
