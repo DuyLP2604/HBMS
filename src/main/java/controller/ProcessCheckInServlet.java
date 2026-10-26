@@ -141,16 +141,25 @@ public class ProcessCheckInServlet extends HttpServlet {
                 }
             }
             PersistenceManager.getEMF().getCache().evictAll();
-            session.removeAttribute("errorMessage");
+            session.removeAttribute("checkInError");
             session.setAttribute("successMessage", "Guest checked in successfully.");
             res.sendRedirect(req.getContextPath() + "/checkin");
             return;
+
         } catch (IllegalArgumentException ex) {
-            session.setAttribute("counterMessage", ex.getMessage());
+            session.setAttribute("checkInError", ex.getMessage());
         } catch (Exception ex) {
             log("Unable to check in " + id, ex);
-            session.setAttribute("counterMessage", "Check-in could not be confirmed. Review the booking and assigned rooms before retrying.");
+            session.setAttribute(
+                    "checkInError",
+                    "Không thể check-in. Vui lòng kiểm tra ngày nhận phòng, "
+                    + "phòng đã gán và giấy tờ khách."
+            );
         }
-        res.sendRedirect(req.getContextPath() + "/staff/counter-booking?bookingID=" + id);
+
+        res.sendRedirect(
+                req.getContextPath()
+                + "/process-checkin?bookingID=" + id
+        );
     }
 }

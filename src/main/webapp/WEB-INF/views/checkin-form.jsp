@@ -7,7 +7,7 @@
     <div class="container py-5">
         <div class="row justify-content-center">
             <div class="col-md-6 col-lg-5">
-                
+
                 <!-- Nút quay lại -->
                 <a href="${pageContext.request.contextPath}/staff/stays" class="btn btn-secondary mb-3 btn-sm">
                     <i class="fa-solid fa-arrow-left"></i> Back
@@ -17,10 +17,10 @@
                     <div class="card-header bg-success text-white py-3">
                         <h4 class="mb-0 text-center"><i class="fa-solid fa-bell-concierge"></i> Check-in</h4>
                     </div>
-                    
+
                     <div class="card-body p-4">
                         <h5 class="fw-bold text-success mb-3 border-bottom pb-2">Booking Information</h5>
-                        
+
                         <div class="mb-2 d-flex justify-content-between">
                             <span class="text-muted">BookingID:</span>
                             <span class="fw-bold">${booking.bookingID}</span>
@@ -52,7 +52,13 @@
                         </div>
 
                         <h5 class="fw-bold text-success mb-3 border-bottom pb-2">Guest Information</h5>
-                        
+                        <c:if test="${not empty sessionScope.checkInError}">
+                            <div class="alert alert-danger" role="alert">
+                                <c:out value="${sessionScope.checkInError}" />
+                            </div>
+                            <c:remove var="checkInError" scope="session" />
+                        </c:if>
+
                         <form action="${pageContext.request.contextPath}/process-checkin" method="POST">
                             <input type="hidden" name="action" value="confirmCheckIn">
                             <input type="hidden" name="csrfToken" value="${sessionScope.checkInCsrf}">
@@ -80,7 +86,7 @@
                                 </button>
                             </div>
                         </form>
-                        
+
                     </div>
                 </div>
 
@@ -96,7 +102,7 @@
             if (currentGuest < maxGuests) {
                 currentGuest++;
                 const container = document.getElementById("cccd-container");
-                
+
                 const div = document.createElement("div");
                 div.className = "mb-3 input-group cccd-row";
                 div.innerHTML = `
