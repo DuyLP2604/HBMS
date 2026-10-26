@@ -2819,10 +2819,6 @@ BEGIN
             THROW 51065, ''Pay the remaining balance before check-out.'', 1;
         IF @NewStatus = ''CHECKED_IN''
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM BOOKING WHERE BookingID = @BookingID
-                AND CheckInDate = CAST(dbo.FN_HBMS_VIETNAM_NOW() AS DATE)
-                AND CAST(dbo.FN_HBMS_VIETNAM_NOW() AS TIME) >= CAST(''14:00:00'' AS TIME))
-                THROW 51068, ''Check-in opens on the arrival date at 14:00 Vietnam time.'', 1;
             IF EXISTS (SELECT 1 FROM BOOKING WHERE BookingID = @BookingID
                 AND NULLIF(LTRIM(RTRIM(GuestCCCDs)), '''') IS NULL)
                 THROW 51069, ''Verify guest identity documents before check-in.'', 1;
