@@ -10,6 +10,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -24,18 +26,46 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import util.PersistenceManager;
 
-public class PaymentService
-{
+public class PaymentService {
+
     private static final Logger LOGGER = Logger.getLogger(PaymentService.class.getName());
 
-    public Booking getBookingForPayment(String bookingID, int userID)
-    {
-        if (bookingID == null || bookingID.isBlank() || userID <= 0)
-        {
+    public String getVietQR(BigDecimal amount, Booking b) {
+        String bankId = "BIDV";
+        String accountNo = "8803748420";
+        String accountName = "SIMPLE BEAR HOTEL"; // Tên hiển thị trên QR (hoặc "NGUYEN LE HUY HOANG")
+        String bookingID = (b != null && b.getBookingID() != null) ? b.getBookingID() : "UNKNOWN";
+
+        // Tạo nội dung chuyển khoản
+        String addInfo = "Thanh toan " + bookingID;
+
+        try {
+            // Sử dụng URLEncoder để encode URL an toàn tuyệt đối (tránh lỗi ký tự, khoảng trắng)
+            String encodedAddInfo = URLEncoder.encode(addInfo, StandardCharsets.UTF_8.toString());
+            String encodedAccountName = URLEncoder.encode(accountName, StandardCharsets.UTF_8.toString());
+
+            // Tạo URL ảnh VietQR
+            String vietQrUrl = String.format(
+                    "https://img.vietqr.io/image/%s-%s-compact2.png?amount=%.0f&addInfo=%s&accountName=%s",
+                    bankId, accountNo, amount, encodedAddInfo, encodedAccountName
+            );
+            return vietQrUrl;
+
+        } catch (Exception e) {
+            LOGGER.warning("Error encoding VietQR URL: " + e.getMessage());
+            // Fallback phòng hờ trường hợp exception
+            return String.format(
+                    "https://img.vietqr.io/image/%s-%s-compact2.png?amount=%.0f&addInfo=%s&accountName=%s",
+                    bankId, accountNo, amount, addInfo.replace(" ", "%20"), accountName.replace(" ", "%20")
+            );
+        }
+    }
+
+    public Booking getBookingForPayment(String bookingID, int userID) {
+        if (bookingID == null || bookingID.isBlank() || userID <= 0) {
             return null;
         }
-        try (EntityManager em = PersistenceManager.createEntityManager())
-        {
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
             TypedQuery<Booking> query = em.createQuery("SELECT b FROM Booking b JOIN FETCH b.customerID c JOIN FETCH c.userID WHERE b.bookingID = :bookingID AND c.userID.userID = :userID", Booking.class);
             query.setParameter("bookingID", bookingID.trim());
             query.setParameter("userID", userID);
@@ -46,189 +76,142 @@ public class PaymentService
         }
     }
 
-    public Map<String, Object> getPaymentSummary(String bookingID, int userID)
-    {
+    public Map<String, Object> getPaymentSummary(String bookingID, int userID) {
         Booking booking = getBookingForPayment(bookingID, userID);
-        if (booking == null)
-        {
+        if (booking == null) {
             throw new IllegalArgumentException("The requested booking was not found.");
         }
         BookingDAO dao = new BookingDAO();
-        if ("PENDING_PAYMENT".equals(booking.getBookingStatus()))
-        {
+        if ("PENDING_PAYMENT".equals(booking.getBookingStatus())) {
             dao.expirePendingBookings(booking.getCustomerID().getCustomerID());
         }
         Map<String, Object> summary = dao.getPaymentSummary(booking.getBookingID());
-        if (summary.isEmpty())
-        {
+        if (summary.isEmpty()) {
             throw new IllegalStateException("The booking payment summary is unavailable.");
         }
         return summary;
     }
 
-    public PaymentRequest createPaymentRequest(String bookingID, int userID)
-    {
+    public PaymentRequest createPaymentRequest(String bookingID, int userID) {
         Map<String, Object> summary = getPaymentSummary(bookingID, userID);
         String status = String.valueOf(summary.get("bookingStatus"));
         boolean initial = summary.get("firstPaidAt") == null;
-        if ((initial && !"PENDING_PAYMENT".equals(status)) || (!initial && !Set.of("CONFIRMED", "ASSIGNED", "CHECKED_IN").contains(status)))
-        {
+        if ((initial && !"PENDING_PAYMENT".equals(status)) || (!initial && !Set.of("CONFIRMED", "ASSIGNED", "CHECKED_IN").contains(status))) {
             throw new IllegalStateException("This booking no longer accepts payments.");
         }
         String type = initial ? String.valueOf(summary.get("paymentOption")) : "BALANCE";
-        if (!Set.of("DEPOSIT", "FULL", "BALANCE").contains(type))
-        {
+        if (!Set.of("DEPOSIT", "FULL", "BALANCE").contains(type)) {
             throw new IllegalStateException("The booking payment option is invalid.");
         }
         Object value = summary.get(initial ? "initialRequiredAmount" : "remainingAmount");
-        if (!(value instanceof BigDecimal) || ((BigDecimal) value).signum() <= 0)
-        {
+        if (!(value instanceof BigDecimal) || ((BigDecimal) value).signum() <= 0) {
             throw new IllegalStateException("This booking has no outstanding payment.");
         }
         BigDecimal walletBalance = null;
-        try
-        {
+        try {
             WalletSummary wallet = new WalletDAO().getWalletByUserID(userID);
             walletBalance = wallet == null ? null : wallet.getBalance();
-        }
-        catch (IllegalStateException exception)
-        {
+        } catch (IllegalStateException exception) {
             LOGGER.log(Level.WARNING, "Unable to offer wallet payment.", exception);
         }
         return new PaymentRequest(bookingID.trim(), userID, type, (BigDecimal) value, walletBalance);
     }
 
     // Compatibility entry point for initial payments. Balance payments require a saved PaymentRequest.
-    public Payment processPayment(String bookingID, String methodID, int userID)
-    {
+    public Payment processPayment(String bookingID, String methodID, int userID) {
         PaymentRequest paymentRequest = createPaymentRequest(bookingID, userID);
-        if ("BALANCE".equals(paymentRequest.getPaymentType()))
-        {
+        if ("BALANCE".equals(paymentRequest.getPaymentType())) {
             throw new IllegalStateException("Open the payment page to pay the remaining balance.");
         }
         return processPayment(paymentRequest, methodID, userID);
     }
 
     // External methods are SIMULATED, matching the existing project. Replace this with verified provider callbacks for real payments.
-    public Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID)
-    {
+    public Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID) {
         return processPayment(paymentRequest, methodID, userID, false);
     }
 
-    public Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet)
-    {
-        if (paymentRequest == null || paymentRequest.getUserID() != userID || userID <= 0)
-        {
+    public Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet) {
+        if (paymentRequest == null || paymentRequest.getUserID() != userID || userID <= 0) {
             throw new IllegalArgumentException("The payment request is invalid. Reload the payment page.");
         }
         String selectedMethod = methodID == null ? "" : methodID.trim();
         BigDecimal walletAmount = useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
-        if (useWallet && walletAmount.signum() <= 0)
-        {
+        if (useWallet && walletAmount.signum() <= 0) {
             throw new IllegalArgumentException("No wallet balance is available. Reload the page or pay using an external method.");
         }
-        if (useWallet && walletAmount.compareTo(paymentRequest.amount) == 0)
-        {
+        if (useWallet && walletAmount.compareTo(paymentRequest.amount) == 0) {
             selectedMethod = "PT09";
         }
-        if ("PT09".equals(selectedMethod))
-        {
-            if (paymentRequest.getOfferedWalletAmount().compareTo(paymentRequest.amount) < 0)
-            {
+        if ("PT09".equals(selectedMethod)) {
+            if (paymentRequest.getOfferedWalletAmount().compareTo(paymentRequest.amount) < 0) {
                 throw new IllegalArgumentException("Your wallet cannot cover the full payment. Select an external method and use your wallet for part of it.");
             }
             walletAmount = paymentRequest.amount;
         }
-        if (selectedMethod.isEmpty() || selectedMethod.length() > 4)
-        {
+        if (selectedMethod.isEmpty() || selectedMethod.length() > 4) {
             throw new IllegalArgumentException("Please select a valid payment method.");
         }
-        if ("PT01".equals(selectedMethod))
-        {
+        if ("PT01".equals(selectedMethod)) {
             throw new IllegalArgumentException("Cash payments must be recorded by staff.");
         }
-        synchronized (paymentRequest)
-        {
-            if (paymentRequest.methodID != null && (!paymentRequest.methodID.equals(selectedMethod) || paymentRequest.walletAmount.compareTo(walletAmount) != 0))
-            {
+        synchronized (paymentRequest) {
+            if (paymentRequest.methodID != null && (!paymentRequest.methodID.equals(selectedMethod) || paymentRequest.walletAmount.compareTo(walletAmount) != 0)) {
                 throw new IllegalStateException("This request already uses another payment method. Reload the payment page to change it.");
             }
             Booking booking = getBookingForPayment(paymentRequest.getBookingID(), userID);
-            if (booking == null)
-            {
+            if (booking == null) {
                 throw new IllegalArgumentException("The requested booking was not found.");
             }
-            if ("PENDING_PAYMENT".equals(booking.getBookingStatus()))
-            {
+            if ("PENDING_PAYMENT".equals(booking.getBookingStatus())) {
                 new BookingDAO().expirePendingBookings(booking.getCustomerID().getCustomerID());
             }
             Paymentmethod method;
-            try (EntityManager em = PersistenceManager.createEntityManager())
-            {
+            try (EntityManager em = PersistenceManager.createEntityManager()) {
                 method = em.find(Paymentmethod.class, selectedMethod);
             }
-            if (method == null)
-            {
+            if (method == null) {
                 throw new IllegalArgumentException("The selected payment method does not exist.");
             }
             paymentRequest.methodID = selectedMethod;
             paymentRequest.walletAmount = walletAmount;
-            try (Connection connection = PersistenceManager.openConnection())
-            {
+            try (Connection connection = PersistenceManager.openConnection()) {
                 connection.setAutoCommit(false);
-                try
-                {
+                try {
                     // Hold the SAME SQL application lock as all booking/wallet procedures while allocating PMxxxx.
                     execute(connection, "SELECT TOP (1) UserID FROM dbo.USERS; DECLARE @LockResult int; EXEC @LockResult = sys.sp_getapplock @Resource = N'HBMS:booking-wallet-write', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000; IF @LockResult < 0 THROW 51000, 'System busy. Please retry the request.', 1;", null);
-                    if (paymentRequest.paymentID == null || isIDUsedByAnotherRequest(connection, paymentRequest))
-                    {
+                    if (paymentRequest.paymentID == null || isIDUsedByAnotherRequest(connection, paymentRequest)) {
                         paymentRequest.paymentID = generatePaymentID(connection);
                     }
                     execute(connection, "EXEC dbo.SP_RECORD_PAYMENT @PaymentID = ?, @BookingID = ?, @ActorUserID = ?, @PaymentType = ?, @Amount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAmount = ?;", paymentRequest);
                     Payment payment = readPayment(connection, paymentRequest, booking, method);
                     connection.commit();
                     return payment;
-                }
-                catch (SQLException | RuntimeException exception)
-                {
-                    try
-                    {
+                } catch (SQLException | RuntimeException exception) {
+                    try {
                         connection.rollback();
-                    }
-                    catch (SQLException rollbackError)
-                    {
+                    } catch (SQLException rollbackError) {
                         exception.addSuppressed(rollbackError);
                     }
                     throw exception;
                 }
-            }
-            catch (SQLException exception)
-            {
+            } catch (SQLException exception) {
                 throw new IllegalStateException(paymentError(exception), exception);
-            }
-            finally
-            {
-                try
-                {
+            } finally {
+                try {
                     PersistenceManager.getEMF().getCache().evictAll();
-                }
-                catch (RuntimeException exception)
-                {
+                } catch (RuntimeException exception) {
                     LOGGER.log(Level.WARNING, "Unable to clear the payment cache.", exception);
                 }
             }
         }
     }
 
-    private boolean isIDUsedByAnotherRequest(Connection connection, PaymentRequest request) throws SQLException
-    {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT BookingID, PaymentType, Amount, WalletAmount, MethodID, TransactionCode FROM dbo.PAYMENT WHERE PaymentID = ?"))
-        {
+    private boolean isIDUsedByAnotherRequest(Connection connection, PaymentRequest request) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT BookingID, PaymentType, Amount, WalletAmount, MethodID, TransactionCode FROM dbo.PAYMENT WHERE PaymentID = ?")) {
             statement.setString(1, request.paymentID);
-            try (ResultSet result = statement.executeQuery())
-            {
-                if (!result.next())
-                {
+            try (ResultSet result = statement.executeQuery()) {
+                if (!result.next()) {
                     return false;
                 }
                 String transactionCode = "PT09".equals(request.methodID) ? "WALLET-" + request.paymentID : request.transactionCode;
@@ -237,24 +220,18 @@ public class PaymentService
         }
     }
 
-    private String generatePaymentID(Connection connection) throws SQLException
-    {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT COALESCE(MAX(TRY_CONVERT(int, SUBSTRING(PaymentID, 3, 4))), 0) FROM dbo.PAYMENT WHERE PaymentID LIKE 'PM[0-9][0-9][0-9][0-9]'" ); ResultSet result = statement.executeQuery())
-        {
-            if (!result.next() || result.getInt(1) >= 9999)
-            {
+    private String generatePaymentID(Connection connection) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT COALESCE(MAX(TRY_CONVERT(int, SUBSTRING(PaymentID, 3, 4))), 0) FROM dbo.PAYMENT WHERE PaymentID LIKE 'PM[0-9][0-9][0-9][0-9]'"); ResultSet result = statement.executeQuery()) {
+            if (!result.next() || result.getInt(1) >= 9999) {
                 throw new IllegalStateException("The payment ID limit has been reached.");
             }
             return String.format(Locale.ROOT, "PM%04d", result.getInt(1) + 1);
         }
     }
 
-    private void execute(Connection connection, String sql, PaymentRequest request) throws SQLException
-    {
-        try (PreparedStatement statement = connection.prepareStatement(sql))
-        {
-            if (request != null)
-            {
+    private void execute(Connection connection, String sql, PaymentRequest request) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            if (request != null) {
                 statement.setString(1, request.paymentID);
                 statement.setString(2, request.bookingID);
                 statement.setInt(3, request.userID);
@@ -265,20 +242,14 @@ public class PaymentService
                 statement.setBigDecimal(8, request.walletAmount);
             }
             boolean hasResult = statement.execute();
-            while (true)
-            {
-                if (hasResult)
-                {
-                    try (ResultSet result = statement.getResultSet())
-                    {
-                        while (result.next())
-                        {
+            while (true) {
+                if (hasResult) {
+                    try (ResultSet result = statement.getResultSet()) {
+                        while (result.next()) {
                             // Consume procedure results so errors after earlier result sets are not missed.
                         }
                     }
-                }
-                else if (statement.getUpdateCount() == -1)
-                {
+                } else if (statement.getUpdateCount() == -1) {
                     break;
                 }
                 hasResult = statement.getMoreResults(Statement.CLOSE_CURRENT_RESULT);
@@ -286,16 +257,12 @@ public class PaymentService
         }
     }
 
-    private Payment readPayment(Connection connection, PaymentRequest request, Booking booking, Paymentmethod method) throws SQLException
-    {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT PaymentTime, Amount, WalletAmount, Status, TransactionCode FROM dbo.PAYMENT WHERE PaymentID = ? AND BookingID = ?"))
-        {
+    private Payment readPayment(Connection connection, PaymentRequest request, Booking booking, Paymentmethod method) throws SQLException {
+        try (PreparedStatement statement = connection.prepareStatement("SELECT PaymentTime, Amount, WalletAmount, Status, TransactionCode FROM dbo.PAYMENT WHERE PaymentID = ? AND BookingID = ?")) {
             statement.setString(1, request.paymentID);
             statement.setString(2, request.bookingID);
-            try (ResultSet result = statement.executeQuery())
-            {
-                if (!result.next())
-                {
+            try (ResultSet result = statement.executeQuery()) {
+                if (!result.next()) {
                     throw new IllegalStateException("The payment result could not be confirmed.");
                 }
                 Payment payment = new Payment();
@@ -313,10 +280,8 @@ public class PaymentService
         }
     }
 
-    private String paymentError(SQLException exception)
-    {
-        switch (exception.getErrorCode())
-        {
+    private String paymentError(SQLException exception) {
+        switch (exception.getErrorCode()) {
             case 51000:
                 return "The payment system is busy. Retry the same payment request.";
             case 51030:
@@ -346,8 +311,8 @@ public class PaymentService
         }
     }
 
-    public static final class PaymentRequest implements Serializable
-    {
+    public static final class PaymentRequest implements Serializable {
+
         private static final long serialVersionUID = 2L;
         private final String bookingID;
         private final int userID;
@@ -359,8 +324,7 @@ public class PaymentService
         private String methodID;
         private BigDecimal walletAmount;
 
-        private PaymentRequest(String bookingID, int userID, String paymentType, BigDecimal amount, BigDecimal walletBalance)
-        {
+        private PaymentRequest(String bookingID, int userID, String paymentType, BigDecimal amount, BigDecimal walletBalance) {
             this.bookingID = bookingID;
             this.userID = userID;
             this.paymentType = paymentType;
@@ -368,33 +332,27 @@ public class PaymentService
             this.walletBalance = walletBalance;
         }
 
-        public String getBookingID()
-        {
+        public String getBookingID() {
             return bookingID;
         }
 
-        public int getUserID()
-        {
+        public int getUserID() {
             return userID;
         }
 
-        public String getPaymentType()
-        {
+        public String getPaymentType() {
             return paymentType;
         }
 
-        public BigDecimal getAmount()
-        {
+        public BigDecimal getAmount() {
             return amount;
         }
 
-        public BigDecimal getWalletBalance()
-        {
+        public BigDecimal getWalletBalance() {
             return walletBalance;
         }
 
-        public BigDecimal getOfferedWalletAmount()
-        {
+        public BigDecimal getOfferedWalletAmount() {
             return walletBalance == null ? BigDecimal.ZERO : walletBalance.max(BigDecimal.ZERO).min(amount);
         }
     }
