@@ -198,7 +198,22 @@
                                             </c:forEach>
                                         </select>
                                     </div>
+                                    <!--QRPay-->
+                                    <div id="vietqr-container" class="mb-4 text-center d-none border rounded p-4 bg-white shadow-sm">
+                                        <h5 class="fw-bold text-primary mb-3">Quét mã QR để thanh toán</h5>
 
+                                        <c:if test="${not empty vietQrUrl}">
+                                            <img src="${vietQrUrl}" alt="VietQR Payment" class="img-fluid border rounded shadow-sm" style="max-width: 260px;">
+                                        </c:if>
+                                        <c:if test="${empty vietQrUrl}">
+                                            <img id="vietqr-img" src="" alt="VietQR Payment" class="img-fluid border rounded shadow-sm" style="max-width: 260px;">
+                                        </c:if>
+
+                                        <p class="mt-3 text-muted small">Mở ứng dụng ngân hàng bất kỳ để quét mã QR thanh toán nhanh.</p>
+                                        <div class="alert alert-warning small text-start mb-0">
+                                            <strong>Lưu ý:</strong> Vui lòng giữ nguyên nội dung chuyển khoản để hệ thống xác nhận tự động.
+                                        </div>
+                                    </div>
                                     <div id="walletPaymentNotice" class="alert alert-info d-none" role="status">Your wallet contribution is checked again when you pay. If the available balance has changed, reload this page to review the amounts.</div>
 
                                     <div id="expiredMessage" class="alert alert-danger d-none" role="alert">The payment time limit has expired.</div>
@@ -222,4 +237,23 @@
             </div>
         </div>
     </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const methodSelect = document.getElementById("methodID");
+            const qrContainer = document.getElementById("vietqr-container");
+            const qrImg = document.getElementById("vietqr-img");
+
+            if (methodSelect && qrContainer) {
+                methodSelect.addEventListener("change", function () {
+                    // Kiểm tra nếu chọn phương thức là VietQR (ví dụ code trong DB của bạn là PT10 hoặc tên text chứa "QR")
+                    const selectedText = this.options[this.selectedIndex].text.toLowerCase();
+                    if (this.value === "PT10" || selectedText.includes("qr") || selectedText.includes("vietqr")) {
+                        qrContainer.classList.remove("d-none");
+                    } else {
+                        qrContainer.classList.add("d-none");
+                    }
+                });
+            }
+        });
+    </script>
 </layout:layout>
