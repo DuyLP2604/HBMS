@@ -241,16 +241,72 @@
         document.addEventListener("DOMContentLoaded", function () {
             const methodSelect = document.getElementById("methodID");
             const qrContainer = document.getElementById("vietqr-container");
-            const qrImg = document.getElementById("vietqr-img");
+            const paymentButton = document.getElementById("paymentButton");
+            // Lấy bookingID từ input hidden có sẵn trong form
+            const bookingIDInput = document.querySelector('input[name="bookingID"]');
+            const bookingID = bookingIDInput ? bookingIDInput.value : '';
 
-            if (methodSelect && qrContainer) {
+            let pollInterval = null;
+
+            // Hàm gọi API kiểm tra trạng thái
+            function checkPaymentStatus() {
+                if (!bookingID)
+                    return;
+
+                fetch('${pageContext.request.contextPath}/api/check-payment?bookingID=' + bookingID)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success' && data.isPaid) {
+                                // Thanh toán thành công -> Dừng polling
+                                clearInterval(pollInterval);
+                                pollInterval = null;
+
+                                // Cập nhật giao diện QR thành thông báo thành công (Không redirect)
+                                qrContainer.classList.remove("bg-white");
+                                qrContainer.classList.add("bg-success", "text-white");
+                                qrContainer.innerHTML = `
+                            <h4 class="fw-bold mb-3"><i class="fas fa-check-circle fs-1"></i></h4>
+                            <h5 class="fw-bold mb-3">Thanh toán thành công!</h5>
+                            <p class="mb-0 small text-white">Hệ thống đã ghi nhận thanh toán của bạn.</p>
+                            <a href="${pageContext.request.contextPath}/my-bookings" class="btn btn-light btn-sm mt-3 fw-bold text-success">Xem đặt phòng của tôi</a>
+                        `;
+
+                                // Đảm bảo nút process payment vẫn bị ẩn
+                                if (paymentButton)
+                                    paymentButton.classList.add("d-none");
+                            } else if (data.status === 'error') {
+                                // Nếu có lỗi (ví dụ hết hạn thanh toán), có thể xử lý dừng poll
+                                console.log("Status Check:", data.message);
+                            }
+                        })
+                        .catch(err => console.error("Lỗi kiểm tra thanh toán:", err));
+            }
+
+            if (methodSelect && qrContainer && paymentButton) {
                 methodSelect.addEventListener("change", function () {
-                    // Kiểm tra nếu chọn phương thức là VietQR (ví dụ code trong DB của bạn là PT10 hoặc tên text chứa "QR")
                     const selectedText = this.options[this.selectedIndex].text.toLowerCase();
+
+                    // Kiểm tra nếu chọn phương thức QR
                     if (this.value === "PT10" || selectedText.includes("qr") || selectedText.includes("vietqr")) {
                         qrContainer.classList.remove("d-none");
+                        // ẨN NÚT THANH TOÁN (Chống skip)
+                        paymentButton.classList.add("d-none");
+
+                        // Khởi động vòng lặp kiểm tra ngầm mỗi 2000ms (2 giây)
+                        if (!pollInterval) {
+                            pollInterval = setInterval(checkPaymentStatus, 2000);
+                        }
                     } else {
+                        // Nếu chọn phương thức khác (Tiền mặt, ví, v.v.)
                         qrContainer.classList.add("d-none");
+                        // HIỆN LẠI NÚT THANH TOÁN
+                        paymentButton.classList.remove("d-none");
+
+                        // Dừng vòng lặp kiểm tra QR
+                        if (pollInterval) {
+                            clearInterval(pollInterval);
+                            pollInterval = null;
+                        }
                     }
                 });
             }
