@@ -28,7 +28,8 @@
             <nav class="stay-filters" aria-label="${waitingMode ? 'Filter waiting bookings' : 'Filter guest stays'}">
                 <button type="button" data-stay-filter="all" aria-pressed="true" disabled>${waitingMode ? 'All waiting' : 'All stays'} <span data-filter-count="all">—</span></button>
                 <button type="button" data-stay-filter="arrivals" aria-pressed="false" disabled>Arriving today <span data-filter-count="arrivals">—</span></button>
-                <c:if test="${not waitingMode}"><button type="button" data-stay-filter="inhouse" aria-pressed="false" disabled>In-house <span data-filter-count="inhouse">—</span></button><button type="button" data-stay-filter="assignments" aria-pressed="false" disabled>Needs rooms <span data-filter-count="assignments">—</span></button></c:if>
+                <c:if test="${not waitingMode}"><button type="button" data-stay-filter="inhouse" aria-pressed="false" disabled>In-house <span data-filter-count="inhouse">—</span></button></c:if>
+                <button type="button" data-stay-filter="assignments" aria-pressed="false" title="Bookings awaiting rooms for today and upcoming stays" disabled>Awaiting rooms <span data-filter-count="assignments">—</span></button>
                 <button type="button" data-stay-filter="review" aria-pressed="false" disabled>Needs review <span data-filter-count="review">—</span></button>
             </nav>
         </div>

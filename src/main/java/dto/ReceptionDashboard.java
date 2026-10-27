@@ -23,6 +23,7 @@ public final class ReceptionDashboard {
     private int arrivals;
     private int departures;
     private int assignments;
+    private int assignmentsToday;
     private int reviews;
 
     private ReceptionDashboard(String focus) {
@@ -47,8 +48,7 @@ public final class ReceptionDashboard {
             boolean waiting = "CONFIRMED".equals(status) || "ASSIGNED".equals(status);
             boolean arrivesToday = waiting && arrival.equals(today);
             boolean departureDue = "CHECKED_IN".equals(status) && !departure.isAfter(today);
-            boolean needsRoom = "CONFIRMED".equals(status)
-                    && !arrival.isAfter(today) && departure.isAfter(today);
+            boolean needsRoom = BookingTimePolicy.needsRoomAssignment(booking, now);
             boolean lateArrival = BookingTimePolicy.isNoShow(booking, now);
             boolean unresolvedPastArrival = waiting && arrival.isBefore(today);
             boolean expiredArrival = waiting && !arrival.isAfter(today) && !departure.isAfter(today);
@@ -56,6 +56,7 @@ public final class ReceptionDashboard {
             if (arrivesToday) dashboard.arrivals++;
             if (departureDue) dashboard.departures++;
             if (needsRoom) dashboard.assignments++;
+            if (needsRoom && arrival.equals(today)) dashboard.assignmentsToday++;
             if (review) dashboard.reviews++;
 
             Task task = null;
@@ -69,7 +70,8 @@ public final class ReceptionDashboard {
                         lateArrival ? "Arrival overdue" : "Arrival needs review",
                         "attention", "/staff/stays", "Review stays", null);
             } else if (needsRoom) {
-                task = new Task(booking, arrival, 2, "Needs room assignment", "assignment",
+                task = new Task(booking, arrival, arrival.isAfter(today) ? 5 : 2,
+                        arrival.isAfter(today) ? "Upcoming room assignment" : "Needs room assignment", "assignment",
                         "/staff/bookings", "Assign rooms", null);
             } else if (waiting && !arrival.isAfter(today) && departure.isAfter(today)) {
                 boolean canCheckIn = arrival.equals(today) && !now.isBefore(BookingTimePolicy.checkInAt(arrival));
@@ -82,6 +84,7 @@ public final class ReceptionDashboard {
                 task.arrivesToday = arrivesToday;
                 task.departureDue = departureDue;
                 task.needsRoom = needsRoom;
+                task.upcoming = needsRoom && arrival.isAfter(today);
                 task.review = review;
                 task.dueLabel = task.date.equals(today) ? "Today" : task.date.format(DateTimeFormatter.ofPattern("dd MMM", Locale.ENGLISH));
                 dashboard.tasks.add(task);
@@ -102,7 +105,7 @@ public final class ReceptionDashboard {
             case "departures": return task.departureDue;
             case "assignments": return task.needsRoom;
             case "review": return task.review;
-            default: return true;
+            default: return !task.upcoming;
         }
     }
 
@@ -110,8 +113,10 @@ public final class ReceptionDashboard {
     public int getArrivals() { return arrivals; }
     public int getDepartures() { return departures; }
     public int getAssignments() { return assignments; }
+    public int getAssignmentsToday() { return assignmentsToday; }
+    public int getAssignmentsUpcoming() { return assignments - assignmentsToday; }
     public int getReviews() { return reviews; }
-    public int getTotal() { return tasks.size(); }
+    public int getTotal() { return (int) tasks.stream().filter(task -> !task.upcoming).count(); }
     public int getFilteredTotal() { return (int) tasks.stream().filter(this::matches).count(); }
     public List<Task> getTasks() {
         return Collections.unmodifiableList(tasks.stream().filter(this::matches).limit(ROW_LIMIT).collect(Collectors.toList()));
@@ -132,6 +137,7 @@ public final class ReceptionDashboard {
         private boolean arrivesToday;
         private boolean departureDue;
         private boolean needsRoom;
+        private boolean upcoming;
         private boolean review;
 
         private Task(Booking booking, LocalDate date, int priority, String label, String tone,
