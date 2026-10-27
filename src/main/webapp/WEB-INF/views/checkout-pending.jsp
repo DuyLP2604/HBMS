@@ -1,76 +1,37 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-<layout:layout title="Booking Created" useBootstrap="true">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="card shadow-sm">
-                    <div class="card-body p-4 p-md-5">
-                        <div class="text-center mb-4">
-                            <h1 class="h3 text-success mb-3">Booking Created Successfully</h1>
-                            <p class="mb-2">Your booking reference is:</p>
-                            <p class="fs-3 fw-bold"><c:out value="${bookingID}" /></p>
-                            <p class="text-muted">Complete your payment before the deadline to secure your booking.</p>
-                        </div>
-                        <div class="alert alert-warning text-center">
-                            Booking status: <strong><c:out value="${booking.bookingStatus}" /></strong>
-                        </div>
-                        <div class="border rounded p-3 mb-4">
-                            <div class="d-flex justify-content-between gap-3 mb-3">
-                                <span>Check-in:</span>
-                                <strong><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /></strong>
-                            </div>
-                            <div class="d-flex justify-content-between gap-3 mb-3">
-                                <span>Check-out:</span>
-                                <strong><fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" /></strong>
-                            </div>
-                            <div class="d-flex justify-content-between gap-3 mb-3">
-                                <span>Total Booking Amount:</span>
-                                <strong><fmt:formatNumber value="${booking.totalAmount}" type="number" /> VND</strong>
-                            </div>
-                            <div class="d-flex justify-content-between gap-3 mb-3">
-                                <span>Payment Option:</span>
-                                <strong>
-                                    <c:choose>
-                                        <c:when test="${paymentOption eq 'DEPOSIT'}">30% Deposit</c:when>
-                                        <c:when test="${paymentOption eq 'FULL'}">Full Payment (100%)</c:when>
-                                        <c:otherwise>Unavailable</c:otherwise>
-                                    </c:choose>
-                                </strong>
-                            </div>
-                            <div class="d-flex justify-content-between gap-3 mb-3">
-                                <span>Amount to Pay Now:</span>
-                                <strong class="text-success"><fmt:formatNumber value="${initialRequiredAmount}" type="number" /> VND</strong>
-                            </div>
-                            <div class="d-flex justify-content-between gap-3">
-                                <span>Payment Deadline:</span>
-                                <strong class="text-danger"><fmt:formatDate value="${booking.paymentDeadline}" pattern="dd/MM/yyyy HH:mm:ss" /></strong>
-                            </div>
-                        </div>
-                        <c:if test="${paymentOption eq 'DEPOSIT'}">
-                            <div class="alert alert-info">Your booking will be confirmed after the 30% deposit is paid successfully. You can pay the remaining 70% later.</div>
-                        </c:if>
-                        <div class="alert alert-warning">
-                            <p class="mb-2">You cannot create another booking until this booking is paid with a deposit or in full, or cancelled.</p>
-                            <p class="mb-0">If payment is not completed before the deadline, this booking will expire and be cancelled.</p>
-                        </div>
-                        <div class="border rounded p-3 mb-4">
-                            <h2 class="h6 mb-2">Cancellation and Refund Policy</h2>
-                            <p class="mb-2">Cancel less than 24 hours after your first successful deposit or full payment to receive a 100% refund of the amount you have paid. The refund will be credited to your system wallet.</p>
-                            <p class="mb-2">Cancellation at or after 24 hours is not refundable. This period starts from the first successful payment, not from the check-in time.</p>
-                            <p class="mb-0">Paying the remaining balance does not restart the 24-hour refund period.</p>
-                        </div>
-                        <c:url var="paymentUrl" value="/payment">
-                            <c:param name="bookingID" value="${bookingID}" />
-                        </c:url>
-                        <div class="text-center">
-                            <a href="<c:out value='${paymentUrl}' />" class="btn btn-success px-4">Continue to Payment</a>
-                        </div>
-                    </div>
-                </div>
+<fmt:setLocale value="en_US" />
+<c:url var="paymentUrl" value="/payment"><c:param name="bookingID" value="${bookingID}" /></c:url>
+<c:url var="bookingDetailUrl" value="/my-bookings"><c:param name="bookingID" value="${bookingID}" /></c:url>
+<c:set var="checkoutRooms" value="0" /><c:set var="checkoutGuests" value="0" />
+<c:forEach var="room" items="${booking.bookingDetailCollection}"><c:set var="checkoutRooms" value="${checkoutRooms + room.quantity}" /><c:set var="checkoutGuests" value="${checkoutGuests + room.guestCount}" /></c:forEach>
+<layout:layout title="Complete Your Booking" pageCss="booking-completion.css" pageJs="checkout-pending.js" useBootstrap="true" bodyClass="booking-completion-body">
+    <div class="booking-completion" data-checkout-page>
+        <header class="bc-heading"><div><p class="bc-eyebrow">YOUR NEXT STAY</p><h1>Complete your booking</h1><p>Review the details below and complete payment to confirm your stay.</p></div><a class="bc-text-link" href="${pageContext.request.contextPath}/my-bookings"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> My bookings</a></header>
+        <section class="cp-stay" aria-label="Booking reference and stay dates">
+            <div class="cp-reference"><span class="cp-stay-label">BOOKING REFERENCE</span><strong><c:out value="${bookingID}" /></strong><span class="cp-pending-badge"><i class="fa-regular fa-clock" aria-hidden="true"></i> Awaiting payment</span></div>
+            <div class="cp-date"><span>Check-in</span><strong><fmt:formatDate value="${booking.checkInDate}" pattern="dd MMM yyyy" /></strong></div><i class="fa-solid fa-arrow-right cp-date-arrow" aria-hidden="true"></i><div class="cp-date"><span>Check-out</span><strong><fmt:formatDate value="${booking.checkOutDate}" pattern="dd MMM yyyy" /></strong></div>
+            <div class="cp-stay-counts"><span><c:out value="${checkoutNights}" /> <c:out value="${checkoutNights eq 1 ? 'night' : 'nights'}" /></span><c:if test="${checkoutRooms gt 0}"><span><c:out value="${checkoutRooms}" /> <c:out value="${checkoutRooms eq 1 ? 'room' : 'rooms'}" /> · <c:out value="${checkoutGuests}" /> <c:out value="${checkoutGuests eq 1 ? 'guest' : 'guests'}" /></span></c:if></div>
+        </section>
+        <div class="cp-layout">
+            <div class="cp-main">
+                <section aria-labelledby="checkoutRoomsTitle"><div class="bc-section-heading"><h2 id="checkoutRoomsTitle">Your selected rooms</h2><span><c:out value="${fn:length(booking.bookingDetailCollection)}" /> <c:out value="${fn:length(booking.bookingDetailCollection) eq 1 ? 'room type' : 'room types'}" /></span></div>
+                    <c:choose><c:when test="${empty booking.bookingDetailCollection}"><div class="bc-panel cp-empty">Room details are currently unavailable. Open your booking details or contact reception for help.</div></c:when><c:otherwise><div class="cp-room-list"><c:forEach var="room" items="${booking.bookingDetailCollection}">
+                        <article class="bc-panel cp-room"><div class="cp-room-heading"><span class="bc-icon"><i class="fa-solid fa-bed" aria-hidden="true"></i></span><div><span class="bc-small-label">ROOM TYPE</span><h3><c:out value="${empty room.roomTypeID.typeName ? 'Room type' : room.roomTypeID.typeName}" /></h3></div></div><div class="cp-room-facts"><span><i class="fa-solid fa-bed" aria-hidden="true"></i> <c:out value="${room.quantity}" /> <c:out value="${room.quantity eq 1 ? 'room' : 'rooms'}" /></span><span><i class="fa-solid fa-user-group" aria-hidden="true"></i> <c:out value="${room.guestCount}" /> <c:out value="${room.guestCount eq 1 ? 'guest' : 'guests'}" /></span></div><div class="cp-room-price"><div><span class="bc-small-label">Per room / night</span><span><fmt:formatNumber value="${room.unitPrice}" pattern="#,##0.##" /> <small>VND</small></span></div><div><span class="bc-small-label">Stay subtotal</span><strong><fmt:formatNumber value="${room.subtotal}" pattern="#,##0.##" /> <small>VND</small></strong></div></div></article>
+                    </c:forEach></div></c:otherwise></c:choose>
+                </section>
+                <div class="cp-important"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><div><strong>Finish this booking before starting another</strong><p>Complete the required payment or cancel this booking before creating a new one. Unpaid bookings expire and are cancelled after the payment deadline.</p></div></div>
+                <details class="bc-panel cp-policy"><summary><span><i class="fa-regular fa-file-lines" aria-hidden="true"></i> Cancellation &amp; refund policy</span><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></summary><div><p>Eligible refunds are credited to your internal wallet.</p><ul><li>Bookings created more than 24 hours before check-in at 14:00 may qualify for a full refund of successful payments.</li><li>Eligible bookings must be cancelled before 24 hours have passed since booking creation. Later payments do not restart this period.</li><li>Bookings created within 24 hours of check-in, including exactly 24 hours, are not refundable.</li><li>Bookings cannot be cancelled after check-in. No-show cancellations do not receive a refund.</li></ul><a class="bc-text-link" href="<c:out value='${bookingDetailUrl}' />">View your booking details <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div></details>
             </div>
+            <aside class="bc-panel cp-summary" aria-labelledby="checkoutPaymentTitle"><p class="bc-eyebrow">READY WHEN YOU ARE</p><h2 id="checkoutPaymentTitle">Payment summary</h2><dl class="bc-lines"><div><dt>Booking total</dt><dd><fmt:formatNumber value="${booking.totalAmount}" pattern="#,##0.##" /> <small>VND</small></dd></div><div><dt>Payment plan</dt><dd><c:out value="${paymentOption eq 'DEPOSIT' ? '30% deposit' : 'Full payment'}" /></dd></div><c:if test="${paymentOption eq 'DEPOSIT'}"><div><dt>Remaining later</dt><dd><fmt:formatNumber value="${booking.totalAmount - initialRequiredAmount}" pattern="#,##0.##" /> <small>VND</small></dd></div></c:if></dl>
+                <div class="cp-due"><span>Amount due now</span><strong><fmt:formatNumber value="${initialRequiredAmount}" pattern="#,##0.##" /> <small>VND</small></strong><p><c:out value="${paymentOption eq 'DEPOSIT' ? 'Your booking is confirmed once the deposit is paid successfully.' : 'Your booking is confirmed once payment is completed successfully.'}" /></p></div>
+                <c:if test="${not empty checkoutDeadlineLabel}"><div class="cp-deadline" data-checkout-deadline="${checkoutDeadlineEpoch}" data-checkout-server-now="${checkoutServerNow}"><div><i class="fa-regular fa-clock" aria-hidden="true"></i><span>Complete payment before</span></div><strong><c:out value="${checkoutDeadlineLabel}" /></strong><span class="cp-timezone">Vietnam time</span><span class="cp-countdown" role="timer" aria-live="off" data-checkout-countdown>Payment window is open</span></div></c:if>
+                <p class="cp-expired-message" role="status" data-checkout-expired hidden>This payment window has ended. Open your booking details to check the latest status.</p>
+                <a class="bc-button bc-button-primary cp-pay-button" href="<c:out value='${paymentUrl}' />" data-checkout-pay>Continue to payment <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a><a class="bc-button bc-button-secondary cp-details-button" href="<c:out value='${bookingDetailUrl}' />">View booking details</a><p class="cp-next-step"><i class="fa-regular fa-credit-card" aria-hidden="true"></i> Choose your payment method on the next step.</p>
+            </aside>
         </div>
     </div>
 </layout:layout>
