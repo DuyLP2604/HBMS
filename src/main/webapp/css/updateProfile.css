@@ -1,186 +1,73 @@
-body {
-    font-family: Arial, sans-serif;
-
-    background:
-        linear-gradient(
-        rgba(0,0,0,.45),
-        rgba(0,0,0,.45)
-        ),
-        url("../assets/images/hotel/hotel.jpg");
-
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-
-    margin: 0;
-    min-height: 100vh;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
+.profile-edit-body { margin: 0; min-height: 100vh; background: #f3f6f4; color: #293e31; font: 16px/1.6 "Segoe UI", Arial, sans-serif; }
+.profile-edit-body .navbar, .profile-edit-body .navbar * { box-sizing: border-box; }
+.profile-edit, .profile-edit * { box-sizing: border-box; }
+.profile-edit { width: min(1200px, calc(100% - 64px)); margin: 30px auto 48px; }
+.profile-edit a { text-decoration: none; }
+.profile-edit .pe-heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 25px; }
+.profile-edit .pe-eyebrow { margin: 0 0 7px; color: #5b7762; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
+.profile-edit h1 { margin: 0; font-size: clamp(28px, 3vw, 34px); font-weight: 650; line-height: 1.3; letter-spacing: -.7px; }
+.profile-edit .pe-heading p:not(.pe-eyebrow) { margin: 10px 0 0; color: #63756a; }
+.profile-edit .pe-back-link { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; color: #40634b; font-size: 15px; font-weight: 600; flex-shrink: 0; }
+.profile-edit .pe-back-link:hover { text-decoration: underline; }
+.profile-edit .pe-back-link i { font-size: 13px; }
+.profile-edit .pe-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 26px; align-items: start; }
+.profile-edit .pe-identity { background: #294c3c; color: #fff; border-radius: 15px; overflow: hidden; min-width: 0; }
+.profile-edit .pe-identity-top { padding: 26px; }
+.profile-edit .pe-identity-mark { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.profile-edit .pe-avatar { display: grid; place-items: center; width: 61px; height: 61px; flex-shrink: 0; background: #d8c58c; color: #29422e; border-radius: 15px; font-size: 29px; font-weight: 600; }
+.profile-edit .pe-role { padding: 5px 10px; border: 1px solid #627c63; border-radius: 7px; background: #355742; color: #dfebd9; font-size: 13px; }
+.profile-edit .pe-identity h2 { margin: 19px 0 0; font-size: 26px; font-weight: 600; line-height: 1.4; letter-spacing: -.4px; overflow-wrap: anywhere; }
+.profile-edit .pe-identity dl { display: grid; gap: 17px; padding: 23px 26px; border-top: 1px solid #56725c; margin: 0; }
+.profile-edit .pe-identity dt { font-size: 13px; color: #c4d6c5; }
+.profile-edit .pe-identity dd { margin: 4px 0 0; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.profile-edit .pe-identity-note { display: flex; align-items: baseline; gap: 9px; padding: 0 26px 23px; margin: 0; color: #c5d7c3; font-size: 13px; }
+.profile-edit .pe-form-panel { background: #fff; border: 1px solid #d7e1d8; border-radius: 15px; overflow: hidden; }
+.profile-edit .pe-panel-heading { display: flex; align-items: center; gap: 13px; padding: 23px 27px; border-bottom: 1px solid #e1e8df; }
+.profile-edit .pe-panel-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; background: #f0f5eb; color: #6c8459; border: 1px solid #e0e7d8; border-radius: 10px; font-size: 18px; }
+.profile-edit .pe-panel-heading h2 { font-size: 21px; font-weight: 650; margin: 0; line-height: 1.4; }
+.profile-edit .pe-panel-heading p { color: #788572; font-size: 13px; margin: 5px 0 0; }
+.profile-edit .pe-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding: 27px; }
+.profile-edit .pe-field { min-width: 0; }
+.profile-edit .pe-field-wide { grid-column: 1 / -1; }
+.profile-edit label { display: block; margin-bottom: 8px; color: #506a52; font-size: 14px; font-weight: 600; }
+.profile-edit label > span { color: #8b6c3e; }
+.profile-edit input, .profile-edit select, .profile-edit textarea { display: block; width: 100%; min-height: 47px; padding: 10px 13px; border: 1px solid #ccd9ca; border-radius: 8px; background: #fdfefb; color: #344f39; font: inherit; font-size: 16px; line-height: 1.6; }
+.profile-edit select { padding-right: 7px; }
+.profile-edit textarea { resize: vertical; min-height: 83px; }
+.profile-edit input:focus, .profile-edit select:focus, .profile-edit textarea:focus { outline: none; border-color: #7e9f76; box-shadow: 0 0 0 3px #dcebd3; background: #fff; }
+.profile-edit [aria-invalid="true"] { border-color: #c77c6b; background: #fffaf7; }
+.profile-edit [aria-invalid="true"]:focus { box-shadow: 0 0 0 3px #f4dfd8; }
+.profile-edit .pe-field-error { display: block; margin-top: 6px; color: #aa4b3c; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.profile-edit .pe-field-error:empty { display: none; }
+.profile-edit .pe-error-summary { display: flex; align-items: baseline; gap: 9px; padding: 13px 16px; margin: 22px 27px 0; border: 1px solid #e8c9bd; border-radius: 9px; background: #fff3ed; color: #9b4c3c; font-size: 14px; }
+.profile-edit .pe-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 11px; padding: 20px 27px; border-top: 1px solid #e2e9de; background: #fcfdf9; }
+.profile-edit .pe-button { display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-height: 47px; padding: 11px 20px; border: 1px solid; border-radius: 9px; font: inherit; font-size: 15px; font-weight: 600; text-align: center; cursor: pointer; }
+.profile-edit .pe-button-primary { color: #fff; border-color: #355d44; background: #355d44; }
+.profile-edit .pe-button-primary:hover { background: #274a35; border-color: #274a35; }
+.profile-edit .pe-button-secondary { color: #5b7356; border-color: #d1ddcb; background: #fff; }
+.profile-edit .pe-button-secondary:hover { border-color: #97ae91; background: #eef4e9; }
+.profile-edit a:focus-visible, .profile-edit button:focus-visible { outline: 3px solid #89b397; outline-offset: 4px; }
+@media (max-width: 1000px) { .profile-edit .pe-layout { grid-template-columns: 270px minmax(0, 1fr); gap: 20px; } }
+@media (max-width: 860px) {
+    .profile-edit .pe-layout { grid-template-columns: 1fr; gap: 20px; }
+    .profile-edit .pe-identity-top { padding: 21px 24px; }
+    .profile-edit .pe-identity h2 { margin-top: 13px; }
+    .profile-edit .pe-identity dl { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 17px 24px; }
+    .profile-edit .pe-identity-note { padding: 0 24px 20px; }
 }
-
-/* Glass Card */
-
-.profile-card {
-    width: 750px;
-
-    background: rgba(255,255,255,.15);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-
-    border: 1px solid rgba(255,255,255,.25);
-
-    border-radius: 20px;
-
-    padding: 35px;
-
-    box-shadow:
-        0 20px 50px rgba(0,0,0,.25);
+@media (max-width: 640px) {
+    .profile-edit { width: calc(100% - 32px); margin-top: 24px; }
+    .profile-edit-body .navbar a.navbar-wallet { width: 46px; padding: 0; justify-content: center; }
+    .profile-edit-body .navbar .navbar-wallet-info { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .profile-edit .pe-heading { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .profile-edit .pe-fields { grid-template-columns: 1fr; padding: 23px; gap: 20px; }
+    .profile-edit .pe-panel-heading { padding: 22px; }
+    .profile-edit .pe-error-summary { margin-left: 22px; margin-right: 22px; }
+    .profile-edit .pe-actions { padding: 19px 22px; }
+    .profile-edit .pe-button { flex: 1; padding-left: 14px; padding-right: 14px; }
+    .profile-edit .pe-button-primary { flex: 1.6; }
 }
-
-/* Title */
-
-h1 {
-    text-align: center;
-
-    color: white;
-
-    margin-bottom: 30px;
-
-    font-weight: 700;
-}
-
-/* Table */
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-td {
-    padding: 12px 8px;
-}
-
-td:first-child {
-    width: 180px;
-
-    color: #F0D08A;
-    font-weight: 700;
-}
-
-/* Input */
-
-input,
-select {
-    width: 100%;
-
-    padding: 12px 14px;
-
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,.25);
-
-    background: rgba(255,255,255,.15);
-
-    color: white;
-
-    font-size: 14px;
-
-    box-sizing: border-box;
-}
-
-input::placeholder {
-    color: rgba(255,255,255,.7);
-}
-
-input:focus,
-select:focus {
-    outline: none;
-
-    border-color: #D4B36A;
-
-    box-shadow:
-        0 0 0 4px rgba(212,179,106,.2);
-}
-
-/* Select */
-
-select option {
-    color: black;
-}
-
-/* Button Area */
-
-.button-group {
-    text-align: center;
-    padding-top: 30px;
-}
-
-/* Save Button */
-
-button {
-    border: none;
-
-    padding: 12px 28px;
-
-    border-radius: 12px;
-
-    font-size: 15px;
-    font-weight: 700;
-
-    cursor: pointer;
-
-    color: white;
-
-    background:
-        linear-gradient(
-        135deg,
-        #D4B36A,
-        #BE9950
-        );
-
-    transition: .25s;
-}
-
-button:hover {
-    transform: translateY(-3px);
-
-    box-shadow:
-        0 10px 25px rgba(212,179,106,.4);
-}
-
-/* Cancel Button */
-
-.btn-cancel {
-    display: inline-block;
-
-    margin-left: 12px;
-
-    padding: 12px 28px;
-
-    border-radius: 12px;
-
-    text-decoration: none;
-
-    font-weight: 700;
-
-    color: white;
-
-    background:
-        linear-gradient(
-        135deg,
-        #495057,
-        #343a40
-        );
-
-    transition: .25s;
-}
-
-.btn-cancel:hover {
-    transform: translateY(-3px);
-
-    color: white;
-
-    box-shadow:
-        0 10px 25px rgba(0,0,0,.25);
+@media (max-width: 360px) {
+    .profile-edit .pe-actions { flex-direction: column-reverse; align-items: stretch; }
+    .profile-edit .pe-button { flex: auto; }
 }
