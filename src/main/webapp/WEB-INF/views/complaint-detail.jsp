@@ -2,7 +2,6 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-<c:set var="canManageComplaints" value="${sessionScope.user.role eq 'Admin' or sessionScope.user.role eq 'Staff'}" />
 <layout:layout
     title="Complaint Details"
     pageCss="complaint.css"
@@ -53,17 +52,25 @@
                             </c:otherwise>
                         </c:choose>
                     </dd>
+                    <dt class="col-sm-3">Handled by</dt>
+                    <dd class="col-sm-9">
+                        <c:choose>
+                            <c:when test="${not empty complaint.employeeID}"><c:out value="${complaint.employeeID.fullName}" /></c:when>
+                            <c:otherwise><span class="text-muted">Not recorded</span></c:otherwise>
+                        </c:choose>
+                    </dd>
                     <c:if test="${not empty complaint.replyMessage}">
                         <dt class="col-sm-3 text-danger mt-3">Staff Reply</dt>
                         <dd class="col-sm-9 mt-3" style="white-space: pre-wrap; overflow-wrap: anywhere; background-color: #f8d7da; color: #842029; padding: 12px; border-radius: 8px; border: 1px solid #f5c2c7;"><strong><c:out value="${complaint.replyMessage}" /></strong></dd>
                             </c:if>
                 </dl>
-                <c:if test="${sessionScope.role eq 'Staff'}">
+                <c:if test="${canManageComplaints}">
                     <hr class="mt-4">
                     <h4 class="text-danger mb-3">Handle Complaint</h4>
                     <form action="${pageContext.request.contextPath}/complaint" method="post" class="mt-2">
                         <input type="hidden" name="action" value="reply">
                         <input type="hidden" name="id" value="${complaint.complaintID}">
+                        <input type="hidden" name="csrfToken" value="<c:out value='${complaintCsrfToken}' />">
                         <div class="mb-3">
                             <label for="complaintStatus" class="form-label fw-bold">Update Status</label>
                             <select id="complaintStatus" name="status" class="form-select w-25" required>

@@ -5,6 +5,7 @@ import dao.CustomerDAO;
 import entity.Complaint;
 import entity.Customer;
 import entity.Users;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import util.flash.Flash;
+import util.security.CsrfTokens;
 
 @WebServlet(name = "ComplaintServlet", urlPatterns = {"/complaint"})
 public class ComplaintServlet extends HttpServlet {
@@ -31,7 +33,7 @@ public class ComplaintServlet extends HttpServlet {
 
         String action = request.getParameter("action");
         action = (action == null || action.trim().isEmpty()) ? "list" : action;
-        ComplaintDAO daoCp = new ComplaintDAO();
+        ComplaintDAO daoCp = createComplaintDAO();
 
         if ("list".equalsIgnoreCase(action)) {
             if (!canManageComplaints(user)) {
@@ -56,20 +58,23 @@ public class ComplaintServlet extends HttpServlet {
             request.getRequestDispatcher("/WEB-INF/views/add-complaint.jsp").forward(request, response);
 
         } else if ("viewDetail".equalsIgnoreCase(action)) {
-            try {
-                int id = Integer.parseInt(request.getParameter("id"));
-                Complaint complaint = daoCp.getComplaintById(id);
-
-                if (complaint == null || !canViewComplaint(user, complaint)) {
-                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "Complaint not found or access denied.");
-                    return;
-                }
-
-                request.setAttribute("complaint", complaint);
-                request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp").forward(request, response);
-            } catch (NumberFormatException e) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid complaint ID.");
+            Integer id = readComplaintId(request, response);
+            if (id == null) {
+                return;
             }
+            Complaint complaint = daoCp.getComplaintById(id);
+
+            if (complaint == null || !canViewComplaint(user, complaint)) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Complaint not found or access denied.");
+                return;
+            }
+
+            request.setAttribute("complaint", complaint);
+            request.setAttribute("canManageComplaints", canManageComplaints(user));
+            if (canManageComplaints(user)) {
+                request.setAttribute("complaintCsrfToken", CsrfTokens.getOrCreate(request.getSession()));
+            }
+            request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp").forward(request, response);
         }
     }
 
@@ -83,7 +88,7 @@ public class ComplaintServlet extends HttpServlet {
         }
 
         String action = request.getParameter("action");
-        ComplaintDAO daoCp = new ComplaintDAO();
+        ComplaintDAO daoCp = createComplaintDAO();
 
         if ("add".equalsIgnoreCase(action)) {
             if (!"Customer".equalsIgnoreCase(user.getRole())) {
@@ -120,25 +125,39 @@ public class ComplaintServlet extends HttpServlet {
                 return;
             }
 
-            try {
-                int id = Integer.parseInt(request.getParameter("id"));
-                String status = request.getParameter("status");
-                String replyMessage = request.getParameter("replyMessage");
-
-                if (status == null || replyMessage == null || replyMessage.trim().isEmpty()) {
-                    Flash.error(request, "Status and Reply message are required.");
-                    response.sendRedirect(request.getContextPath() + "/complaint?action=viewDetail&id=" + id);
-                    return;
-                }
-
-                daoCp.updateReply(id, replyMessage.trim(), status.trim());
-                Flash.success(request, "Reply saved successfully.");
-                response.sendRedirect(request.getContextPath() + "/complaint?action=viewDetail&id=" + id);
-
-            } catch (Exception e) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid input data.");
+            if (!CsrfTokens.isValid(request)) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "The form expired. Reload the page and try again.");
+                return;
             }
+            if (user.getUserID() == null || user.getUserID() <= 0) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Please sign in again.");
+                return;
+            }
+            Integer id = readComplaintId(request, response);
+            if (id == null) {
+                return;
+            }
+            try {
+                daoCp.updateReply(id, request.getParameter("replyMessage"), request.getParameter("status"), user.getUserID());
+                Flash.success(request, "Reply saved successfully.");
+            } catch (EntityNotFoundException ex) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "Complaint not found.");
+                return;
+            } catch (SecurityException ex) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Your account can no longer reply to complaints. Please sign in again.");
+                return;
+            } catch (IllegalArgumentException ex) {
+                Flash.error(request, ex.getMessage());
+            } catch (RuntimeException ex) {
+                getServletContext().log("Unable to save complaint reply for complaint " + id, ex);
+                Flash.error(request, "Unable to save your reply. Please try again later.");
+            }
+            response.sendRedirect(request.getContextPath() + "/complaint?action=viewDetail&id=" + id);
         }
+    }
+
+    protected ComplaintDAO createComplaintDAO() {
+        return new ComplaintDAO();
     }
 
     private Users getLoggedInUser(HttpServletRequest request) {

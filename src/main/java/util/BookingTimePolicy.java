@@ -66,6 +66,19 @@ public final class BookingTimePolicy
                 && !now.isBefore(stayDate(booking).atTime(NO_SHOW_TIME));
     }
 
+    /** Read-only worklist eligibility; room availability is still checked when rooms are assigned. */
+    public static boolean needsRoomAssignment(Booking booking, LocalDateTime now)
+    {
+        if (booking == null || !"CONFIRMED".equals(booking.getBookingStatus())
+                || booking.getCheckInDate() == null || booking.getCheckOutDate() == null)
+        {
+            return false;
+        }
+        LocalDate arrival = stayDate(booking);
+        LocalDate departure = new Date(booking.getCheckOutDate().getTime()).toLocalDate();
+        return !arrival.isBefore(now.toLocalDate()) && departure.isAfter(arrival) && !isNoShow(booking, now);
+    }
+
     public static Map<String, Boolean> prepareStaffList(List<Booking> bookings, LocalDateTime now)
     {
         bookings.sort(Comparator.comparingInt((Booking b) -> isNoShow(b, now) ? 0 : ("CHECKED_IN".equals(b.getBookingStatus()) ? 2 : 1))

@@ -1,5 +1,7 @@
 package controller;
 
+import dao.PasswordResetDAO;
+
 import java.io.IOException;
 
 import jakarta.servlet.ServletException;
@@ -12,6 +14,7 @@ import jakarta.servlet.http.HttpSession;
 import service.EmailService;
 import util.flash.Flash;
 import util.security.OtpGenerator;
+import util.security.PasswordResetSession;
 
 
 @WebServlet(
@@ -53,7 +56,8 @@ public class VerifyOtpServlet extends HttpServlet {
                 request.getSession(false);
 
 
-        if (session == null) {
+        if (!PasswordResetSession.isEligible(session, createPasswordResetDAO())) {
+            PasswordResetSession.clear(session);
 
             response.sendRedirect(
                     request.getContextPath()
@@ -207,6 +211,10 @@ public class VerifyOtpServlet extends HttpServlet {
          * from bypassing the attempt counter.
          */
         synchronized (session) {
+
+            if (!requireEligibleAccount(request, response, session)) {
+                return;
+            }
 
             /*
              * OTP has already been verified.
@@ -431,6 +439,10 @@ public class VerifyOtpServlet extends HttpServlet {
          */
         synchronized (session) {
 
+            if (!requireEligibleAccount(request, response, session)) {
+                return;
+            }
+
             /*
              * Do not allow resend after
              * successful OTP verification.
@@ -627,7 +639,7 @@ public class VerifyOtpServlet extends HttpServlet {
 
 
             EmailService emailService =
-                    new EmailService();
+                    createEmailService();
 
 
             boolean sent =
@@ -756,15 +768,7 @@ public class VerifyOtpServlet extends HttpServlet {
             HttpSession session
     ) {
 
-        session.removeAttribute("resetOtp");
-        session.removeAttribute("resetOtpExpiry");
-        session.removeAttribute("resetOtpAttempts");
-
-        session.removeAttribute("resetUserId");
-        session.removeAttribute("resetEmail");
-
-        session.removeAttribute("resetOtpVerified");
-        session.removeAttribute("resetVerifiedExpiry");
+        PasswordResetSession.clear(session);
 
 
         /*
@@ -776,6 +780,25 @@ public class VerifyOtpServlet extends HttpServlet {
          */
     }
 
+
+    private boolean requireEligibleAccount(HttpServletRequest request,
+            HttpServletResponse response, HttpSession session) throws IOException {
+        if (PasswordResetSession.isEligible(session, createPasswordResetDAO())) {
+            return true;
+        }
+        clearResetFlow(session);
+        Flash.error(request, "This password reset request is no longer valid. Please start again.");
+        response.sendRedirect(request.getContextPath() + "/forgot-password");
+        return false;
+    }
+
+    protected PasswordResetDAO createPasswordResetDAO() {
+        return new PasswordResetDAO();
+    }
+
+    protected EmailService createEmailService() {
+        return new EmailService();
+    }
 
     @Override
     public String getServletInfo() {

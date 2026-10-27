@@ -259,6 +259,7 @@ public class WorkSheetService {
         header.createCell(4).setCellValue("Status");
         header.createCell(5).setCellValue("CustomerID");
         header.createCell(6).setCellValue("ReplyMessage");
+        header.createCell(7).setCellValue("EmployeeID");
 
         List<Complaint> list = new ComplaintDAO().getAll();
         int rowIdx = 1;
@@ -281,6 +282,7 @@ public class WorkSheetService {
                 row.createCell(5).setCellValue(c.getCustomerID().getCustomerID());
             }
             row.createCell(6).setCellValue(c.getReplyMessage() != null ? c.getReplyMessage() : "");
+            row.createCell(7).setCellValue(c.getEmployeeID() == null ? "" : c.getEmployeeID().getEmployeeID());
         }
     }
 
@@ -1208,6 +1210,8 @@ public class WorkSheetService {
         if (sheet == null) {
             return;
         }
+        boolean hasEmployeeColumn = sheet.getRow(0) != null
+                && "EmployeeID".equalsIgnoreCase(getCellValue(sheet.getRow(0).getCell(7)));
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (row == null || isRowEmpty(row)) {
@@ -1236,6 +1240,23 @@ public class WorkSheetService {
             }
 
             c.setReplyMessage(getCellValue(row.getCell(6)));
+
+            if (hasEmployeeColumn) {
+                String employeeId = getCellValue(row.getCell(7));
+                if (!employeeId.isEmpty()) {
+                    Employee employee = em.find(Employee.class, employeeId);
+                    if (employee == null) {
+                        throw new IllegalArgumentException("COMPLAINT row " + (i + 1) + ": EmployeeID does not exist: " + employeeId);
+                    }
+                    c.setEmployeeID(employee);
+                }
+            } else if (c.getComplaintID() != null) {
+                // Old backups have no EmployeeID column; preserve existing attribution when restoring them.
+                Complaint existing = em.find(Complaint.class, c.getComplaintID());
+                if (existing != null) {
+                    c.setEmployeeID(existing.getEmployeeID());
+                }
+            }
 
             em.merge(c);
         }

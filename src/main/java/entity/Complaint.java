@@ -74,6 +74,10 @@ public class Complaint implements Serializable {
     @ManyToOne
     private Customer customerID;
 
+    @JoinColumn(name = "EmployeeID", referencedColumnName = "EmployeeID")
+    @ManyToOne(optional = true)
+    private Employee employeeID;
+
     public Complaint() {
     }
 
@@ -103,6 +107,14 @@ public class Complaint implements Serializable {
 
     public void setCustomerID(Customer customerID) {
         this.customerID = customerID;
+    }
+
+    public Employee getEmployeeID() {
+        return employeeID;
+    }
+
+    public void setEmployeeID(Employee employeeID) {
+        this.employeeID = employeeID;
     }
 
     @Override
