@@ -57,7 +57,7 @@
                             </a>
                             <a class="reception-metric ${desk.focus eq 'assignments' ? 'is-active' : ''}" href="<c:out value='${deskAssignments}' />#today-priorities">
                                 <span class="reception-metric-top">Awaiting rooms <i class="fa-solid fa-key" aria-hidden="true"></i></span>
-                                <strong><c:out value="${desk.assignments}" /></strong><span class="reception-metric-note">Bookings that need rooms now</span>
+                                <strong><c:out value="${desk.assignments}" /></strong><span class="reception-metric-note"><c:out value="${desk.assignmentsToday}" /> to assign today · <c:out value="${desk.assignmentsUpcoming}" /> upcoming</span>
                             </a>
                             <a class="reception-metric reception-metric-review ${desk.reviews gt 0 ? 'has-attention' : ''} ${desk.focus eq 'review' ? 'is-active' : ''}" href="<c:out value='${deskReview}' />#today-priorities">
                                 <span class="reception-metric-top">Needs review <i class="fa-regular fa-flag" aria-hidden="true"></i></span>
@@ -76,11 +76,11 @@
                 <div class="reception-workspace">
                     <section class="reception-panel reception-priorities" id="today-priorities" aria-labelledby="reception-priorities-title">
                         <div class="reception-panel-heading">
-                            <div><p class="reception-section-kicker">YOUR WORKLIST</p><h2 id="reception-priorities-title">Today's priorities <c:if test="${not dashboardUnavailable}"><span class="reception-count"><c:out value="${desk.total}" /></span></c:if></h2><p>Outstanding work for today, with overdue stays first.</p></div>
+                            <div><p class="reception-section-kicker">YOUR WORKLIST</p><h2 id="reception-priorities-title"><c:choose><c:when test="${desk.focus eq 'assignments'}">Room assignment queue</c:when><c:otherwise>Today's priorities</c:otherwise></c:choose> <c:if test="${not dashboardUnavailable}"><span class="reception-count"><c:out value="${desk.focus eq 'assignments' ? desk.assignments : desk.total}" /></span></c:if></h2><p><c:choose><c:when test="${desk.focus eq 'assignments'}">Bookings awaiting rooms for today and upcoming stays.</c:when><c:otherwise>Outstanding work for today, with overdue stays first.</c:otherwise></c:choose></p></div>
                             <a href="${pageContext.request.contextPath}/staff/stays" class="reception-text-link">Guest stays <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
                         </div>
                         <c:if test="${not dashboardUnavailable}">
-                            <nav class="reception-filters" aria-label="Filter today's worklist">
+                            <nav class="reception-filters" aria-label="Filter reception worklist">
                                 <a href="<c:out value='${deskHome}' />#today-priorities" class="${desk.focus eq 'all' ? 'is-active' : ''}" ${desk.focus eq 'all' ? 'aria-current="page"' : ''}>All priorities</a>
                                 <a href="<c:out value='${deskArrivals}' />#today-priorities" class="${desk.focus eq 'arrivals' ? 'is-active' : ''}" ${desk.focus eq 'arrivals' ? 'aria-current="page"' : ''}>Arrivals</a>
                                 <a href="<c:out value='${deskDepartures}' />#today-priorities" class="${desk.focus eq 'departures' ? 'is-active' : ''}" ${desk.focus eq 'departures' ? 'aria-current="page"' : ''}>Departures</a>
@@ -114,7 +114,8 @@
                                         </c:forEach>
                                     </tbody>
                                 </table>
-                                <div class="reception-table-footer"><span>Showing <c:out value="${desk.tasks.size()}" /> of <c:out value="${desk.filteredTotal}" /> pending bookings</span><c:if test="${desk.filteredTotal gt desk.tasks.size()}"><a href="${pageContext.request.contextPath}/staff/stays">Open guest stays <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></c:if></div>
+                                <c:url var="remainingStaysUrl" value="/staff/stays"><c:if test="${desk.focus eq 'assignments'}"><c:param name="view" value="assignments" /></c:if></c:url>
+                                <div class="reception-table-footer"><span>Showing <c:out value="${desk.tasks.size()}" /> of <c:out value="${desk.filteredTotal}" /> pending bookings</span><c:if test="${desk.filteredTotal gt desk.tasks.size()}"><a href="${remainingStaysUrl}">${desk.focus eq 'assignments' ? 'View all awaiting rooms' : 'Open guest stays'} <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></c:if></div>
                             </c:otherwise>
                         </c:choose>
                     </section>

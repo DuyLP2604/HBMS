@@ -38,7 +38,9 @@
             row.stay = {
                 all: true,
                 arrivals: pending && arrival === currentDay,
-                assignments: status === 'CONFIRMED',
+                // Match BookingTimePolicy.needsRoomAssignment on the dashboard after refresh.
+                assignments: Boolean(status === 'CONFIRMED' && arrival && departure
+                        && arrival >= currentDay && departure > arrival && !serverReview),
                 inhouse: status === 'CHECKED_IN',
                 review: Boolean(serverReview || lateDeparture || pastArrival),
                 search: fold(row.dataset.search),
