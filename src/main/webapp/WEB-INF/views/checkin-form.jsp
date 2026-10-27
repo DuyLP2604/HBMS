@@ -8,7 +8,6 @@
         <div class="row justify-content-center">
             <div class="col-md-6 col-lg-5">
                 
-                <!-- Nút quay lại -->
                 <a href="${pageContext.request.contextPath}/staff/stays" class="btn btn-secondary mb-3 btn-sm">
                     <i class="fa-solid fa-arrow-left"></i> Back
                 </a>
@@ -51,73 +50,99 @@
                             </div>
                         </div>
 
-                        <h5 class="fw-bold text-success mb-3 border-bottom pb-2">Guest Information</h5>
+                        <h5 class="fw-bold text-success mb-3 border-bottom pb-2">Guest Information by Room</h5>
                         
                         <form action="${pageContext.request.contextPath}/process-checkin" method="POST">
                             <input type="hidden" name="action" value="confirmCheckIn">
-                            <input type="hidden" name="csrfToken" value="${sessionScope.checkInCsrf}">
-                            <div class="form-check mb-3"><input type="checkbox" class="form-check-input" id="roomsReady" name="roomsReady" value="true" required>
-                                <label for="roomsReady" class="form-check-label">I verified all assigned rooms are clean, vacant and ready.</label></div>
                             <input type="hidden" name="bookingID" value="${booking.bookingID}">
 
-                            <div id="cccd-container">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">1. CCCD / Passport (Required) <span class="text-danger">*</span></label>
-                                    <input type="text" name="cccd" class="form-control" placeholder="Enter CCCD or passport number" required pattern="[A-Za-z0-9]{6,20}" maxlength="20" title="Enter 6–20 letters or digits.">
-                                </div>
-                            </div>
+                            <c:forEach var="detail" items="${booking.bookingDetailCollection}">
+                                <c:forEach var="assignment" items="${detail.roomAssignmentCollection}">
+                                    <c:set var="roomNo" value="${assignment.roomID.roomNumber}" />
+                                    
+                                    <div class="card bg-light border-0 shadow-sm mb-4">
+                                        <div class="card-body">
+                                            <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">
+                                                <i class="fa-solid fa-door-closed me-2"></i>Room: <span class="fs-5">${roomNo}</span> <span class="text-muted fw-normal fs-6">(${detail.roomTypeID.typeName})</span>
+                                            </h6>
+                                            
+                                            <div id="cccd-container-${roomNo}">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">CCCD (Require) <span class="text-danger">*</span></label>
+                                                    <input type="text" name="cccd" class="form-control border-primary" placeholder="Nhập 12 số CCCD đại diện phòng ${roomNo}..." required pattern="[0-9]{12}" minlength="12" maxlength="12" title="Vui lòng nhập đúng 12 số CCCD.">
+                                                </div>
+                                            </div>
 
-                            <div class="mb-4 text-center">
-                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" id="btnAddCccd" onclick="addCccdField()">
-                                    <i class="fa-solid fa-plus"></i> Add a roommate
-                                </button>
-                                <div class="form-text text-muted mt-1">(Maximum of 3 additional people)</div>
-                            </div>
+                                            <div class="mb-2 text-center">
+                                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" id="btnAddCccd-${roomNo}" onclick="addCccdField('${roomNo}')">
+                                                    <i class="fa-solid fa-plus"></i> Add a roommate
+                                                </button>
+                                                <div class="form-text text-muted mt-1">(Add maxium 4 peoples / room)</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </c:forEach>
+                            </c:forEach>
 
-                            <div class="d-grid gap-2">
-                                <button type="submit" class="btn btn-success btn-lg fw-bold">
-                                    <i class="fa-solid fa-check"></i> Check In Complete
+                            <div class="d-grid gap-2 mt-4">
+                                <button type="submit" class="btn btn-success btn-lg fw-bold shadow-sm">
+                                    <i class="fa-solid fa-check me-1"></i> Check In Complete
                                 </button>
                             </div>
                         </form>
                         
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
 
     <script>
-        let currentGuest = 1;
-        const maxGuests = 4; // 4 CCCD
+        const roomGuestCounts = {};
+        const maxGuestsPerRoom = 4; // Tối đa 4 CCCD cho 1 phòng
 
-        function addCccdField() {
-            if (currentGuest < maxGuests) {
-                currentGuest++;
-                const container = document.getElementById("cccd-container");
+        function addCccdField(roomNo) {
+            if (!roomGuestCounts[roomNo]) {
+                roomGuestCounts[roomNo] = 1;
+            }
+
+            if (roomGuestCounts[roomNo] < maxGuestsPerRoom) {
+                roomGuestCounts[roomNo]++;
+                const container = document.getElementById("cccd-container-" + roomNo);
                 
                 const div = document.createElement("div");
-                div.className = "mb-3 input-group cccd-row";
+                div.className = "mb-3 input-group cccd-row-" + roomNo;
                 div.innerHTML = `
-                    <span class="input-group-text fw-bold">` + currentGuest + `. CCCD</span>
-                    <input type="text" name="cccd" class="form-control" placeholder="Nhập CCCD người đi cùng..." required pattern="[A-Za-z0-9]{6,20}" maxlength="20">
-                    <button class="btn btn-danger" type="button" onclick="removeCccdField(this)">
+                    <span class="input-group-text fw-bold cccd-label-` + roomNo + `"></span>
+                    <input type="text" name="cccd" class="form-control" placeholder="Nhập 12 số CCCD người đi cùng..." required pattern="[0-9]{12}" minlength="12" maxlength="12" title="Vui lòng nhập đúng 12 số CCCD.">
+                    <button class="btn btn-danger" type="button" onclick="removeCccdField(this, '` + roomNo + `')">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 `;
                 container.appendChild(div);
+                
+                updateCccdNumbering(roomNo);
 
-                if (currentGuest >= maxGuests) {
-                    document.getElementById("btnAddCccd").style.display = "none";
+                if (roomGuestCounts[roomNo] >= maxGuestsPerRoom) {
+                    document.getElementById("btnAddCccd-" + roomNo).style.display = "none";
                 }
             }
         }
 
-        function removeCccdField(button) {
-            button.closest(".cccd-row").remove();
-            currentGuest--;
-            document.getElementById("btnAddCccd").style.display = "inline-block";
+        function removeCccdField(button, roomNo) {
+            button.closest(".cccd-row-" + roomNo).remove();
+            roomGuestCounts[roomNo]--;
+            
+            document.getElementById("btnAddCccd-" + roomNo).style.display = "inline-block";
+            
+            updateCccdNumbering(roomNo);
+        }
+
+        function updateCccdNumbering(roomNo) {
+            const labels = document.querySelectorAll('.cccd-label-' + roomNo);
+            labels.forEach((label, index) => {
+                label.innerText = (index + 2) + '. CCCD';
+            });
         }
     </script>
 </layout:layout>

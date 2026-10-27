@@ -158,6 +158,7 @@ CREATE TABLE BOOKING (
     CheckInDate DATE NOT NULL,
     CheckOutDate DATE NOT NULL,
     BookingStatus VARCHAR(30) NOT NULL,
+	GuestCCCDs VARCHAR(500) null,
     CustomerID CHAR(6) NOT NULL,
     TotalAmount DECIMAL(12,2) NOT NULL
         CONSTRAINT DF_BOOKING_TotalAmount DEFAULT 0,
@@ -2819,6 +2820,10 @@ BEGIN
             THROW 51065, ''Pay the remaining balance before check-out.'', 1;
         IF @NewStatus = ''CHECKED_IN''
         BEGIN
+            IF NOT EXISTS (SELECT 1 FROM BOOKING WHERE BookingID = @BookingID
+                AND CheckInDate = CAST(dbo.FN_HBMS_VIETNAM_NOW() AS DATE)
+                AND CAST(dbo.FN_HBMS_VIETNAM_NOW() AS TIME) >= CAST(''14:00:00'' AS TIME))
+                THROW 51068, ''Check-in opens on the arrival date at 14:00 Vietnam time.'', 1;
             IF EXISTS (SELECT 1 FROM BOOKING WHERE BookingID = @BookingID
                 AND NULLIF(LTRIM(RTRIM(GuestCCCDs)), '''') IS NULL)
                 THROW 51069, ''Verify guest identity documents before check-in.'', 1;
@@ -2915,4 +2920,13 @@ BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
     THROW;
 END CATCH;
+GO
+
+USE QLKS;
+GO
+
+ALTER TABLE dbo.COMPLAINT WITH CHECK
+ADD CONSTRAINT FK_COMPLAINT_EMPLOYEE
+    FOREIGN KEY (EmployeeID)
+    REFERENCES dbo.EMPLOYEE(EmployeeID);
 GO
