@@ -1,6 +1,8 @@
 package controller;
 
-import dao.CustomerDAO;
+import dao.PasswordResetDAO;
+import dao.PasswordResetDAO.Account;
+import entity.Users;
 
 import java.io.IOException;
 
@@ -11,12 +13,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-import entity.Customer;
-
 import service.EmailService;
 
 import util.flash.Flash;
 import util.security.OtpGenerator;
+import util.security.PasswordResetSession;
 
 @WebServlet(
         name = "ForgotPasswordServlet",
@@ -58,6 +59,14 @@ public class ForgotPasswordServlet extends HttpServlet {
             HttpServletResponse response
     ) throws ServletException, IOException {
 
+        String selected = request.getParameter("accountType");
+        if (selected == null) {
+            HttpSession session = request.getSession(false);
+            Object user = session == null ? null : session.getAttribute("user");
+            selected = user instanceof Users ? ((Users) user).getRole() : "Customer";
+        }
+        request.setAttribute("selectedAccountType", "Staff".equals(selected) ? "Staff" : "Customer");
+        response.setHeader("Cache-Control", "no-store");
         request
                 .getRequestDispatcher(
                         "/WEB-INF/views/forgot-password.jsp"
@@ -104,32 +113,28 @@ public class ForgotPasswordServlet extends HttpServlet {
 
         /*
          * =========================
-         * FIND CUSTOMER
+         * FIND AN ELIGIBLE ACCOUNT
          * =========================
          */
-        CustomerDAO customerDAO
-                = new CustomerDAO();
-
-        Customer customer
-                = customerDAO
-                        .getCustomerByEmailOrPhone(
-                                identifier
-                        );
+        String accountType = request.getParameter("accountType");
+        // Preserve the previous customer form contract when accountType is absent.
+        if (accountType == null) {
+            accountType = "Customer";
+        }
+        PasswordResetDAO resetDAO = createPasswordResetDAO();
+        Account account = resetDAO.findAccount(identifier, accountType);
 
 
         /*
          * Do not reveal whether
          * an account exists.
          */
-        if (customer == null
-                || customer.getUserID() == null
-                || customer.getEmail() == null
-                || customer.getEmail().trim().isEmpty()) {
+        if (account == null) {
+            PasswordResetSession.clear(request.getSession(false));
 
             Flash.info(
                     request,
-                    "If an account matches the information provided, "
-                    + "a verification code will be sent."
+                    "Please check your account type and email or phone number, then try again."
             );
 
             response.sendRedirect(
@@ -140,10 +145,7 @@ public class ForgotPasswordServlet extends HttpServlet {
             return;
         }
 
-        String email
-                = customer
-                        .getEmail()
-                        .trim();
+        String email = account.getEmail();
 
 
         /*
@@ -161,6 +163,13 @@ public class ForgotPasswordServlet extends HttpServlet {
          * sending several OTP emails at once.
          */
         synchronized (session) {
+
+            if (!resetDAO.isEligible(account)) {
+                PasswordResetSession.clear(session);
+                Flash.info(request, "Please check your account type and email or phone number, then try again.");
+                response.sendRedirect(request.getContextPath() + "/forgot-password");
+                return;
+            }
 
             long now
                     = System.currentTimeMillis();
@@ -290,7 +299,7 @@ public class ForgotPasswordServlet extends HttpServlet {
                     = OtpGenerator.generate();
 
             EmailService emailService
-                    = new EmailService();
+                    = createEmailService();
 
 
             /*
@@ -336,17 +345,7 @@ public class ForgotPasswordServlet extends HttpServlet {
  /*
              * Account being reset
              */
-            session.setAttribute(
-                    "resetUserId",
-                    customer
-                            .getUserID()
-                            .getUserID()
-            );
-
-            session.setAttribute(
-                    "resetEmail",
-                    email
-            );
+            PasswordResetSession.bind(session, account);
 
 
             /*
@@ -363,7 +362,7 @@ public class ForgotPasswordServlet extends HttpServlet {
              */
             session.setAttribute(
                     "resetOtpExpiry",
-                    now + OTP_EXPIRY
+                    System.currentTimeMillis() + OTP_EXPIRY
             );
 
 
@@ -436,6 +435,14 @@ public class ForgotPasswordServlet extends HttpServlet {
                 request.getContextPath()
                 + "/verify-otp"
         );
+    }
+
+    protected PasswordResetDAO createPasswordResetDAO() {
+        return new PasswordResetDAO();
+    }
+
+    protected EmailService createEmailService() {
+        return new EmailService();
     }
 
     @Override
