@@ -14,6 +14,11 @@
             <h1>Forgot Password?</h1>
             <p class="reset-description">Enter your email address or phone number to find your account.</p>
             <form action="${pageContext.request.contextPath}/forgot-password" method="post" class="password-reset-form">
+                <label for="accountType">Account Type</label>
+                <select id="accountType" name="accountType" required>
+                    <option value="Customer" ${selectedAccountType eq 'Staff' ? '' : 'selected'}>Customer</option>
+                    <option value="Staff" ${selectedAccountType eq 'Staff' ? 'selected' : ''}>Employee</option>
+                </select>
                 <label for="identifier">Email or Phone Number</label>
                 <input type="text" id="identifier" name="identifier" placeholder="Enter email or phone number" autocomplete="username" required>
                 <button type="submit" class="reset-primary-btn">Send Verification Code</button>

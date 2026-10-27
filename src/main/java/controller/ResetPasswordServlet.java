@@ -1,6 +1,7 @@
 package controller;
 
-import dao.UserDAO;
+import dao.PasswordResetDAO;
+import dao.PasswordResetDAO.Account;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -8,212 +9,98 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import util.EmployeeValidator;
 import util.flash.Flash;
+import util.security.PasswordResetSession;
 
-@WebServlet(
-        name = "ResetPasswordServlet",
-        urlPatterns = {"/reset-password"}
-)
+@WebServlet(name = "ResetPasswordServlet", urlPatterns = {"/reset-password"})
 public class ResetPasswordServlet extends HttpServlet {
-
-
     @Override
-    protected void doGet(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws ServletException, IOException {
-
-        HttpSession session =
-                request.getSession(false);
-
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        HttpSession session = request.getSession(false);
         if (!isResetAllowed(session)) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/forgot-password"
-            );
-
+            rejectReset(request, response, session);
             return;
         }
-
-
-        request
-                .getRequestDispatcher(
-                        "/WEB-INF/views/reset-password.jsp"
-                )
-                .forward(request, response);
+        response.setHeader("Cache-Control", "no-store");
+        request.getRequestDispatcher("/WEB-INF/views/reset-password.jsp").forward(request, response);
     }
 
-
     @Override
-    protected void doPost(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) throws ServletException, IOException {
-
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
-
-        HttpSession session =
-                request.getSession(false);
-
-
-        if (!isResetAllowed(session)) {
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/forgot-password"
-            );
-
+        response.setHeader("Cache-Control", "no-store");
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            rejectReset(request, response, null);
             return;
         }
-
-
-        String password =
-                request.getParameter("password");
-
-        String confirmPassword =
-                request.getParameter(
-                        "confirmPassword"
-                );
-
-
-        if (password == null
-                || password.length() < 6) {
-
-            Flash.error(
-                    request,
-                    "Password must contain at least 6 characters."
-            );
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/reset-password"
-            );
-
-            return;
+        // Consume a verified grant once, including concurrent submissions in the same session.
+        synchronized (session) {
+            if (!isResetAllowed(session)) {
+                rejectReset(request, response, session);
+                return;
+            }
+            Account account = PasswordResetSession.account(session);
+            String password = request.getParameter("password");
+            String confirmPassword = request.getParameter("confirmPassword");
+            String error = "Staff".equals(account.getRole())
+                    ? EmployeeValidator.validatePassword(password)
+                    : password == null || password.length() < 6
+                            ? "Password must contain at least 6 characters." : null;
+            if (error == null && !password.equals(confirmPassword)) {
+                error = "Passwords do not match.";
+            }
+            if (error != null) {
+                Flash.error(request, error);
+                response.sendRedirect(request.getContextPath() + "/reset-password");
+                return;
+            }
+            boolean updated;
+            try {
+                updated = createPasswordResetDAO().resetPassword(account, password);
+            } catch (RuntimeException exception) {
+                getServletContext().log("Unable to reset account password.", exception);
+                Flash.error(request, "Unable to reset the password. Please try again later.");
+                response.sendRedirect(request.getContextPath() + "/reset-password");
+                return;
+            }
+            if (!updated) {
+                rejectReset(request, response, session);
+                return;
+            }
+            PasswordResetSession.clear(session);
+            // Recovery may start from Change password while the account is signed in.
+            session.invalidate();
         }
-
-
-        if (!password.equals(confirmPassword)) {
-
-            Flash.error(
-                    request,
-                    "Passwords do not match."
-            );
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/reset-password"
-            );
-
-            return;
-        }
-
-
-        Integer userId =
-                (Integer) session.getAttribute(
-                        "resetUserId"
-                );
-
-
-        UserDAO userDAO =
-                new UserDAO();
-
-
-        boolean updated =
-                userDAO.updatePassword(
-                        userId,
-                        password
-                );
-
-
-        if (!updated) {
-
-            Flash.error(
-                    request,
-                    "Unable to reset the password."
-            );
-
-            response.sendRedirect(
-                    request.getContextPath()
-                    + "/reset-password"
-            );
-
-            return;
-        }
-
-
-        clearResetSession(session);
-
-
-        Flash.success(
-                request,
-                "Password reset successfully. Please log in."
-        );
-
-
-        response.sendRedirect(
-                request.getContextPath()
-                + "/login"
-        );
+        Flash.success(request, "Password reset successfully. Please log in.");
+        response.sendRedirect(request.getContextPath() + "/login");
     }
 
-
-    private boolean isResetAllowed(
-            HttpSession session
-    ) {
-
-        if (session == null) {
+    private boolean isResetAllowed(HttpSession session) {
+        if (session == null || !Boolean.TRUE.equals(session.getAttribute("resetOtpVerified"))) {
             return false;
         }
-
-
-        Boolean verified =
-                (Boolean) session.getAttribute(
-                        "resetOtpVerified"
-                );
-
-        Integer userId =
-                (Integer) session.getAttribute(
-                        "resetUserId"
-                );
-
-        Long expiry =
-                (Long) session.getAttribute(
-                        "resetVerifiedExpiry"
-                );
-
-
-        return Boolean.TRUE.equals(verified)
-                && userId != null
-                && expiry != null
-                && System.currentTimeMillis() <= expiry;
+        Object expiry = session.getAttribute("resetVerifiedExpiry");
+        return expiry instanceof Long && System.currentTimeMillis() <= (Long) expiry
+                && PasswordResetSession.isEligible(session, createPasswordResetDAO());
     }
 
-
-    private void clearResetSession(
-            HttpSession session
-    ) {
-
-        session.removeAttribute("resetOtp");
-        session.removeAttribute("resetOtpExpiry");
-        session.removeAttribute("resetOtpAttempts");
-        session.removeAttribute("resetOtpLastSent");
-
-        session.removeAttribute("resetOtpVerified");
-        session.removeAttribute("resetVerifiedExpiry");
-
-        session.removeAttribute("resetUserId");
-        session.removeAttribute("resetEmail");
+    private void rejectReset(HttpServletRequest request, HttpServletResponse response,
+            HttpSession session) throws IOException {
+        PasswordResetSession.clear(session);
+        Flash.error(request, "This password reset request is no longer valid. Please start again.");
+        response.sendRedirect(request.getContextPath() + "/forgot-password");
     }
-    
-    /**
-     * Returns a short description of the servlet.
-     *
-     * @return a String containing servlet description
-     */
+
+    protected PasswordResetDAO createPasswordResetDAO() {
+        return new PasswordResetDAO();
+    }
+
     @Override
     public String getServletInfo() {
-        return "Short description";
-    }// </editor-fold>
+        return "Reset Password Servlet";
+    }
 }
