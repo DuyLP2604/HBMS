@@ -32,38 +32,78 @@
                         </c:choose>
                     </div></div>
                     <c:if test="${not empty payment}">
-                    <div class="card shadow-sm"><div class="card-body p-4"><h2 class="h4">Collect payment at counter</h2>
-                            <p><c:out value="${payment.paymentType}"/>: <strong><fmt:formatNumber value="${payment.amount}"/> VND</strong>
-                                · Wallet balance: <fmt:formatNumber value="${payment.walletBalance}"/> VND</p>
-                            <p class="text-muted">Pay before <fmt:formatDate value="${booking.paymentDeadline}" pattern="dd/MM/yyyy HH:mm:ss"/>. Unpaid bookings expire after 15 minutes.</p>
-                            <form method="post" action="${pageContext.request.contextPath}/staff/counter-booking">
-                                <input type="hidden" name="csrfToken" value="${fn:escapeXml(sessionScope.counterCsrf)}">
+                    <div class="card shadow-sm">
+                        <div class="card-body p-4">
+                            <h2 class="h4">Collect payment at counter</h2>
+
+                            <p>
+                                <c:out value="${payment.paymentType}"/>:
+                                <strong>
+                                    <fmt:formatNumber value="${payment.amount}"/> VND
+                                </strong>
+                            </p>
+
+                            <p class="text-muted">
+                                Pay before
+                                <fmt:formatDate value="${booking.paymentDeadline}"
+                                                pattern="dd/MM/yyyy HH:mm:ss"/>.
+                                Unpaid bookings expire after 15 minutes.
+                            </p>
+
+                            <form method="post"
+                                  action="${pageContext.request.contextPath}/staff/counter-booking">
+
+                                <input type="hidden" name="csrfToken"
+                                       value="${fn:escapeXml(sessionScope.counterCsrf)}">
                                 <input type="hidden" name="action" value="pay">
-                                <input type="hidden" name="bookingID" value="${fn:escapeXml(booking.bookingID)}">
-                                <input type="hidden" name="paymentToken" value="${fn:escapeXml(paymentToken)}">
-                                <label class="form-label" for="methodID">Payment method</label>
-                                <select id="methodID" name="methodID" class="form-select mb-3" required>
-                                    <option value="PT01">Cash</option><option value="PT10">VietQR — manually verified bank transfer</option>
-                                    <option value="PT09">Internal wallet</option>
+                                <input type="hidden" name="bookingID"
+                                       value="${fn:escapeXml(booking.bookingID)}">
+                                <input type="hidden" name="paymentToken"
+                                       value="${fn:escapeXml(paymentToken)}">
+
+                                <label class="form-label" for="methodID">
+                                    Payment method
+                                </label>
+                                <select id="methodID" name="methodID"
+                                        class="form-select mb-3" required>
+                                    <option value="PT01">Cash</option>
+                                    <option value="PT10">
+                                        VietQR — manually verified bank transfer
+                                    </option>
                                 </select>
-                                <label class="form-label" for="bankReference">Bank transaction reference (required for VietQR)</label>
-                                <input id="bankReference" name="bankReference" maxlength="100" class="form-control mb-3" autocomplete="off">
-                                <p class="small text-muted">For VietQR, let the customer scan the hotel's bank QR and verify the incoming transfer in the bank account before recording payment.</p>
-                                <div class="form-check mb-3"><input class="form-check-input" id="useWallet" type="checkbox" name="useWallet" value="true">
-                                    <label class="form-check-label" for="useWallet">Use wallet first and pay the shortfall with the selected method</label></div>
-                                <fieldset class="border rounded p-3 mb-3"><legend class="float-none w-auto fs-6 px-2">Customer authorization (required only for wallet use)</legend>
-                                    <p class="small text-muted">The customer enters their own credentials. The receptionist stays signed in.</p>
-                                    <label class="form-label" for="walletUsername">Customer username</label>
-                                    <input class="form-control mb-2" id="walletUsername" name="walletUsername" maxlength="50" autocomplete="off">
-                                    <label class="form-label" for="walletPassword">Customer password</label>
-                                    <input class="form-control" type="password" id="walletPassword" name="walletPassword" autocomplete="off">
-                                </fieldset>
-                                <div class="form-check mb-3"><input type="checkbox" id="collectionConfirmed" name="collectionConfirmed" value="true" required class="form-check-input">
-                                    <label for="collectionConfirmed" class="form-check-label">I confirm the cash / bank transfer was received, or the customer authorized wallet payment.</label></div>
-                                <button class="btn btn-primary" type="submit">Record Payment</button>
+
+                                <label class="form-label" for="bankReference">
+                                    Bank transaction reference (required for VietQR)
+                                </label>
+                                <input id="bankReference" name="bankReference"
+                                       maxlength="100" class="form-control mb-3"
+                                       autocomplete="off">
+
+                                <p class="small text-muted">
+                                    For VietQR, let the customer scan the hotel's bank QR
+                                    and verify the incoming transfer before recording payment.
+                                </p>
+
+                                <div class="form-check mb-3">
+                                    <input type="checkbox"
+                                           id="collectionConfirmed"
+                                           name="collectionConfirmed"
+                                           value="true"
+                                           required
+                                           class="form-check-input">
+                                    <label for="collectionConfirmed"
+                                           class="form-check-label">
+                                        I confirm the cash / bank transfer was received.
+                                    </label>
+                                </div>
+
+                                <button class="btn btn-primary" type="submit">
+                                    Record Payment
+                                </button>
                             </form>
-                        </div></div>
-                    </c:if>
+                        </div>
+                    </div>
+                </c:if>
                 <a class="btn btn-outline-secondary mt-3" href="${pageContext.request.contextPath}/staff/counter-booking">Book for another customer</a>
             </c:when>
             <c:when test="${not empty selectedCustomer}">
