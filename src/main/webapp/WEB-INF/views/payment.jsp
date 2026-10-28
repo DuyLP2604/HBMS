@@ -80,13 +80,13 @@
 
                         <c:choose>
                             <c:when test="${paymentType eq 'DEPOSIT'}">
-                                <div class="alert alert-info">Pay 30% to confirm your booking. You can pay the remaining 70% later.</div>
+                                <div class="alert alert-info">Pay 30% to confirm your booking. Any outstanding room charges must be settled before check-in.</div>
                             </c:when>
                             <c:when test="${paymentType eq 'FULL'}">
                                 <div class="alert alert-info">Pay the full booking amount to confirm your booking.</div>
                             </c:when>
                             <c:when test="${paymentType eq 'BALANCE'}">
-                                <div class="alert alert-info">This payment covers your current outstanding balance, including any additional service charges. It does not restart the 24-hour refund period.</div>
+                                <div class="alert alert-info">${bookingSummary.bookingStatus eq 'CHECKED_IN' ? 'This payment settles your outstanding charges. Extra services must be paid before checkout.' : 'This payment settles the outstanding room charges before check-in. Extra services are due at checkout.'} It does not restart the 24-hour refund period.</div>
                             </c:when>
                         </c:choose>
 

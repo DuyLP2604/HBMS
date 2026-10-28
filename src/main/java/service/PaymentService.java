@@ -80,7 +80,10 @@ public class PaymentService
         {
             throw new IllegalStateException("The booking payment option is invalid.");
         }
-        Object value = summary.get(initial ? "initialRequiredAmount" : "remainingAmount");
+        // Before arrival, clear room charges only. Extra services remain due at checkout.
+        String amountKey = initial ? "initialRequiredAmount"
+                : ("CHECKED_IN".equals(status) ? "remainingAmount" : "roomRemainingAmount");
+        Object value = summary.get(amountKey);
         if (!(value instanceof BigDecimal) || ((BigDecimal) value).signum() <= 0)
         {
             throw new IllegalStateException("This booking has no outstanding payment.");

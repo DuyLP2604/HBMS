@@ -324,7 +324,12 @@ public class BookingDAO extends DAOFramework<Booking>
     public Map<String, Object> getPaymentSummary(String bookingID)
     {
         String id = required(bookingID, "Booking ID", 6);
-        return execute("SELECT * FROM dbo.V_BOOKING_PAYMENT_SUMMARY WHERE BookingID = ?", statement -> statement.setString(1, id), false);
+        return execute("SELECT ps.*, c.UserID AS CustomerUserID, room.RoomTotal, room.ServiceTotal, room.RoomPaidAmount, "
+                + "room.RoomRemainingAmount, room.ServiceRemainingAmount "
+                + "FROM dbo.V_BOOKING_PAYMENT_SUMMARY ps "
+                + "JOIN dbo.CUSTOMER c ON c.CustomerID = ps.CustomerID "
+                + "JOIN dbo.V_BOOKING_ROOM_BALANCE room ON room.BookingID = ps.BookingID "
+                + "WHERE ps.BookingID = ?", statement -> statement.setString(1, id), false);
     }
 
     public Map<String, Object> getBookingAccess(int userID)
