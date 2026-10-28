@@ -69,27 +69,28 @@
         </div>
     </div>
 
+    <!-- CÁC MODAL CHI TIẾT -->
     <c:forEach var="booking" items="${bookings}" varStatus="bookingStatus">
         <div class="modal fade text-start" id="detailModal_${bookingStatus.index}" tabindex="-1" aria-labelledby="modalLabel_${bookingStatus.index}" aria-hidden="true">
           <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
               <div class="modal-header bg-info text-white">
                 <h5 class="modal-title" id="modalLabel_${bookingStatus.index}">
-                    <i class="fa-solid fa-address-card me-2"></i>Chi tiết Lưu trú
+                    <i class="fa-solid fa-address-card me-2"></i>Stay detail
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
               <div class="modal-body p-4">
                 <div class="row mb-2">
-                    <div class="col-4 text-muted">Mã Booking:</div>
+                    <div class="col-4 text-muted">BookingID:</div>
                     <div class="col-8 fw-bold text-primary"><c:out value="${booking.bookingID}" /></div>
                 </div>
                 <div class="row mb-2">
-                    <div class="col-4 text-muted">Khách hàng:</div>
+                    <div class="col-4 text-muted">Customer:</div>
                     <div class="col-8 fw-bold"><c:out value="${booking.customerID.fullName}" /></div>
                 </div>
                 <div class="row mb-2">
-                    <div class="col-4 text-muted">Điện thoại:</div>
+                    <div class="col-4 text-muted">Phone:</div>
                     <div class="col-8"><c:out value="${booking.customerID.phone}" /></div>
                 </div>
                 <div class="row mb-2">
@@ -98,43 +99,59 @@
                 </div>
                 
                 <hr class="my-3">
-                <h6 class="fw-bold text-success mb-3">Phòng đã gán</h6>
-                <c:set var="hasAssignedRoom" value="${false}" />
+                <h6 class="fw-bold text-success mb-3">Guest information in the booking</h6>
+                
+                <c:set var="assignedRooms" value="" />
                 <c:forEach var="detail" items="${booking.bookingDetailCollection}">
                     <c:forEach var="assignment" items="${detail.roomAssignmentCollection}">
-                        <c:set var="hasAssignedRoom" value="${true}" />
-                        <div class="mb-2 ps-3 border-start border-3 border-success">
-                            Phòng <strong><c:out value="${assignment.roomID.roomNumber}" /></strong>
-                            (<c:out value="${detail.roomTypeID.typeName}" />)
-                        </div>
+                        <c:set var="assignedRooms" value="${assignedRooms}${assignment.roomID.roomNumber}," />
                     </c:forEach>
                 </c:forEach>
-                <c:if test="${not hasAssignedRoom}">
-                    <p class="text-muted">Chưa có dữ liệu phòng được gán.</p>
+                
+                <c:if test="${fn:length(assignedRooms) > 0}">
+                    <c:set var="assignedRooms" value="${fn:substring(assignedRooms, 0, fn:length(assignedRooms)-1)}" />
                 </c:if>
-                <hr class="my-3">
-                <h6 class="fw-bold text-success mb-3">Giấy tờ khách trong booking</h6>
+                
+                <c:set var="roomArray" value="${fn:split(assignedRooms, ',')}" />
+                <c:set var="cccdArray" value="${fn:split(booking.guestCCCDs, ',')}" />
+                
+                <c:set var="roomsCount" value="${fn:length(roomArray)}" />
+                <c:set var="cccdsCount" value="${fn:length(cccdArray)}" />
+
                 <c:choose>
-                    <c:when test="${not empty fn:trim(booking.guestCCCDs)}">
+                    <c:when test="${cccdsCount gt 0 and not empty fn:trim(booking.guestCCCDs)}">
                         <ul class="list-group">
-                            <c:forEach var="document" items="${fn:split(booking.guestCCCDs, ',')}">
+                            <c:forEach var="document" items="${cccdArray}" varStatus="status">
                                 <c:if test="${not empty fn:trim(document)}">
-                                    <li class="list-group-item font-monospace"><c:out value="${fn:trim(document)}" /></li>
+                                    
+                                    <c:set var="finalIdx" value="0" />
+                                    <c:if test="${roomsCount > 0}">
+                                        <c:set var="dividend" value="${status.index * roomsCount}" />
+                                        <fmt:parseNumber var="finalIdx" integerOnly="true" type="number" value="${(dividend - (dividend % cccdsCount)) / cccdsCount}" />
+                                    </c:if>
+                                    
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div class="fw-bold text-dark">
+                                            Phòng <c:out value="${roomsCount > 0 ? roomArray[finalIdx] : 'N/A'}" />
+                                        </div>
+                                        <div class="font-monospace text-secondary">
+                                            <c:out value="${fn:trim(document)}" />
+                                        </div>
+                                    </li>
                                 </c:if>
                             </c:forEach>
                         </ul>
                     </c:when>
                     <c:otherwise>
-                        <p class="text-muted">Chưa có dữ liệu giấy tờ.</p>
+                        <p class="text-muted">No data.</p>
                     </c:otherwise>
                 </c:choose>
               </div>
               <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Exit</button>
               </div>
             </div>
           </div>
         </div>
-
     </c:forEach>
 </layout:layout>

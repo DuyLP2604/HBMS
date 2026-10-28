@@ -316,9 +316,6 @@ CREATE TABLE INVOICE (
     InvoiceDate DATE NOT NULL
         CONSTRAINT DF_INVOICE_Date DEFAULT CAST(GETDATE() AS DATE),
     TotalAmount DECIMAL(12,2) NOT NULL,
-    Status NVARCHAR(30) NOT NULL
-        CONSTRAINT DF_INVOICE_Status DEFAULT N'Có hiệu lực',
-    ReplacedInvoiceID CHAR(6) NULL,
     EmployeeID CHAR(6) NULL,
     BookingID CHAR(6) NOT NULL,
 
@@ -327,18 +324,9 @@ CREATE TABLE INVOICE (
         FOREIGN KEY (EmployeeID) REFERENCES EMPLOYEE(EmployeeID),
     CONSTRAINT FK_INVOICE_BOOKING
         FOREIGN KEY (BookingID) REFERENCES BOOKING(BookingID),
-    CONSTRAINT FK_INVOICE_REPLACED
-        FOREIGN KEY (ReplacedInvoiceID) REFERENCES INVOICE(InvoiceID),
-    CONSTRAINT CK_INVOICE_Status
-        CHECK (Status IN (N'Có hiệu lực', N'Mất hiệu lực')),
     CONSTRAINT CK_INVOICE_TotalAmount
         CHECK (TotalAmount >= 0)
 );
-GO
-
-CREATE UNIQUE INDEX UQ_INVOICE_ActiveBooking
-ON INVOICE (BookingID)
-WHERE Status = N'Có hiệu lực';
 GO
 
 CREATE TABLE COMPLAINT (
@@ -1228,43 +1216,42 @@ VALUES
 GO
 
 INSERT INTO INVOICE
-(InvoiceID, InvoiceDate, TotalAmount, Status, ReplacedInvoiceID, EmployeeID, BookingID)
+(InvoiceID, InvoiceDate, TotalAmount, EmployeeID, BookingID)
 VALUES
-('HD0005', '2026-09-01',  900000, N'Mất hiệu lực', NULL,     'NV02', 'BK0001'),
-('HD0007', '2026-09-01', 1075000, N'Có hiệu lực',  'HD0005', 'NV02', 'BK0001'),
-('HD0002', '2026-09-03', 2100000, N'Có hiệu lực',  NULL, NULL, 'BK0002'),
-('HD0003', '2026-09-10', 2500000, N'Có hiệu lực',  NULL, NULL, 'BK0003'),
-('HD0004', '2026-09-11', 2950000, N'Có hiệu lực',  NULL, NULL, 'BK0004'),
-('HD0006', '2026-09-13', 3350000, N'Có hiệu lực',  NULL, NULL, 'BK0006'),
-('HD0008', '2026-09-15', 2900000, N'Có hiệu lực',  NULL, NULL, 'BK0008'),
-('HD0009', '2026-09-16', 1050000, N'Có hiệu lực',  NULL, NULL, 'BK0009'),
-('HD0011', '2026-07-27', 1075000, N'Có hiệu lực',  NULL, NULL, 'BK0011'),
-('HD0012', '2026-07-28', 2400000, N'Có hiệu lực',  NULL, NULL, 'BK0012'),
-('HD0013', '2026-08-02', 2850000, N'Có hiệu lực',  NULL, NULL, 'BK0013'),
-('HD0014', '2026-08-05', 3200000, N'Có hiệu lực',  NULL, NULL, 'BK0014'),
-('HD0015', '2026-08-10', 1650000, N'Có hiệu lực',  NULL, NULL, 'BK0015'),
-('HD0016', '2026-08-11', 2400000, N'Có hiệu lực',  NULL, NULL, 'BK0016'),
-('HD0017', '2026-08-16', 2800000, N'Có hiệu lực',  NULL, NULL, 'BK0017'),
-('HD0018', '2026-08-19', 4800000, N'Có hiệu lực',  NULL, NULL, 'BK0018'),
-('HD0019', '2026-08-23', 1050000, N'Có hiệu lực',  NULL, NULL, 'BK0019'),
-('HD0020', '2026-08-24', 2400000, N'Có hiệu lực',  NULL, NULL, 'BK0020'),
-('HD0021', '2026-08-28', 2750000, N'Có hiệu lực',  NULL, NULL, 'BK0021'),
-('HD0022', '2026-08-30', 3200000, N'Có hiệu lực',  NULL, NULL, 'BK0022'),
-('HD0023', '2026-09-02', 1700000, N'Có hiệu lực',  NULL, NULL, 'BK0023'),
-('HD0024', '2026-09-04', 1600000, N'Có hiệu lực',  NULL, NULL, 'BK0024'),
-('HD0025', '2026-09-06', 4050000, N'Có hiệu lực',  NULL, NULL, 'BK0025'),
-('HD0026', '2026-09-08', 3200000, N'Có hiệu lực',  NULL, NULL, 'BK0026'),
-('HD0027', '2026-09-10', 1150000, N'Có hiệu lực',  NULL, NULL, 'BK0027'),
-('HD0028', '2026-09-12', 1600000, N'Có hiệu lực',  NULL, NULL, 'BK0028'),
-('HD0029', '2026-09-13', 2550000, N'Có hiệu lực',  NULL, NULL, 'BK0029'),
-('HD0030', '2026-09-14', 3200000, N'Có hiệu lực',  NULL, NULL, 'BK0030'),
-('HD0031', '2026-09-23', 1350000, N'Có hiệu lực',  NULL, NULL, 'BK0031'),
-('HD0032', '2026-09-20', 1800000, N'Có hiệu lực',  NULL, NULL, 'BK0032'),
-('HD0033', '2026-09-21', 2400000, N'Có hiệu lực',  NULL, NULL, 'BK0033'),
-('HD0034', '2026-09-22', 3550000, N'Có hiệu lực',  NULL, NULL, 'BK0034'),
-('HD0035', '2026-09-23', 1750000, N'Có hiệu lực',  NULL, NULL, 'BK0035'),
-('HD0039', '2026-09-23', 1050000, N'Có hiệu lực',  NULL, NULL, 'BK0039'),
-('HD0040', '2026-09-20', 2850000, N'Có hiệu lực',  NULL, NULL, 'BK0040');
+('HD0007', '2026-09-01', 1075000, 'NV03', 'BK0001'),
+('HD0002', '2026-09-03', 2100000, 'NV04', 'BK0002'),
+('HD0003', '2026-09-10', 2500000, 'NV05', 'BK0003'),
+('HD0004', '2026-09-11', 2950000, 'NV06', 'BK0004'),
+('HD0006', '2026-09-13', 3350000, 'NV02', 'BK0006'),
+('HD0008', '2026-09-15', 2900000, 'NV03', 'BK0008'),
+('HD0009', '2026-09-16', 1050000, 'NV04', 'BK0009'),
+('HD0011', '2026-07-27', 1075000, 'NV05', 'BK0011'),
+('HD0012', '2026-07-28', 2400000, 'NV06', 'BK0012'),
+('HD0013', '2026-08-02', 2850000, 'NV02', 'BK0013'),
+('HD0014', '2026-08-05', 3200000, 'NV03', 'BK0014'),
+('HD0015', '2026-08-10', 1650000, 'NV04', 'BK0015'),
+('HD0016', '2026-08-11', 2400000, 'NV05', 'BK0016'),
+('HD0017', '2026-08-16', 2800000, 'NV06', 'BK0017'),
+('HD0018', '2026-08-19', 4800000, 'NV02', 'BK0018'),
+('HD0019', '2026-08-23', 1050000, 'NV03', 'BK0019'),
+('HD0020', '2026-08-24', 2400000, 'NV04', 'BK0020'),
+('HD0021', '2026-08-28', 2750000, 'NV05', 'BK0021'),
+('HD0022', '2026-08-30', 3200000, 'NV06', 'BK0022'),
+('HD0023', '2026-09-02', 1700000, 'NV02', 'BK0023'),
+('HD0024', '2026-09-04', 1600000, 'NV03', 'BK0024'),
+('HD0025', '2026-09-06', 4050000, 'NV04', 'BK0025'),
+('HD0026', '2026-09-08', 3200000, 'NV05', 'BK0026'),
+('HD0027', '2026-09-10', 1150000, 'NV06', 'BK0027'),
+('HD0028', '2026-09-12', 1600000, 'NV02', 'BK0028'),
+('HD0029', '2026-09-13', 2550000, 'NV03', 'BK0029'),
+('HD0030', '2026-09-14', 3200000, 'NV04', 'BK0030'),
+('HD0031', '2026-09-23', 1350000, 'NV05', 'BK0031'),
+('HD0032', '2026-09-20', 1800000, 'NV06', 'BK0032'),
+('HD0033', '2026-09-21', 2400000, 'NV02', 'BK0033'),
+('HD0034', '2026-09-22', 3550000, 'NV03', 'BK0034'),
+('HD0035', '2026-09-23', 1750000, 'NV04', 'BK0035'),
+('HD0039', '2026-09-23', 1050000, 'NV05', 'BK0039'),
+('HD0040', '2026-09-20', 2850000, 'NV06', 'BK0040');
 GO
 
 INSERT INTO COMPLAINT (Title, Content, Status, CustomerID)
@@ -1540,7 +1527,6 @@ BEGIN
             CancellationReason = @Reason, CancelledByUserID = @ActorUserID
         WHERE BookingID = @BookingID;
         UPDATE PAYMENT SET Status = 'FAILED' WHERE BookingID = @BookingID AND Status = 'PENDING';
-        UPDATE INVOICE SET Status = N'Mất hiệu lực' WHERE BookingID = @BookingID AND Status = N'Có hiệu lực';
 
         SELECT @Paid = COALESCE(SUM(Amount), 0) FROM PAYMENT
         WHERE BookingID = @BookingID AND Status = 'PAID';
@@ -1995,8 +1981,7 @@ IF EXISTS (
     FROM INVOICE AS i
     INNER JOIN BOOKING AS b
         ON b.BookingID = i.BookingID
-    WHERE i.Status = N'Có hiệu lực'
-      AND i.TotalAmount <> b.TotalAmount
+    WHERE i.TotalAmount <> b.TotalAmount
 )
 BEGIN
     RAISERROR (
@@ -2115,7 +2100,7 @@ BEGIN
         IF @Paid < @Total THROW 51104, 'Complete the remaining payment before checkout.', 1;
         DECLARE @InvoiceID CHAR(6), @InvoiceTotal DECIMAL(12,2), @Created BIT = 0;
         SELECT @InvoiceID = InvoiceID, @InvoiceTotal = TotalAmount
-        FROM dbo.INVOICE WITH (UPDLOCK, HOLDLOCK) WHERE BookingID = @BookingID AND Status = N'Có hiệu lực';
+		FROM dbo.INVOICE WITH (UPDLOCK, HOLDLOCK) WHERE BookingID = @BookingID;
         IF @InvoiceID IS NOT NULL AND @InvoiceTotal <> @Total
             THROW 51106, 'The active invoice total does not match the booking total.', 1;
         IF @InvoiceID IS NULL
@@ -2125,8 +2110,8 @@ BEGIN
             FROM dbo.INVOICE WITH (UPDLOCK, HOLDLOCK) WHERE RTRIM(InvoiceID) LIKE 'HD[0-9][0-9][0-9][0-9]';
             IF @NextNumber > 9999 THROW 51107, 'The invoice ID range is exhausted.', 1;
             SET @InvoiceID = 'HD' + RIGHT('0000' + CONVERT(VARCHAR(4), @NextNumber), 4);
-            INSERT dbo.INVOICE (InvoiceID, InvoiceDate, TotalAmount, Status, EmployeeID, BookingID)
-            VALUES (@InvoiceID, CAST(SYSDATETIME() AS DATE), @Total, N'Có hiệu lực', @EmployeeID, @BookingID);
+            INSERT dbo.INVOICE (InvoiceID, InvoiceDate, TotalAmount, EmployeeID, BookingID)
+			VALUES (@InvoiceID, CAST(SYSDATETIME() AS DATE), @Total, @EmployeeID, @BookingID);
             SET @Created = 1;
         END;
         IF @Status = 'CHECKED_IN'
@@ -2498,7 +2483,7 @@ BEGIN
             CancellationReason = @Reason, CancelledByUserID = @ActorUserID
         WHERE BookingID = @BookingID;
         UPDATE PAYMENT SET Status = ''FAILED'' WHERE BookingID = @BookingID AND Status = ''PENDING'';
-        UPDATE INVOICE SET Status = N''Mất hiệu lực'' WHERE BookingID = @BookingID AND Status = N''Có hiệu lực'';
+        
 
         SELECT @Paid = COALESCE(SUM(Amount), 0) FROM PAYMENT
         WHERE BookingID = @BookingID AND Status = ''PAID'';

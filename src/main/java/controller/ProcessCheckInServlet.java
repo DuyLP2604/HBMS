@@ -1,165 +1,100 @@
 package controller;
 
 import dao.BookingDAO;
-import dao.EmployeeDAO;
 import entity.Booking;
 import entity.Users;
+import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.*;
-import java.io.IOException;
-import java.sql.*;
-import java.util.*;
-import util.BookingTimePolicy;
-import util.PersistenceManager;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import java.util.ArrayList;
+import java.util.List;
 
 @WebServlet(name = "ProcessCheckInServlet", urlPatterns = {"/process-checkin"})
 public class ProcessCheckInServlet extends HttpServlet {
 
-    private Users requireReceptionist(HttpServletRequest req, HttpServletResponse res) throws IOException {
-        HttpSession session = req.getSession(false);
-        Object value = session == null ? null : session.getAttribute("user");
-        if (!(value instanceof Users)) {
-            res.sendRedirect(req.getContextPath() + "/login");
-            return null;
-        }
-        Users user = (Users) value;
-        if (!"Staff".equalsIgnoreCase(user.getRole()) || user.getUserID() == null
-                || !new EmployeeDAO().isReceptionistByUserId(user.getUserID())) {
-            res.sendError(403);
-            return null;
-        }
-        res.setHeader("Cache-Control", "no-store");
-        return user;
-    }
+    private final BookingDAO bookingDAO = new BookingDAO();
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse res)
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        if (requireReceptionist(req, res) == null) {
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
-        String bookingID = req.getParameter("bookingID");
-
-        if (bookingID == null
-                || !bookingID.trim().matches("BK[0-9]{4}")) {
-            res.sendError(HttpServletResponse.SC_BAD_REQUEST,
-                    "Invalid booking ID.");
+        String bookingID = request.getParameter("bookingID");
+        if (bookingID == null || bookingID.isBlank()) {
+            response.sendRedirect(request.getContextPath() + "/staff/stays");
             return;
         }
 
-        Booking booking = new BookingDAO()
-                .getByIdWithDetails(bookingID.trim());
+        try {
+            Booking booking = bookingDAO.getByIdWithDetails(bookingID.trim());
 
-        if (booking == null) {
-            res.sendError(HttpServletResponse.SC_NOT_FOUND,
-                    "Booking not found.");
-            return;
-        }
-
-        HttpSession session = req.getSession(false);
-
-        if (!"ASSIGNED".equals(booking.getBookingStatus())) {
-            session.setAttribute("lifecycleError",
-                    "Please assign all rooms before check-in.");
-            res.sendRedirect(req.getContextPath() + "/staff/stays");
-            return;
-        }
-
-        synchronized (session) {
-            if (session.getAttribute("checkInCsrf") == null) {
-                session.setAttribute(
-                        "checkInCsrf",
-                        UUID.randomUUID().toString()
-                );
+            if (booking != null) {
+                request.setAttribute("booking", booking);
+                // CHÚ Ý: Đảm bảo file trong thư mục /WEB-INF/views/ tên chính xác là "checkin-form.jsp" (viết thường toàn bộ)
+                request.getRequestDispatcher("/WEB-INF/views/checkin-form.jsp").forward(request, response);
+            } else {
+                session.setAttribute("errorMessage", "Không tìm thấy thông tin Booking.");
+                response.sendRedirect(request.getContextPath() + "/staff/stays");
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Đã sửa: In thẳng lỗi ra màn hình Stay Management thay vì ném ra error.jsp
+            session.setAttribute("errorMessage", "Lỗi tải form Check-in: " + e.toString());
+            response.sendRedirect(request.getContextPath() + "/staff/stays");
         }
-
-        req.setAttribute("booking", booking);
-        req.getRequestDispatcher("/WEB-INF/views/checkin-form.jsp")
-                .forward(req, res);
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
-        req.setCharacterEncoding("UTF-8");
-        Users actor = requireReceptionist(req, res);
-        if (actor == null) {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        request.setCharacterEncoding("UTF-8");
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("user") == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
-        HttpSession session = req.getSession(false);
-        if (session.getAttribute("checkInCsrf") == null
-                || !Objects.equals(session.getAttribute("checkInCsrf"), req.getParameter("csrfToken"))) {
-            res.sendError(403);
-            return;
-        }
-        String id = req.getParameter("bookingID");
-        if (id == null || !id.trim().matches("BK[0-9]{4}")) {
-            res.sendError(400);
-            return;
-        }
-        id = id.trim();
-        try {
-            if (!"confirmCheckIn".equals(req.getParameter("action")) || !"true".equals(req.getParameter("roomsReady"))) {
-                throw new IllegalArgumentException("Confirm that the assigned rooms are clean and ready.");
-            }
-            String[] documents = req.getParameterValues("cccd");
-            if (documents == null || documents.length == 0 || documents.length > 100) {
-                throw new IllegalArgumentException("Enter valid guest identity documents.");
-            }
-            List<String> values = new ArrayList<>();
-            for (String value : documents) {
-                if (value == null || !value.trim().matches("[A-Za-z0-9]{6,20}")) {
-                    throw new IllegalArgumentException("Use 6–20 letters or digits for a CCCD/passport number.");
-                }
-                if (values.contains(value.trim())) {
-                    throw new IllegalArgumentException("Guest documents must not be duplicated.");
-                }
-                values.add(value.trim());
-            }
-            String joined = String.join(", ", values);
-            if (joined.length() > 1000) {
-                throw new IllegalArgumentException("Guest documents are too long.");
-            }
-            try (Connection connection = PersistenceManager.openConnection(); PreparedStatement statement = connection.prepareStatement("EXEC dbo.SP_COUNTER_CHECKIN @BookingID=?, @ActorUserID=?, @GuestDocuments=?")) {
-                statement.setString(1, id);
-                statement.setInt(2, actor.getUserID());
-                statement.setString(3, joined);
-                boolean result = statement.execute();
-                while (true) {
-                    if (result) {
-                        try (ResultSet rows = statement.getResultSet()) {
-                            while (rows.next()) {
-                            }
+
+        Users user = (Users) session.getAttribute("user");
+        String action = request.getParameter("action");
+
+        if ("confirmCheckIn".equals(action)) {
+            String bookingID = request.getParameter("bookingID");
+            String[] cccdArray = request.getParameterValues("cccd");
+
+            try {
+                String joinedCCCDs = "";
+                if (cccdArray != null && cccdArray.length > 0) {
+                    List<String> validList = new ArrayList<>();
+                    for (String cccd : cccdArray) {
+                        if (cccd != null && !cccd.isBlank()) {
+                            validList.add(cccd.trim());
                         }
-                    } else if (statement.getUpdateCount() == -1) {
-                        break;
                     }
-                    result = statement.getMoreResults(Statement.CLOSE_CURRENT_RESULT);
+                    joinedCCCDs = String.join(", ", validList);
                 }
+
+                // Luồng chạy chuẩn: Lưu CCCD sau đó đổi trạng thái
+                bookingDAO.updateBookingCCCDs(bookingID, joinedCCCDs);
+                bookingDAO.updateStatus(bookingID, "CHECKED_IN", user.getUserID());
+
+                session.setAttribute("successMessage", "Check-in thành công cho Booking " + bookingID + "!");
+            } catch (Exception e) {
+                e.printStackTrace();
+                session.setAttribute("errorMessage", "Lỗi trong quá trình Check-in: " + e.getMessage());
             }
-            PersistenceManager.getEMF().getCache().evictAll();
-            session.removeAttribute("checkInError");
-            session.setAttribute("successMessage", "Guest checked in successfully.");
-            res.sendRedirect(req.getContextPath() + "/checkin");
-            return;
 
-        } catch (IllegalArgumentException ex) {
-            session.setAttribute("checkInError", ex.getMessage());
-        } catch (Exception ex) {
-            log("Unable to check in " + id, ex);
-            session.setAttribute(
-                    "checkInError",
-                    "Không thể check-in. Vui lòng kiểm tra ngày nhận phòng, "
-                    + "phòng đã gán và giấy tờ khách."
-            );
+            // Redirect về đúng trang danh sách đang ở
+            response.sendRedirect(request.getContextPath() + "/staff/stays");
         }
-
-        res.sendRedirect(
-                req.getContextPath()
-                + "/process-checkin?bookingID=" + id
-        );
     }
 }

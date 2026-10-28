@@ -530,10 +530,8 @@ public class WorkSheetService {
         header.createCell(0).setCellValue("InvoiceID");
         header.createCell(1).setCellValue("InvoiceDate");
         header.createCell(2).setCellValue("TotalAmount");
-        header.createCell(3).setCellValue("Status");
-        header.createCell(4).setCellValue("ReplacedInvoiceID");
-        header.createCell(5).setCellValue("EmployeeID");
-        header.createCell(6).setCellValue("BookingID");
+        header.createCell(3).setCellValue("EmployeeID");
+        header.createCell(4).setCellValue("BookingID");
 
         List<Invoice> list = new DAOFramework<>(Invoice.class).getAll();
         int rowIdx = 1;
@@ -550,15 +548,11 @@ public class WorkSheetService {
             if (i.getTotalAmount() != null) {
                 row.createCell(2).setCellValue(i.getTotalAmount().doubleValue());
             }
-            row.createCell(3).setCellValue(i.getStatus() != null ? i.getStatus() : "");
-            if (i.getReplacedInvoiceID() != null) {
-                row.createCell(4).setCellValue(i.getReplacedInvoiceID().getInvoiceID());
-            }
             if (i.getEmployeeID() != null) {
-                row.createCell(5).setCellValue(i.getEmployeeID().getEmployeeID());
+                row.createCell(3).setCellValue(i.getEmployeeID().getEmployeeID());
             }
             if (i.getBookingID() != null) {
-                row.createCell(6).setCellValue(i.getBookingID().getBookingID());
+                row.createCell(4).setCellValue(i.getBookingID().getBookingID());
             }
         }
     }
@@ -1164,6 +1158,11 @@ public class WorkSheetService {
         if (sheet == null) {
             return;
         }
+        // File Excel cũ có 7 cột (Status, ReplacedInvoiceID); file mới có 5 cột.
+        boolean legacyLayout = sheet.getRow(0) != null
+                && "Status".equalsIgnoreCase(getCellValue(sheet.getRow(0).getCell(3)));
+        int employeeCol = legacyLayout ? 5 : 3;
+        int bookingCol = legacyLayout ? 6 : 4;
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (row == null || isRowEmpty(row)) {
@@ -1182,21 +1181,13 @@ public class WorkSheetService {
                 inv.setTotalAmount(new BigDecimal(t));
             }
 
-            inv.setStatus(getCellValue(row.getCell(3)));
-
-            String rId = getCellValue(row.getCell(4));
-            if (!rId.isEmpty()) {
-                Invoice rInv = em.find(Invoice.class, rId);
-                inv.setReplacedInvoiceID(rInv);
-            }
-
-            String eId = getCellValue(row.getCell(5));
+            String eId = getCellValue(row.getCell(employeeCol));
             if (!eId.isEmpty()) {
                 Employee e = em.find(Employee.class, eId);
                 inv.setEmployeeID(e);
             }
 
-            String bId = getCellValue(row.getCell(6));
+            String bId = getCellValue(row.getCell(bookingCol));
             if (!bId.isEmpty()) {
                 Booking b = em.find(Booking.class, bId);
                 inv.setBookingID(b);
@@ -1304,3 +1295,4 @@ public class WorkSheetService {
         return true;
     }
 }
+ 

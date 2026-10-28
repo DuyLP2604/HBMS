@@ -98,10 +98,22 @@
                     <c:when test="${canCheckout and (bookingSummary.bookingStatus eq 'CHECKED_IN' or bookingSummary.bookingStatus eq 'CHECKED_OUT')}">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 bg-success-subtle p-3 rounded border border-success">
                             <div><strong>Payment complete.</strong> You can confirm checkout and issue the invoice.</div>
-                            <form action="${pageContext.request.contextPath}/CheckoutEmployee" method="post" id="invoiceForm" class="m-0">
+                            <form action="${pageContext.request.contextPath}/CheckoutEmployee" method="post" id="invoiceForm" class="m-0 d-flex align-items-center gap-3">
                                 <input type="hidden" name="action" value="exportInvoice">
                                 <input type="hidden" name="bookingID" value="<c:out value='${bookingID}' />">
-                                <button type="submit" class="btn btn-success btn-lg fw-bold px-4" id="btnInvoice"><i class="bi bi-printer me-2"></i> <c:out value="${bookingSummary.bookingStatus eq 'CHECKED_OUT' ? 'Issue Invoice' : 'Checkout & Issue Invoice'}" /></button>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white fw-bold"><i class="bi bi-credit-card me-2"></i> Method</span>
+                                    <select name="paymentMethod" class="form-select fw-bold" style="min-width: 140px;" required>
+                                        <option value="" disabled selected>Select...</option>
+                                        <option value="CASH">Cash</option>
+                                        <option value="VIETQR">VietQR</option>
+                                        <option value="WALLET">My Wallet</option>
+                                    </select>
+                                </div>
+
+                                <button type="submit" class="btn btn-success btn-lg fw-bold px-4 text-nowrap" id="btnInvoice">
+                                    <i class="bi bi-printer me-2"></i> <c:out value="${bookingSummary.bookingStatus eq 'CHECKED_OUT' ? 'Issue Invoice' : 'Checkout & Issue Invoice'}" />
+                                </button>
                             </form>
                         </div>
                     </c:when>
