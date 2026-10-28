@@ -216,30 +216,33 @@ public class CounterBookingServlet extends HttpServlet {
                     throw new IllegalArgumentException("Reload the payment page.");
                 }
                 String method = trim(req.getParameter("methodID"));
-                boolean wallet = "PT09".equals(method) || "true".equals(req.getParameter("useWallet"));
+
+                if (!Set.of("PT01", "PT10").contains(method)
+                        || req.getParameter("useWallet") != null) {
+                    throw new IllegalArgumentException(
+                            "Counter payments only support Cash or VietQR.");
+                }
+
                 if (!"true".equals(req.getParameter("collectionConfirmed"))) {
-                    throw new IllegalArgumentException("Confirm that payment was collected or authorized.");
+                    throw new IllegalArgumentException(
+                            "Confirm that the cash or bank transfer was received.");
                 }
-                if (wallet) {
-                    Long locked = (Long) session.getAttribute("counterWalletLockedUntil");
-                    if (locked != null && locked > System.currentTimeMillis()) {
-                        throw new IllegalArgumentException("Too many failed wallet authorizations. Retry in five minutes.");
-                    }
-                    Users owner = new UserDAO().login(trim(req.getParameter("walletUsername")), req.getParameter("walletPassword"));
-                    if (owner == null || !"Customer".equalsIgnoreCase(owner.getRole()) || owner.getUserID() != payment.getUserID()) {
-                        Integer failures = (Integer) session.getAttribute("counterWalletFailures");
-                        failures = failures == null ? 1 : failures + 1;
-                        session.setAttribute("counterWalletFailures", failures);
-                        if (failures >= 5) {
-                            session.setAttribute("counterWalletLockedUntil", System.currentTimeMillis() + 300000L);
-                        }
-                        throw new IllegalArgumentException("Wallet authorization failed. The customer must enter their own credentials.");
-                    }
-                    session.removeAttribute("counterWalletFailures");
-                    session.removeAttribute("counterWalletLockedUntil");
+
+                String bankReference = trim(req.getParameter("bankReference"));
+
+                if ("PT10".equals(method) && bankReference.isEmpty()) {
+                    throw new IllegalArgumentException(
+                            "Enter the bank transaction reference for VietQR.");
                 }
-                Payment result = new PaymentService().collectAtCounter(payment, method, actor.getUserID(), wallet, wallet,
-                        trim(req.getParameter("bankReference")));
+
+                Payment result = new PaymentService().collectAtCounter(
+                        payment,
+                        method,
+                        actor.getUserID(),
+                        false,
+                        false,
+                        "PT10".equals(method) ? bankReference : ""
+                );
                 session.setAttribute("counterMessage", "PAID".equals(result.getStatus())
                         ? "Payment recorded successfully. You can assign rooms now."
                         : "Payment has already been refunded. Review the booking status.");
