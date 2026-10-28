@@ -8,7 +8,7 @@
 <c:set var="bookingState" value="${bookingSummary.bookingStatus}" />
 <c:set var="paymentState" value="${bookingSummary.paymentStatus}" />
 <c:set var="canCancel" value="${bookingState eq 'PENDING_PAYMENT' or bookingState eq 'CONFIRMED' or bookingState eq 'ASSIGNED'}" />
-<c:set var="canPayRemaining" value="${not empty bookingSummary.firstPaidAt and bookingSummary.remainingAmount gt 0 and (bookingState eq 'CONFIRMED' or bookingState eq 'ASSIGNED' or bookingState eq 'CHECKED_IN')}" />
+<c:set var="canPayRemaining" value="${not empty bookingSummary.firstPaidAt and ((bookingSummary.roomRemainingAmount gt 0 and (bookingState eq 'CONFIRMED' or bookingState eq 'ASSIGNED')) or (bookingState eq 'CHECKED_IN' and bookingSummary.remainingAmount gt 0))}" />
 <c:set var="roomCount" value="${0}" />
 <c:forEach var="item" items="${booking.items}"><c:set var="roomCount" value="${roomCount + item.quantity}" /></c:forEach>
 <c:choose>

@@ -20,7 +20,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import service.PaymentService;
 import service.PaymentService.PaymentRequest;
 
@@ -64,7 +63,7 @@ public class PaymentServlet extends HttpServlet
             paymentRequest = service.createPaymentRequest(bookingID, user.getUserID());
             booking = service.getBookingForPayment(bookingID, user.getUserID());
             summary = service.getPaymentSummary(bookingID, user.getUserID());
-            methods = new PaymentmethodDAO().getAll().stream().filter(method -> method.getMethodID() != null && !"PT01".equals(method.getMethodID().trim()) && !"PT10".equals(method.getMethodID().trim())).collect(Collectors.toList());
+            methods = new PaymentmethodDAO().getBookingMethods();
         }
         catch (IllegalArgumentException exception)
         {

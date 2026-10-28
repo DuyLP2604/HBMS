@@ -83,8 +83,9 @@ public class StaffStayServlet extends HttpServlet
             }
             else if ("checkIn".equals(action))
             {
-                lifecycleService.checkIn(bookingID, user.getUserID());
-                setFlash(session, "lifecycleSuccess", "The guest was checked in successfully.");
+                response.sendRedirect(request.getContextPath() + "/process-checkin?bookingID="
+                        + java.net.URLEncoder.encode(bookingID, java.nio.charset.StandardCharsets.UTF_8));
+                return;
             }
             else if ("checkOut".equals(action))
             {

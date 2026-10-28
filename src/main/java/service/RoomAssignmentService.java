@@ -28,15 +28,18 @@ public class RoomAssignmentService {
                     "CONFIRMED",
                     "ASSIGNED",
                     "CHECKED_IN",
-                    "CHECKED_OUT",
                     "PENDING_PAYMENT"
             );
 
     private final EmployeeDAO employeeDAO
             = new EmployeeDAO();
 
+    protected EntityManager createEntityManager() {
+        return PersistenceManager.createEntityManager();
+    }
+
     public List<Booking> getWaitingBookings() {
-        EntityManager em = PersistenceManager.createEntityManager();
+        EntityManager em = createEntityManager();
 
         try {
             String jpql
@@ -67,7 +70,7 @@ public class RoomAssignmentService {
     }
 
     public Booking getBooking(String bookingID) {
-        EntityManager em = PersistenceManager.createEntityManager();
+        EntityManager em = createEntityManager();
 
         try {
             return em.find(
@@ -84,7 +87,7 @@ public class RoomAssignmentService {
     public List<BookingDetail> getBookingDetails(
             String bookingID) {
 
-        EntityManager em = PersistenceManager.createEntityManager();
+        EntityManager em = createEntityManager();
 
         try {
             String jpql
@@ -116,7 +119,7 @@ public class RoomAssignmentService {
     public List<Room> getAvailableRooms(
             Integer bookingDetailID) {
 
-        EntityManager em = PersistenceManager.createEntityManager();
+        EntityManager em = createEntityManager();
 
         try {
             BookingDetail detail = em.find(
