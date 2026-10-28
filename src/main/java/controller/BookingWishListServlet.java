@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -49,6 +50,12 @@ public class BookingWishListServlet extends HttpServlet {
 
         request.setAttribute("wishList", wishlist);
         request.setAttribute("subtotals", subtotals);
+        // Match SQL Server ROUND(TotalAmount * 0.30, 2) for the payment preview.
+        BigDecimal totalAmount = wishlist.getTotalAmount();
+        BigDecimal depositAmount = totalAmount.multiply(new BigDecimal("0.30"))
+                .setScale(2, RoundingMode.HALF_UP);
+        request.setAttribute("depositAmount", depositAmount);
+        request.setAttribute("remainingAfterDeposit", totalAmount.subtract(depositAmount));
 
         request.getRequestDispatcher("/WEB-INF/views/booking-wish-list.jsp").forward(request, response);
     }

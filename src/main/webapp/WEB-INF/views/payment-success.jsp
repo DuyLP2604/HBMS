@@ -2,54 +2,28 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-<layout:layout title="Payment Successful" useBootstrap="true">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-7">
-                <div class="card shadow-sm">
-                    <div class="card-body text-center p-5">
-                        <h1 class="h3 text-success mb-3">Payment Successful</h1>
-                        <p>Booking: <strong><c:out value="${bookingID}" /></strong></p>
-                        <p>Payment: <strong><c:out value="${paymentID}" /></strong></p>
-                        <p>Transaction: <strong><c:out value="${transactionCode}" /></strong></p>
-                        <p>
-                            Payment Type:
-                            <strong>
-                                <c:choose>
-                                    <c:when test="${paymentType eq 'DEPOSIT'}">30% Deposit</c:when>
-                                    <c:when test="${paymentType eq 'FULL'}">Full Payment (100%)</c:when>
-                                    <c:when test="${paymentType eq 'BALANCE'}">Remaining Balance</c:when>
-                                    <c:otherwise>Payment</c:otherwise>
-                                </c:choose>
-                            </strong>
-                        </p>
-                        <p>Amount Paid: <strong class="text-success"><fmt:formatNumber value="${paymentAmount}" type="number" /> VND</strong></p>
-                        <div class="border rounded p-3 mb-3 text-start">
-                            <p class="mb-1">From My Wallet: <strong><fmt:formatNumber value="${walletAmount}" pattern="#,##0.##" /> VND</strong></p>
-                            <p class="mb-0">From External Method: <strong><fmt:formatNumber value="${externalAmount}" pattern="#,##0.##" /> VND</strong><c:if test="${externalAmount gt 0}"> (<c:out value="${externalMethodName}" />)</c:if></p>
-                        </div>
-                        <c:if test="${walletAmount gt 0}">
-                            <c:if test="${not empty wallet}"><p>Current Wallet Balance: <strong><fmt:formatNumber value="${wallet.balance}" pattern="#,##0.##" /> VND</strong></p></c:if>
-                            <a href="${pageContext.request.contextPath}/wallet" class="btn btn-outline-secondary mb-2">View Wallet &amp; History</a>
-                        </c:if>
-                        <div class="alert alert-success">
-                            <c:choose>
-                                <c:when test="${paymentType eq 'DEPOSIT'}">Your 30% deposit was paid successfully. Your booking is now confirmed. You can pay the remaining 70% later.</c:when>
-                                <c:when test="${paymentType eq 'FULL'}">Your full payment was recorded successfully. Your booking is now confirmed and awaiting room assignment.</c:when>
-                                <c:when test="${paymentType eq 'BALANCE'}">Your balance payment was recorded successfully.</c:when>
-                                <c:otherwise>Your payment was recorded successfully.</c:otherwise>
-                            </c:choose>
-                        </div>
-                        <c:if test="${paymentType eq 'DEPOSIT'}">
-                            <c:url var="balancePaymentUrl" value="/payment">
-                                <c:param name="bookingID" value="${bookingID}" />
-                            </c:url>
-                            <a href="<c:out value='${balancePaymentUrl}' />" class="btn btn-outline-success mb-2">Pay Remaining Balance</a>
-                        </c:if>
-                        <a href="${pageContext.request.contextPath}/my-bookings" class="btn btn-primary mb-2">View My Bookings</a>
-                    </div>
-                </div>
-            </div>
+<fmt:setLocale value="en_US" />
+<c:url var="successBookingUrl" value="/my-bookings"><c:param name="bookingID" value="${bookingID}" /></c:url>
+<c:url var="balancePaymentUrl" value="/payment"><c:param name="bookingID" value="${bookingID}" /></c:url>
+<c:set var="successState" value="${successBookingSummary.bookingStatus}" />
+<c:set var="successCanPay" value="${successBookingSummary.remainingAmount gt 0 and (successState eq 'CONFIRMED' or successState eq 'ASSIGNED' or successState eq 'CHECKED_IN')}" />
+<layout:layout title="Payment Successful" pageCss="booking-completion.css" useBootstrap="true" bodyClass="booking-completion-body">
+    <div class="booking-completion ps-page">
+        <header class="ps-heading"><span class="ps-check"><i class="fa-solid fa-check" aria-hidden="true"></i></span><p class="bc-eyebrow">PAYMENT RECEIVED</p><h1>Payment successful</h1><p>Your payment has been recorded. Here is your payment summary.</p><span class="ps-payment-type"><c:choose><c:when test="${paymentType eq 'DEPOSIT'}">30% deposit</c:when><c:when test="${paymentType eq 'FULL'}">Full payment</c:when><c:when test="${paymentType eq 'BALANCE'}">Remaining balance payment</c:when><c:otherwise>Booking payment</c:otherwise></c:choose></span><strong class="ps-paid-amount"><fmt:formatNumber value="${paymentAmount}" pattern="#,##0.##" /> <small>VND</small></strong></header>
+        <div class="ps-layout">
+            <section class="bc-panel ps-receipt" aria-labelledby="paymentReceiptTitle"><div class="bc-section-heading"><h2 id="paymentReceiptTitle">Payment receipt</h2><i class="fa-solid fa-receipt" aria-hidden="true"></i></div><dl class="bc-lines ps-receipt-lines"><div><dt>Booking reference</dt><dd><a class="bc-text-link" href="<c:out value='${successBookingUrl}' />"><c:out value="${bookingID}" /> <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></dd></div><div><dt>Payment reference</dt><dd><c:out value="${paymentID}" /></dd></div><c:if test="${not empty transactionCode}"><div class="ps-transaction"><dt>Transaction reference</dt><dd><c:out value="${transactionCode}" /></dd></div></c:if></dl>
+                <c:if test="${walletAmount gt 0 or externalAmount gt 0}"><div class="ps-source"><h3>Paid with</h3><c:if test="${walletAmount gt 0}"><div><span><i class="fa-solid fa-wallet" aria-hidden="true"></i> Internal wallet</span><strong><fmt:formatNumber value="${walletAmount}" pattern="#,##0.##" /> <small>VND</small></strong></div></c:if><c:if test="${externalAmount gt 0}"><div><span><i class="fa-regular fa-credit-card" aria-hidden="true"></i> <c:out value="${empty externalMethodName ? 'Payment method' : externalMethodName}" /></span><strong><fmt:formatNumber value="${externalAmount}" pattern="#,##0.##" /> <small>VND</small></strong></div></c:if></div></c:if>
+                <c:if test="${walletAmount gt 0}"><div class="ps-wallet"><c:if test="${not empty wallet}"><span>Current wallet balance <strong><fmt:formatNumber value="${wallet.balance}" pattern="#,##0.##" /> VND</strong></span></c:if><a class="bc-text-link" href="${pageContext.request.contextPath}/wallet">View wallet &amp; history <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div></c:if>
+            </section>
+            <section class="bc-panel ps-booking" aria-labelledby="paymentBookingTitle"><p class="bc-eyebrow">WHAT HAPPENS NEXT</p><h2 id="paymentBookingTitle">Your booking</h2>
+                <c:choose><c:when test="${not empty successBookingSummary}">
+                    <div class="ps-booking-status"><span>Current status</span><strong><c:choose><c:when test="${successState eq 'CONFIRMED'}">Confirmed</c:when><c:when test="${successState eq 'ASSIGNED'}">Rooms assigned</c:when><c:when test="${successState eq 'CHECKED_IN'}">Checked in</c:when><c:when test="${successState eq 'CHECKED_OUT'}">Stay completed</c:when><c:when test="${successState eq 'CANCELLED'}">Cancelled</c:when><c:otherwise>View booking details</c:otherwise></c:choose></strong></div>
+                    <p class="ps-status-note"><c:choose><c:when test="${successBookingSummary.paymentStatus eq 'REFUNDED'}">This booking has since been refunded. Check your booking details and wallet for the latest record.</c:when><c:when test="${successState eq 'CANCELLED'}">This booking has since been cancelled. Check the booking details for its payment and refund record.</c:when><c:when test="${successState eq 'CONFIRMED'}">Reception will assign your room numbers. You can follow the updates in your booking details.</c:when><c:when test="${successState eq 'ASSIGNED'}">Your rooms have been assigned. Their numbers are available in your booking details.</c:when><c:when test="${successState eq 'CHECKED_IN'}">Your stay is in progress. You can view your room information in the booking details.</c:when><c:when test="${successState eq 'CHECKED_OUT'}">Your stay is complete. The booking details contain your payment record.</c:when><c:otherwise>Open your booking details for the latest information.</c:otherwise></c:choose></p>
+                    <c:if test="${successState ne 'CANCELLED'}"><dl class="bc-lines ps-booking-lines"><div><dt>Booking total</dt><dd><fmt:formatNumber value="${successBookingSummary.totalAmount}" pattern="#,##0.##" /> <small>VND</small></dd></div><div><dt>Total paid</dt><dd><fmt:formatNumber value="${successBookingSummary.totalPaidAmount}" pattern="#,##0.##" /> <small>VND</small></dd></div><div class="ps-remaining"><dt>Remaining balance</dt><dd><fmt:formatNumber value="${successBookingSummary.remainingAmount}" pattern="#,##0.##" /> <small>VND</small></dd></div></dl></c:if>
+                    <c:if test="${successCanPay}"><a class="bc-button bc-button-secondary" href="<c:out value='${balancePaymentUrl}' />" data-pay-remaining>Pay remaining balance <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></c:if>
+                </c:when><c:otherwise><p class="ps-status-note">Your payment was recorded successfully. Open your booking details for the latest booking status and remaining balance.</p></c:otherwise></c:choose>
+            </section>
         </div>
+        <div class="ps-actions"><a class="bc-button bc-button-primary" href="<c:out value='${successBookingUrl}' />">View booking details <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a><a class="bc-button bc-button-secondary" href="${pageContext.request.contextPath}/my-bookings">My bookings</a></div>
     </div>
 </layout:layout>

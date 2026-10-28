@@ -2,6 +2,7 @@ package controller;
 
 import dao.PaymentmethodDAO;
 import dao.WalletDAO;
+import dto.WalletSummary;
 import entity.Booking;
 import entity.Payment;
 import entity.Paymentmethod;
@@ -47,7 +48,7 @@ public class PaymentServlet extends HttpServlet
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Booking ID is required.");
             return;
         }
-        PaymentService service = new PaymentService();
+        PaymentService service = createPaymentService();
         Booking booking;
         PaymentRequest paymentRequest;
         Map<String, Object> summary;
@@ -138,7 +139,7 @@ public class PaymentServlet extends HttpServlet
         String redirect;
         try
         {
-            Payment payment = new PaymentService().processPayment(paymentRequest, methodID, user.getUserID(), useWallet);
+            Payment payment = createPaymentService().processPayment(paymentRequest, methodID, user.getUserID(), useWallet);
             if ("REFUNDED".equals(payment.getStatus()))
             {
                 session.setAttribute("paymentError", "This payment has already been refunded to your wallet.");
@@ -252,10 +253,40 @@ public class PaymentServlet extends HttpServlet
         }
         if (request.getAttribute("walletAmount") instanceof java.math.BigDecimal && ((java.math.BigDecimal) request.getAttribute("walletAmount")).signum() > 0)
         {
-            try { request.setAttribute("wallet", new WalletDAO().getWalletByUserID(user.getUserID())); }
+            try { request.setAttribute("wallet", loadWalletSummary(user.getUserID())); }
             catch (IllegalStateException exception) { getServletContext().log("Payment succeeded, but the updated wallet balance is unavailable.", exception); }
         }
+        try
+        {
+            PaymentService service = createPaymentService();
+            String id = String.valueOf(request.getAttribute("bookingID"));
+            Booking booking = service.getBookingForPayment(id, user.getUserID());
+            if (booking != null)
+            {
+                Map<String, Object> summary = service.getPaymentSummary(id, user.getUserID());
+                if (summary != null && !summary.isEmpty())
+                {
+                    request.setAttribute("successBooking", booking);
+                    request.setAttribute("successBookingSummary", summary);
+                }
+            }
+        }
+        catch (RuntimeException exception)
+        {
+            // A read failure must not make a recorded payment look unsuccessful.
+            getServletContext().log("Payment succeeded, but the latest booking summary is unavailable.", exception);
+        }
         request.getRequestDispatcher("/WEB-INF/views/payment-success.jsp").forward(request, response);
+    }
+
+    protected PaymentService createPaymentService()
+    {
+        return new PaymentService();
+    }
+
+    protected WalletSummary loadWalletSummary(int userID)
+    {
+        return new WalletDAO().getWalletByUserID(userID);
     }
 
     private String trim(String value)
