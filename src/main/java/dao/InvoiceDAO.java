@@ -33,7 +33,7 @@ public class InvoiceDAO
 
     public List<Map<String, String>> getPaidInvoices()
     {
-        String sql = "SELECT i.InvoiceID AS invoiceID, i.BookingID AS bookingID, c.FullName AS customerName, " + HOTEL_NAME + " AS hotelName, i.TotalAmount AS totalAmount, CONVERT(VARCHAR(10), i.InvoiceDate, 23) AS invoiceDate, CONVERT(VARCHAR(10), b.CheckInDate, 23) AS checkInDate, CONVERT(VARCHAR(10), b.CheckOutDate, 23) AS checkOutDate FROM dbo.INVOICE i JOIN dbo.BOOKING b ON b.BookingID = i.BookingID JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID JOIN dbo.V_BOOKING_PAYMENT_SUMMARY ps ON ps.BookingID = b.BookingID WHERE i.Status = N'Có hiệu lực' AND b.BookingStatus = 'CHECKED_OUT' AND ps.PaymentStatus = 'FULLY_PAID' ORDER BY i.InvoiceDate DESC, i.InvoiceID DESC";
+        String sql = "SELECT i.InvoiceID AS invoiceID, i.BookingID AS bookingID, c.FullName AS customerName, " + HOTEL_NAME + " AS hotelName, i.TotalAmount AS totalAmount, CONVERT(VARCHAR(10), i.InvoiceDate, 23) AS invoiceDate, CONVERT(VARCHAR(10), b.CheckInDate, 23) AS checkInDate, CONVERT(VARCHAR(10), b.CheckOutDate, 23) AS checkOutDate FROM dbo.INVOICE i JOIN dbo.BOOKING b ON b.BookingID = i.BookingID JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID JOIN dbo.V_BOOKING_PAYMENT_SUMMARY ps ON ps.BookingID = b.BookingID WHERE b.BookingStatus = 'CHECKED_OUT' AND ps.PaymentStatus = 'FULLY_PAID' ORDER BY i.InvoiceDate DESC, i.InvoiceID DESC";
 
         List<Map<String, String>> invoices = query(sql);
         for (Map<String, String> invoice : invoices)
@@ -46,7 +46,7 @@ public class InvoiceDAO
     public Map<String, String> getInvoiceByBooking(String bookingID)
     {
         String id = requireBookingID(bookingID);
-        List<Map<String, String>> invoices = query("SELECT InvoiceID AS invoiceID, BookingID AS bookingID, TotalAmount AS totalAmount, CONVERT(VARCHAR(10), InvoiceDate, 23) AS invoiceDate, EmployeeID AS employeeID, Status AS status FROM dbo.INVOICE WHERE BookingID = ? AND Status = N'Có hiệu lực'", id);
+        List<Map<String, String>> invoices = query("SELECT InvoiceID AS invoiceID, BookingID AS bookingID, TotalAmount AS totalAmount, CONVERT(VARCHAR(10), InvoiceDate, 23) AS invoiceDate, EmployeeID AS employeeID FROM dbo.INVOICE WHERE BookingID = ?", id);
         return invoices.isEmpty() ? null : invoices.get(0);
     }
 

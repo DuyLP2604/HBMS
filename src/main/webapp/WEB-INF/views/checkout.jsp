@@ -40,8 +40,8 @@
                                             <td class="fw-bold text-secondary"><c:out value="${inv.invoiceID}" /></td>
                                             <td><c:out value="${inv.customerName}" /></td>
                                             <td><span class="badge bg-info text-dark"><c:out value="${inv.roomNumber}" /></span></td>
-                                            <td><c:out value="${inv.CheckInDate}" /></td>
-                                            <td><c:out value="${inv.CheckOutDate}" /></td>
+                                            <td><c:out value="${inv.checkInDate}" /></td>
+                                            <td><c:out value="${inv.checkOutDate}" /></td>
                                             <td class="text-success fw-bold"><fmt:formatNumber value="${inv.totalAmount}" type="number" maxFractionDigits="2" /></td>
                                             <td><a href="<c:out value='${printInvoiceUrl}' />" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">View / Print</a></td>
                                         </tr>
