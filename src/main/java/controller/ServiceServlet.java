@@ -72,10 +72,8 @@ public class ServiceServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
-
         HttpSession session = request.getSession();
         String action = request.getParameter("action");
-
         if ("create".equalsIgnoreCase(action)) {
             try {
                 String serviceName = request.getParameter("serviceName");
@@ -88,13 +86,11 @@ public class ServiceServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/service?action=manage");
             return;
         }
-
         if ("update".equalsIgnoreCase(action)) {
             try {
                 String serviceID = request.getParameter("serviceID");
                 String serviceName = request.getParameter("serviceName");
                 double unitPrice = parsePrice(request.getParameter("unitPrice"));
-
                 new ServiceDAO().updateService(serviceID, serviceName, unitPrice);
                 session.setAttribute("successMessage", "Cập nhật dịch vụ thành công!");
             } catch (Exception e) {
@@ -112,6 +108,25 @@ public class ServiceServlet extends HttpServlet {
                 session.setAttribute("errorMessage", e.getMessage());
             }
             response.sendRedirect(request.getContextPath() + "/service?action=manage");
+            return;
+        }
+        if ("completeOrder".equalsIgnoreCase(action)) {
+            try {
+                String bookingID = request.getParameter("bookingID");
+                String serviceID = request.getParameter("serviceID");
+                String staffID = String.valueOf(currentUser.getUserID());
+                if (bookingID != null && serviceID != null) {
+                    boolean success = new ServiceDAO().completeBookingService(bookingID, serviceID, staffID);
+                    if (success) {
+                        session.setAttribute("successMessage", "Đã xác nhận hoàn thành dịch vụ!");
+                    } else {
+                        session.setAttribute("errorMessage", "Không thể cập nhật trạng thái dịch vụ!");
+                    }
+                }
+            } catch (Exception e) {
+                session.setAttribute("errorMessage", "Lỗi: " + e.getMessage());
+            }
+            response.sendRedirect(request.getContextPath() + "/service?action=orders");
             return;
         }
 

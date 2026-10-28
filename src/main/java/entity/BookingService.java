@@ -38,7 +38,6 @@ public class BookingService implements Serializable {
     @NotNull
     @Column(name = "Quantity")
     private int quantity;
-    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
     @Basic(optional = false)
     @NotNull
     @Column(name = "UnitPrice")
@@ -57,6 +56,17 @@ public class BookingService implements Serializable {
     @JoinColumn(name = "ServiceID", referencedColumnName = "ServiceID", insertable = false, updatable = false)
     @ManyToOne(optional = false)
     private Service service;
+    //
+    @Column(name = "ServiceStatus")
+    private String serviceStatus = "PENDING";
+
+    public String getServiceStatus() {
+        return serviceStatus;
+    }
+
+    public void setServiceStatus(String serviceStatus) {
+        this.serviceStatus = serviceStatus;
+    }
 
     public BookingService() {
     }
@@ -83,7 +93,6 @@ public class BookingService implements Serializable {
     public void setBookingServicePK(BookingServicePK bookingServicePK) {
         this.bookingServicePK = bookingServicePK;
     }
-
 
     public Booking getBooking() {
         return booking;
