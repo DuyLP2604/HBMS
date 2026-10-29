@@ -1,55 +1,6 @@
-/*
-HBMS - DATABASE UPDATED 2026-10-19
-
-Requested changes:
-0. EMPLOYEE.Email VARCHAR(100) NULL, unique when populated.
-   All 30 employee seed rows include sample Gmail addresses.
-   Seed addresses are examples only; use verified real addresses for email/OTP.
-1. CUSTOMER no longer stores citizen identity/passport numbers.
-2. BOOKING.PaymentOption: DEPOSIT (exactly 30%) or FULL (100%).
-   PAYMENT.PaymentType: DEPOSIT, FULL, BALANCE (all currently unpaid amount).
-   FirstPaidAt and BookingAmountAtFirstPayment are immutable in the application API.
-3. Refund 100% of all successful payments only when cancellation occurs strictly
-   before FirstPaidAt + 24h. Exact boundary and later: zero refund. Check-in date
-   does not determine this deadline. Later balance payments do not restart it.
-4. Refunds credit CUSTOMER_WALLET through an auditable append-only ledger.
-   PT09 is the optional internal-wallet payment method; PT06 remains external.
-5. A PENDING_PAYMENT booking blocks all new bookings for the same customer,
-   including bookings made on their behalf by staff. Paying the initial 30%/100%
-   confirms it and releases that restriction; the remaining 70% does not block.
-6. Anti-spam locks: 3 successive cancellations -> 5m; after unlock +2 -> 15m;
-   after unlock +1 -> 60m, then +1 -> 60m again. Reset after a rolling 24h from
-   the first cancellation. A completed stay breaks the current cancellation
-   streak without lowering the penalty level until the daily reset. Payment
-   alone does not reset it because paid bookings can still be cancelled.
-   Customer/staff cancellation and payment-timeout cancellation all count.
-   Cancellations during an active lock remain allowed (including eligible refunds)
-   but do not trigger early escalation. Login, payment and wallet access remain available.
-
-7. Staff account onboarding: USERS.MustChangePassword BIT NOT NULL DEFAULT (0).
-   Existing seed accounts use 0 and keep their current login behavior.
-   Java must explicitly set 1 when Admin creates Staff credentials, generate
-   a temporary password, store its hash in USERS.Password and email the
-   username and temporary password to the real EMPLOYEE.Email address.
-   A login with flag 1 must receive restricted password-setup access only.
-   Complete setup by updating Password and MustChangePassword = 0 atomically,
-   then establish the normal authenticated session. Email delivery, redirects
-   and access guards are Java responsibilities; SQL alone does not enforce them.
-
-Run as database owner with SSMS/sqlcmd. Then integrate the stored procedures
-with Java DAO and use HBMS_APP_ROLE with a dedicated application DB login.
-Direct writes using sa/db_owner can bypass the procedure policy.
-Schedule SP_EXPIRE_PENDING_BOOKINGS from Java/SQL Agent; it also resets old
-anti-spam windows. No fixed new payment timeout is introduced.
-*/
-
-USE [master];
+﻿USE [master];
 GO
 
-/*******************************************************************************
-   RECREATE DATABASE
-   WARNING: This script deletes and recreates the QLKS database.
-********************************************************************************/
 IF DB_ID(N'QLKS') IS NOT NULL
 BEGIN
     ALTER DATABASE QLKS SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
@@ -72,18 +23,6 @@ SET ARITHABORT ON;
 SET NUMERIC_ROUNDABORT OFF;
 GO
 
-/*******************************************************************************
-   MASTER TABLES
-********************************************************************************/
-
--- The project manages exactly one hotel. This table stores its public profile.
--- The hotel name is fixed, so it is the primary key and the CHECK keeps the
--- table at exactly one row.
---   HotelImage      : background image at the top of the home page
---   RoomImage       : "Luxury Rooms" image in the Overview section
---   PoolImage       : "Swimming Pool" image in the Overview section
---   RestaurantImage : "Restaurant" image in the Overview section
---   Address         : the hotel addresses, one address per line
 CREATE TABLE HOTEL (
     HotelName NVARCHAR(50) NOT NULL,
     HotelImage NVARCHAR(100) NULL,
@@ -145,7 +84,6 @@ CREATE TABLE CUSTOMER (
 );
 GO
 
--- Room types are global because the system has only one hotel.
 CREATE TABLE ROOM_TYPE (
     RoomTypeID CHAR(4) NOT NULL,
     TypeName NVARCHAR(50) NOT NULL,
@@ -161,7 +99,6 @@ CREATE TABLE ROOM_TYPE (
 );
 GO
 
--- Status describes operational state, not availability for a date range.
 CREATE TABLE ROOM (
     RoomID CHAR(3) NOT NULL,
     RoomNumber NVARCHAR(20) NOT NULL,
@@ -200,18 +137,11 @@ CREATE TABLE EMPLOYEE (
 );
 GO
 
--- Optional email address (including Gmail); populated addresses must be unique.
--- A filtered index allows multiple employees with no email yet.
 CREATE UNIQUE INDEX UQ_EMPLOYEE_Email
     ON dbo.EMPLOYEE (Email)
     WHERE Email IS NOT NULL;
 GO
 
-/*******************************************************************************
-   BOOKING TABLES
-********************************************************************************/
-
--- Customer books room types. Concrete rooms are assigned later by staff.
 CREATE TABLE BOOKING (
     BookingID CHAR(6) NOT NULL,
     PaymentOption VARCHAR(10) NOT NULL
@@ -228,6 +158,8 @@ CREATE TABLE BOOKING (
     CheckInDate DATE NOT NULL,
     CheckOutDate DATE NOT NULL,
     BookingStatus VARCHAR(30) NOT NULL,
+    GuestCCCDs VARCHAR(500) NULL,
+    BookedByUserID INT NULL,
     CustomerID CHAR(6) NOT NULL,
     TotalAmount DECIMAL(12,2) NOT NULL
         CONSTRAINT DF_BOOKING_TotalAmount DEFAULT 0,
@@ -245,6 +177,7 @@ CREATE TABLE BOOKING (
             'CUSTOMER_REQUEST', 'STAFF_REQUEST', 'PAYMENT_TIMEOUT'
         )
     ),
+    CONSTRAINT FK_BOOKING_BookedByUser FOREIGN KEY (BookedByUserID) REFERENCES USERS(UserID),
     CONSTRAINT FK_BOOKING_CUSTOMER
         FOREIGN KEY (CustomerID) REFERENCES CUSTOMER(CustomerID),
     CONSTRAINT CK_BOOKING_Date
@@ -310,11 +243,6 @@ CREATE TABLE ROOM_ASSIGNMENT (
 );
 GO
 
-/*******************************************************************************
-   SERVICE, PAYMENT, INVOICE AND COMPLAINT
-********************************************************************************/
-
--- A service is part of the single hotel's catalog, not a specific room.
 CREATE TABLE SERVICE (
     ServiceID CHAR(4) NOT NULL,
     ServiceName NVARCHAR(60) NOT NULL,
@@ -326,7 +254,6 @@ CREATE TABLE SERVICE (
 );
 GO
 
--- UnitPrice is a snapshot so later catalog price changes do not alter old bills.
 CREATE TABLE BOOKING_SERVICE (
     BookingID CHAR(6) NOT NULL,
     ServiceID CHAR(4) NOT NULL,
@@ -354,11 +281,25 @@ CREATE TABLE PAYMENTMETHOD (
     MethodName NVARCHAR(30) NOT NULL,
 
     CONSTRAINT PK_PAYMENTMETHOD PRIMARY KEY (MethodID),
-    CONSTRAINT UQ_PAYMENTMETHOD_Name UNIQUE (MethodName)
+    CONSTRAINT UQ_PAYMENTMETHOD_Name UNIQUE (MethodName),
+    CONSTRAINT CK_PAYMENTMETHOD_Supported CHECK (MethodID IN ('PT01', 'PT02', 'PT03'))
 );
 GO
 
--- Multiple rows are allowed for retry attempts. Payment points to Booking.
+CREATE TABLE dbo.[TRANSACTION] (
+    id BIGINT IDENTITY(1,1) NOT NULL,
+    TransactionID VARCHAR(100) NOT NULL,
+    TransactionType VARCHAR(20) NOT NULL,
+    TransactionValue DECIMAL(12,2) NOT NULL,
+
+    CONSTRAINT PK_TRANSACTION PRIMARY KEY (id),
+    CONSTRAINT UQ_TRANSACTION_TransactionID UNIQUE (TransactionID),
+    CONSTRAINT CK_TRANSACTION_Type CHECK (TransactionType IN ('PAYMENT', 'REFUND')),
+    CONSTRAINT CK_TRANSACTION_Value CHECK (TransactionValue > 0),
+    CONSTRAINT CK_TRANSACTION_ID CHECK (LEN(LTRIM(RTRIM(TransactionID))) > 0)
+);
+GO
+
 CREATE TABLE PAYMENT (
     PaymentID CHAR(6) NOT NULL,
     BookingID CHAR(6) NOT NULL,
@@ -369,20 +310,32 @@ CREATE TABLE PAYMENT (
     Status VARCHAR(30) NOT NULL,
     MethodID CHAR(4) NULL,
     TransactionCode VARCHAR(100) NULL,
+    TransactionID VARCHAR(100) NULL,
+    CollectedByUserID INT NULL,
+    WalletAuthorizedByUserID INT NULL,
+    WalletAmount DECIMAL(12,2) NOT NULL CONSTRAINT DF_PAYMENT_WalletAmount DEFAULT (0),
+    ExternalAmount AS CAST(Amount - WalletAmount AS DECIMAL(12,2)) PERSISTED,
 
     CONSTRAINT PK_PAYMENT PRIMARY KEY (PaymentID),
+    CONSTRAINT FK_PAYMENT_CollectedByUser FOREIGN KEY (CollectedByUserID) REFERENCES USERS(UserID),
+    CONSTRAINT FK_PAYMENT_WalletAuthorizedByUser FOREIGN KEY (WalletAuthorizedByUserID) REFERENCES USERS(UserID),
     CONSTRAINT UQ_PAYMENT_BookingPayment UNIQUE (BookingID, PaymentID),
+    CONSTRAINT UQ_PAYMENT_PaymentTransaction UNIQUE (PaymentID, TransactionID),
+    CONSTRAINT UQ_PAYMENT_BookingTransaction UNIQUE (BookingID, PaymentID, TransactionID),
+    CONSTRAINT FK_PAYMENT_TRANSACTION FOREIGN KEY (TransactionID)
+        REFERENCES dbo.[TRANSACTION](TransactionID),
     CONSTRAINT CK_PAYMENT_Type CHECK (PaymentType IN ('DEPOSIT', 'FULL', 'BALANCE')),
     CONSTRAINT FK_PAYMENT_BOOKING
         FOREIGN KEY (BookingID) REFERENCES BOOKING(BookingID),
     CONSTRAINT FK_PAYMENT_METHOD
         FOREIGN KEY (MethodID) REFERENCES PAYMENTMETHOD(MethodID),
     CONSTRAINT CK_PAYMENT_Amount CHECK (Amount > 0),
+    CONSTRAINT CK_PAYMENT_WalletAmount CHECK (WalletAmount >= 0 AND WalletAmount <= Amount),
     CONSTRAINT CK_PAYMENT_Status
         CHECK (Status IN ('PENDING', 'PAID', 'FAILED', 'REFUNDED')),
     CONSTRAINT CK_PAYMENT_CompletedData CHECK (
         Status IN ('PENDING', 'FAILED')
-        OR (PaymentTime IS NOT NULL AND MethodID IS NOT NULL)
+        OR (PaymentTime IS NOT NULL AND MethodID IS NOT NULL AND TransactionID IS NOT NULL)
     )
 );
 GO
@@ -394,11 +347,12 @@ CREATE TABLE INVOICE (
     TotalAmount DECIMAL(12,2) NOT NULL,
     Status NVARCHAR(30) NOT NULL
         CONSTRAINT DF_INVOICE_Status DEFAULT N'Có hiệu lực',
-    ReplacedInvoiceID CHAR(6) NULL, 
+    ReplacedInvoiceID CHAR(6) NULL,
     EmployeeID CHAR(6) NULL,
     BookingID CHAR(6) NOT NULL,
 
     CONSTRAINT PK_INVOICE PRIMARY KEY (InvoiceID),
+    CONSTRAINT UQ_INVOICE_BookingInvoice UNIQUE (BookingID, InvoiceID),
     CONSTRAINT FK_INVOICE_EMPLOYEE
         FOREIGN KEY (EmployeeID) REFERENCES EMPLOYEE(EmployeeID),
     CONSTRAINT FK_INVOICE_BOOKING
@@ -415,6 +369,26 @@ GO
 CREATE UNIQUE INDEX UQ_INVOICE_ActiveBooking
 ON INVOICE (BookingID)
 WHERE Status = N'Có hiệu lực';
+GO
+
+CREATE TABLE INVOICE_TRANSACTION (
+    InvoiceID CHAR(6) NOT NULL,
+    BookingID CHAR(6) NOT NULL,
+    PaymentID CHAR(6) NOT NULL,
+    TransactionID VARCHAR(100) NOT NULL,
+
+    CONSTRAINT PK_INVOICE_TRANSACTION PRIMARY KEY (InvoiceID, TransactionID),
+    CONSTRAINT UQ_INVOICE_TRANSACTION_Payment UNIQUE (InvoiceID, PaymentID),
+    CONSTRAINT FK_INVOICE_TRANSACTION_INVOICE FOREIGN KEY (BookingID, InvoiceID)
+        REFERENCES INVOICE(BookingID, InvoiceID),
+    CONSTRAINT FK_INVOICE_TRANSACTION_PAYMENT FOREIGN KEY (BookingID, PaymentID, TransactionID)
+        REFERENCES PAYMENT(BookingID, PaymentID, TransactionID),
+    CONSTRAINT FK_INVOICE_TRANSACTION_TRANSACTION FOREIGN KEY (TransactionID)
+        REFERENCES dbo.[TRANSACTION](TransactionID)
+);
+GO
+
+CREATE INDEX IX_INVOICE_TRANSACTION_TransactionID ON INVOICE_TRANSACTION(TransactionID);
 GO
 
 CREATE TABLE COMPLAINT (
@@ -435,12 +409,6 @@ CREATE TABLE COMPLAINT (
 );
 GO
 
-/*******************************************************************************
-   INTERNAL WALLET, REFUNDS AND BOOKING ABUSE CONTROL
-   All monetary amounts are VND; timestamps use the SQL Server clock consistently.
-   Refund eligibility: CancelledAt < FirstPaidAt + 24 hours (exactly 24h: no refund).
-   BALANCE payments never restart this clock.
-********************************************************************************/
 CREATE TABLE CUSTOMER_WALLET (
     WalletID BIGINT IDENTITY(1,1) NOT NULL,
     CustomerID CHAR(6) NOT NULL,
@@ -452,7 +420,6 @@ CREATE TABLE CUSTOMER_WALLET (
 );
 GO
 
--- One completed, full refund per cancelled booking. Zero refunds are not recorded.
 CREATE TABLE BOOKING_REFUND (
     RefundID BIGINT IDENTITY(1,1) NOT NULL,
     BookingID CHAR(6) NOT NULL,
@@ -460,10 +427,15 @@ CREATE TABLE BOOKING_REFUND (
     WalletID BIGINT NOT NULL,
     Amount DECIMAL(12,2) NOT NULL,
     RefundedAt DATETIME2(3) NOT NULL,
+    TransactionID VARCHAR(100) NOT NULL,
     CONSTRAINT PK_BOOKING_REFUND PRIMARY KEY (RefundID),
     CONSTRAINT UQ_REFUND_Booking UNIQUE (BookingID),
     CONSTRAINT UQ_REFUND_BookingRefund UNIQUE (BookingID, RefundID),
     CONSTRAINT UQ_REFUND_WalletRefund UNIQUE (WalletID, RefundID),
+    CONSTRAINT UQ_REFUND_TransactionID UNIQUE (TransactionID),
+    CONSTRAINT UQ_REFUND_WalletTransaction UNIQUE (WalletID, RefundID, TransactionID),
+    CONSTRAINT FK_REFUND_TRANSACTION FOREIGN KEY (TransactionID)
+        REFERENCES dbo.[TRANSACTION](TransactionID),
     CONSTRAINT FK_REFUND_BookingOwner FOREIGN KEY (CustomerID, BookingID)
         REFERENCES BOOKING(CustomerID, BookingID),
     CONSTRAINT FK_REFUND_WalletOwner FOREIGN KEY (CustomerID, WalletID)
@@ -472,7 +444,6 @@ CREATE TABLE BOOKING_REFUND (
 );
 GO
 
--- Original successful payment remains auditable; each can be refunded only once.
 CREATE TABLE REFUND_PAYMENT (
     RefundID BIGINT NOT NULL,
     BookingID CHAR(6) NOT NULL,
@@ -488,7 +459,6 @@ CREATE TABLE REFUND_PAYMENT (
 );
 GO
 
--- Append-only ledger; balance is calculated, so no cached balance can drift.
 CREATE TABLE WALLET_TRANSACTION (
     WalletTransactionID BIGINT IDENTITY(1,1) NOT NULL,
     WalletID BIGINT NOT NULL,
@@ -497,11 +467,18 @@ CREATE TABLE WALLET_TRANSACTION (
     TransactionTime DATETIME2(3) NOT NULL CONSTRAINT DF_WALLET_TX_Time DEFAULT SYSDATETIME(),
     RefundID BIGINT NULL,
     PaymentID CHAR(6) NULL,
+    TransactionID VARCHAR(100) NOT NULL,
     CONSTRAINT PK_WALLET_TRANSACTION PRIMARY KEY (WalletTransactionID),
     CONSTRAINT FK_WALLET_TX_Wallet FOREIGN KEY (WalletID) REFERENCES CUSTOMER_WALLET(WalletID),
     CONSTRAINT FK_WALLET_TX_Refund FOREIGN KEY (WalletID, RefundID)
         REFERENCES BOOKING_REFUND(WalletID, RefundID),
     CONSTRAINT FK_WALLET_TX_Payment FOREIGN KEY (PaymentID) REFERENCES PAYMENT(PaymentID),
+    CONSTRAINT FK_WALLET_TX_TRANSACTION FOREIGN KEY (TransactionID)
+        REFERENCES dbo.[TRANSACTION](TransactionID),
+    CONSTRAINT FK_WALLET_TX_PaymentTransaction FOREIGN KEY (PaymentID, TransactionID)
+        REFERENCES PAYMENT(PaymentID, TransactionID),
+    CONSTRAINT FK_WALLET_TX_RefundTransaction FOREIGN KEY (WalletID, RefundID, TransactionID)
+        REFERENCES BOOKING_REFUND(WalletID, RefundID, TransactionID),
     CONSTRAINT CK_WALLET_TX_Amount CHECK (Amount > 0),
     CONSTRAINT CK_WALLET_TX_Source CHECK (
         (TransactionType = 'REFUND_CREDIT' AND RefundID IS NOT NULL AND PaymentID IS NULL)
@@ -509,16 +486,13 @@ CREATE TABLE WALLET_TRANSACTION (
     )
 );
 GO
+
 CREATE UNIQUE INDEX UQ_WALLET_TX_Refund ON WALLET_TRANSACTION(RefundID) WHERE RefundID IS NOT NULL;
 CREATE UNIQUE INDEX UQ_WALLET_TX_Payment ON WALLET_TRANSACTION(PaymentID) WHERE PaymentID IS NOT NULL;
 CREATE INDEX IX_WALLET_TX_WalletTime ON WALLET_TRANSACTION(WalletID, TransactionTime);
+CREATE INDEX IX_WALLET_TX_TransactionID ON WALLET_TRANSACTION(TransactionID);
 GO
 
--- This lock restricts creating bookings; login, payments and wallet access stay available.
--- Rolling 24h window starts at the first cancellation, not at calendar midnight.
--- Cancellation thresholds: 3 -> 5m, +2 -> 15m, +1 -> 60m; later +1 -> 60m.
--- All cancellations (including payment timeout) count. A completed stay breaks
--- the cancellation streak but keeps the penalty level until the daily reset.
 CREATE TABLE USER_BOOKING_CONTROL (
     UserID INT NOT NULL,
     WindowStartedAt DATETIME2(3) NULL,
@@ -557,11 +531,75 @@ CREATE TABLE BOOKING_LOCK_HISTORY (
 );
 GO
 
--- One outstanding initial payment per account/customer, even with parallel requests.
 CREATE UNIQUE INDEX UQ_BOOKING_OnePendingPerCustomer
 ON BOOKING(CustomerID) WHERE BookingStatus = 'PENDING_PAYMENT';
 CREATE UNIQUE INDEX UQ_PAYMENT_TransactionCode
 ON PAYMENT(TransactionCode) WHERE TransactionCode IS NOT NULL;
+CREATE UNIQUE INDEX UQ_PAYMENT_TransactionID
+ON PAYMENT(TransactionID) WHERE TransactionID IS NOT NULL;
+GO
+
+CREATE TRIGGER TR_PAYMENT_ValidateTransaction ON PAYMENT AFTER INSERT, UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT 1 FROM inserted AS p
+        LEFT JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = p.TransactionID
+        WHERE p.TransactionID IS NOT NULL
+          AND (t.TransactionID IS NULL OR t.TransactionType <> 'PAYMENT' OR t.TransactionValue <> p.Amount)
+    ) THROW 51200, 'Payment must reference a PAYMENT transaction for the same amount.', 1;
+END;
+GO
+
+CREATE TRIGGER TR_REFUND_ValidateTransaction ON BOOKING_REFUND AFTER INSERT, UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT 1 FROM inserted AS r
+        JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = r.TransactionID
+        WHERE t.TransactionType <> 'REFUND' OR t.TransactionValue <> r.Amount
+    ) THROW 51201, 'Refund must reference a REFUND transaction for the same amount.', 1;
+END;
+GO
+
+CREATE TRIGGER TR_WALLET_ValidateTransaction ON WALLET_TRANSACTION AFTER INSERT, UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT 1 FROM inserted AS w
+        JOIN CUSTOMER_WALLET AS cw ON cw.WalletID = w.WalletID
+        JOIN PAYMENT AS p ON p.PaymentID = w.PaymentID
+        JOIN BOOKING AS b ON b.BookingID = p.BookingID
+        WHERE w.TransactionType = 'PAYMENT_DEBIT'
+          AND (p.Status NOT IN ('PAID', 'REFUNDED') OR p.WalletAmount <> w.Amount OR cw.CustomerID <> b.CustomerID)
+    ) OR EXISTS (
+        SELECT 1 FROM inserted AS w JOIN BOOKING_REFUND AS r ON r.RefundID = w.RefundID
+        WHERE w.TransactionType = 'REFUND_CREDIT' AND w.Amount <> r.Amount
+    ) THROW 51202, 'Wallet entry must match its owner and payment or refund amount.', 1;
+END;
+GO
+
+CREATE TRIGGER TR_INVOICE_TRANSACTION_Validate ON INVOICE_TRANSACTION AFTER INSERT, UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT 1 FROM inserted AS i JOIN PAYMENT AS p ON p.PaymentID = i.PaymentID
+        WHERE p.Status NOT IN ('PAID', 'REFUNDED')
+    ) THROW 51203, 'Invoices can reference only successfully captured payment transactions.', 1;
+END;
+GO
+
+CREATE TRIGGER TR_TRANSACTION_ValidateReferences ON dbo.[TRANSACTION] AFTER UPDATE AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT 1 FROM inserted AS t JOIN PAYMENT AS p ON p.TransactionID = t.TransactionID
+        WHERE t.TransactionType <> 'PAYMENT' OR t.TransactionValue <> p.Amount
+    ) OR EXISTS (
+        SELECT 1 FROM inserted AS t JOIN BOOKING_REFUND AS r ON r.TransactionID = t.TransactionID
+        WHERE t.TransactionType <> 'REFUND' OR t.TransactionValue <> r.Amount
+    ) THROW 51204, 'A transaction must remain consistent with its payment or refund.', 1;
+END;
 GO
 
 CREATE TRIGGER TR_CUSTOMER_CreateWalletAndControl ON CUSTOMER AFTER INSERT AS
@@ -572,11 +610,6 @@ BEGIN
 END;
 GO
 
-/*******************************************************************************
-   BUSINESS-RULE TRIGGERS
-********************************************************************************/
-
--- Validate guest capacity and room subtotal for the selected stay.
 CREATE TRIGGER TR_BOOKING_DETAIL_Validate
 ON BOOKING_DETAIL
 AFTER INSERT, UPDATE
@@ -609,7 +642,6 @@ BEGIN
 END;
 GO
 
--- Recalculate booking total whenever room details change.
 CREATE TRIGGER TR_BOOKING_DETAIL_RecalculateTotal
 ON BOOKING_DETAIL
 AFTER INSERT, UPDATE, DELETE
@@ -641,7 +673,6 @@ BEGIN
 END;
 GO
 
--- Recalculate booking total whenever purchased services change.
 CREATE TRIGGER TR_BOOKING_SERVICE_RecalculateTotal
 ON BOOKING_SERVICE
 AFTER INSERT, UPDATE, DELETE
@@ -673,7 +704,6 @@ BEGIN
 END;
 GO
 
--- Prevent assignment of a wrong, inactive, excessive or overlapping room.
 CREATE TRIGGER TR_ROOM_ASSIGNMENT_Validate
 ON ROOM_ASSIGNMENT
 AFTER INSERT, UPDATE
@@ -748,8 +778,8 @@ BEGIN
                otherAssignment.BookingDetailID
         INNER JOIN BOOKING AS otherBooking
             ON otherBooking.BookingID = otherDetail.BookingID
-        WHERE currentBooking.BookingStatus <> 'CANCELLED'
-          AND otherBooking.BookingStatus <> 'CANCELLED'
+        WHERE currentBooking.BookingStatus NOT IN ('CANCELLED', 'CHECKED_OUT')
+          AND otherBooking.BookingStatus NOT IN ('CANCELLED', 'CHECKED_OUT')
           AND currentBooking.CheckInDate < otherBooking.CheckOutDate
           AND currentBooking.CheckOutDate > otherBooking.CheckInDate
     )
@@ -765,10 +795,6 @@ BEGIN
     END;
 END;
 GO
-
-/*******************************************************************************
-   SEED DATA FOR ONE HOTEL
-********************************************************************************/
 
 INSERT INTO HOTEL (HotelName, HotelImage, RoomImage, PoolImage, RestaurantImage, Address)
 VALUES (
@@ -805,7 +831,6 @@ VALUES
 ('N20', N'Other');
 GO
 
--- Existing sample accounts: flag 0. Newly provisioned Staff must use flag 1 in Java.
 INSERT INTO USERS (Username, Password, Role, MustChangePassword)
 VALUES
 ('admin', 'e10adc3949ba59abbe56e057f20f883e', 'Admin', 0),
@@ -906,33 +931,27 @@ VALUES
 ('NV10', N'Phan Gia Huy', N'Customer service staff', 8000000, N'Morning', N'Cần Thơ', '0901000010', 'nv10.hbms@gmail.com', 10),
 ('NV11', N'Đặng Mỹ Duyên', N'Customer service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000011', 'nv11.hbms@gmail.com', 11),
 
--- Spa
 ('NV12', N'Bùi Thanh Trúc', N'Service staff', 8000000, N'Morning', N'Cần Thơ', '0901000012', 'nv12.hbms@gmail.com', 12),
 
--- Restaurant
 ('NV13', N'Nguyễn Thành Đạt', N'Service staff', 12000000, N'Morning', N'Cần Thơ', '0901000013', 'nv13.hbms@gmail.com', 13),
 ('NV14', N'Trần Minh Đức', N'Service staff', 10000000, N'Afternoon', N'Cần Thơ', '0901000014', 'nv14.hbms@gmail.com', 14),
 ('NV15', N'Lê Ngọc Mai', N'Service staff', 10000000, N'Night', N'Cần Thơ', '0901000015', 'nv15.hbms@gmail.com', 15),
 ('NV16', N'Phạm Quốc Khánh', N'Service staff', 10000000, N'Morning', N'Cần Thơ', '0901000016', 'nv16.hbms@gmail.com', 16),
 ('NV17', N'Võ Thu Hà', N'Service staff', 10000000, N'Afternoon', N'Cần Thơ', '0901000017', 'nv17.hbms@gmail.com', 17),
 
--- Car rental
 ('NV18', N'Nguyễn Văn Phúc', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000018', 'nv18.hbms@gmail.com', 18),
 ('NV19', N'Trần Gia Hưng', N'Service staff', 7000000, N'Afternoon', N'Cần Thơ', '0901000019', 'nv19.hbms@gmail.com', 19),
 ('NV20', N'Lê Minh Quân', N'Service staff', 7000000, N'Night', N'Cần Thơ', '0901000020', 'nv20.hbms@gmail.com', 20),
 
--- Laundry
 ('NV21', N'Phạm Thị Hương', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000021', 'nv21.hbms@gmail.com', 21),
 ('NV22', N'Nguyễn Thị Ngọc', N'Service staff', 7000000, N'Afternoon', N'Cần Thơ', '0901000022', 'nv22.hbms@gmail.com', 22),
 ('NV23', N'Trần Mỹ Linh', N'Service staff', 7000000, N'Night', N'Cần Thơ', '0901000023', 'nv23.hbms@gmail.com', 23),
 
--- Clean up
 ('NV24', N'Lê Thị Thanh', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000024', 'nv24.hbms@gmail.com', 24),
 ('NV25', N'Phạm Ngọc Lan', N'Service staff', 7000000, N'Afternoon', N'Cần Thơ', '0901000025', 'nv25.hbms@gmail.com', 25),
 ('NV26', N'Nguyễn Thị Mai', N'Service staff', 7000000, N'Night', N'Cần Thơ', '0901000026', 'nv26.hbms@gmail.com', 26),
 ('NV27', N'Trần Thị Thu', N'Service staff', 7000000, N'Morning', N'Cần Thơ', '0901000027', 'nv27.hbms@gmail.com', 27),
 
--- Spa
 ('NV28', N'Võ Ngọc Diệp', N'Service staff', 8000000, N'Afternoon', N'Cần Thơ', '0901000028', 'nv28.hbms@gmail.com', 28),
 ('NV29', N'Đặng Thảo Vy', N'Service staff', 8000000, N'Night', N'Cần Thơ', '0901000029', 'nv29.hbms@gmail.com', 29),
 ('NV30', N'Nguyễn Khánh An', N'Service staff', 8000000, N'Morning', N'Cần Thơ', '0901000030', 'nv30.hbms@gmail.com', 30),
@@ -1109,7 +1128,7 @@ VALUES
 ('BK0032', '2026-09-20 09:00:00', NULL, '2026-09-26', '2026-09-28',
  'ASSIGNED', 'KH32'),
 ('BK0033', '2026-09-21 09:00:00', NULL, '2026-09-27', '2026-09-29',
- 'CONFIRMED', 'KH33'),
+ 'CONFIRMED', 'KH07'),
 ('BK0034', '2026-09-22 09:00:00', NULL, '2026-09-29', '2026-10-01',
  'ASSIGNED', 'KH34'),
 ('BK0035', '2026-09-23 09:00:00', NULL, '2026-10-02', '2026-10-04',
@@ -1121,7 +1140,7 @@ VALUES
 ('BK0038', '2026-09-22 09:00:00', NULL, '2026-10-11', '2026-10-13',
  'CANCELLED', 'KH38'),
 ('BK0039', '2026-09-23 09:00:00', NULL, '2026-10-14', '2026-10-16',
- 'CONFIRMED', 'KH39'),
+ 'CONFIRMED', 'KH38'),
 ('BK0040', '2026-09-20 09:00:00', NULL, '2026-10-18', '2026-10-21',
  'CONFIRMED', 'KH40');
 GO
@@ -1134,7 +1153,7 @@ INSERT INTO BOOKING_DETAIL
 VALUES
 (1,  'BK0001', 'RT01', 1, 1,  500000, 1000000),
 (2,  'BK0002', 'RT02', 1, 2,  800000, 1600000),
-(3,  'BK0003', 'RT03', 1, 2, 1200000, 2400000), -- FIX: RT03 capacity = 2
+(3,  'BK0003', 'RT03', 1, 2, 1200000, 2400000),
 (4,  'BK0004', 'RT01', 1, 1,  500000, 1000000),
 (5,  'BK0004', 'RT02', 1, 2,  800000, 1600000),
 (6,  'BK0005', 'RT01', 1, 1,  500000, 1000000),
@@ -1142,7 +1161,7 @@ VALUES
 (8,  'BK0007', 'RT04', 1, 4, 1600000, 3200000),
 (9,  'BK0008', 'RT02', 1, 2,  800000, 2400000),
 (10, 'BK0009', 'RT01', 1, 1,  500000, 1000000),
-(11, 'BK0010', 'RT03', 1, 2, 1200000, 2400000), -- RT03 capacity = 2
+(11, 'BK0010', 'RT03', 1, 2, 1200000, 2400000),
 (12, 'BK0011', 'RT01', 1, 2, 500000, 1000000),
 (13, 'BK0012', 'RT02', 1, 1, 800000, 2400000),
 (14, 'BK0013', 'RT03', 1, 2, 1200000, 2400000),
@@ -1205,7 +1224,6 @@ VALUES
 ('BK0040', 'S04', 1, 450000, 450000);
 GO
 
--- Assign only active rooms that match the requested room type.
 INSERT INTO ROOM_ASSIGNMENT
 (BookingDetailID, RoomID, EmployeeID, AssignedAt)
 VALUES
@@ -1239,144 +1257,186 @@ GO
 
 INSERT INTO PAYMENTMETHOD (MethodID, MethodName)
 VALUES
-('PT01', N'Cash'),
-('PT02', N'Credit Card'),
-('PT03', N'Debit Card'),
-('PT04', N'Bank Transfer'),
-('PT05', N'Internet Banking'),
-('PT06', N'E-Wallet'),
-('PT07', N'PayPal'),
-('PT08', N'Others'),
-('PT09', N'Internal Wallet');
+('PT01', N'VietQR'),
+('PT02', N'Internal wallet'),
+('PT03', N'Cash');
 GO
 
--- Amounts include both room and service charges.
+INSERT INTO dbo.[TRANSACTION] (TransactionID, TransactionType, TransactionValue)
+VALUES
+('PAYMENT-PM0001', 'PAYMENT', 1075000),
+('PAYMENT-PM0002', 'PAYMENT', 2100000),
+('VQR-DEMO-PM0003', 'PAYMENT', 750000),
+('VQR-DEMO-PM0004', 'PAYMENT', 885000),
+('VQR-DEMO-PM0006', 'PAYMENT', 3350000),
+('VQR-DEMO-PM0007', 'PAYMENT', 3200000),
+('PAYMENT-PM0008', 'PAYMENT', 2900000),
+('VQR-DEMO-PM0009', 'PAYMENT', 1050000),
+('VQR-DEMO-PM0011', 'PAYMENT', 1075000),
+('PAYMENT-PM0012', 'PAYMENT', 2400000),
+('VQR-DEMO-PM0013', 'PAYMENT', 2850000),
+('VQR-DEMO-PM0014', 'PAYMENT', 3200000),
+('VQR-DEMO-PM0015', 'PAYMENT', 1650000),
+('VQR-DEMO-PM0016', 'PAYMENT', 2400000),
+('VQR-DEMO-PM0017', 'PAYMENT', 2800000),
+('VQR-DEMO-PM0018', 'PAYMENT', 4800000),
+('VQR-DEMO-PM0019', 'PAYMENT', 1050000),
+('VQR-DEMO-PM0020', 'PAYMENT', 2400000),
+('VQR-DEMO-PM0021', 'PAYMENT', 2750000),
+('PAYMENT-PM0022', 'PAYMENT', 3200000),
+('VQR-DEMO-PM0023', 'PAYMENT', 1700000),
+('VQR-DEMO-PM0024', 'PAYMENT', 1600000),
+('VQR-DEMO-PM0025', 'PAYMENT', 4050000),
+('VQR-DEMO-PM0026', 'PAYMENT', 3200000),
+('VQR-DEMO-PM0027', 'PAYMENT', 1150000),
+('PAYMENT-PM0028', 'PAYMENT', 1600000),
+('VQR-DEMO-PM0029', 'PAYMENT', 2550000),
+('VQR-DEMO-PM0030', 'PAYMENT', 3200000),
+('PAYMENT-PM0031', 'PAYMENT', 405000),
+('VQR-DEMO-PM0032', 'PAYMENT', 1800000),
+('PAYMENT-PM0033', 'PAYMENT', 2400000),
+('PAYMENT-PM0034', 'PAYMENT', 3550000),
+('VQR-DEMO-PM0035', 'PAYMENT', 1750000),
+('VQR-DEMO-PM0038', 'PAYMENT', 3200000),
+('VQR-DEMO-PM0039', 'PAYMENT', 1050000),
+('VQR-DEMO-PM0040', 'PAYMENT', 2850000),
+('VQR-DEMO-PM0041', 'PAYMENT', 2065000),
+('REFUND-BK0007', 'REFUND', 3200000),
+('REFUND-BK0038', 'REFUND', 3200000);
+GO
+
 INSERT INTO PAYMENT
 (PaymentID, BookingID, PaymentTime, Amount,
- Status, MethodID, TransactionCode, PaymentType)
+ Status, MethodID, TransactionCode, TransactionID, PaymentType, WalletAmount)
 VALUES
 ('PM0001', 'BK0001', '2026-09-01 09:05:00', 1075000,
- 'PAID', 'PT02', 'TXN-BK0001', 'FULL'),
+ 'PAID', 'PT03', 'CASH-PM0001', 'PAYMENT-PM0001', 'FULL', 0),
 ('PM0002', 'BK0002', '2026-09-03 10:20:00', 2100000,
- 'PAID', 'PT04', 'TXN-BK0002', 'FULL'),
+ 'PAID', 'PT03', 'CASH-PM0002', 'PAYMENT-PM0002', 'FULL', 0),
 ('PM0003', 'BK0003', '2026-09-10 08:35:00', 750000,
- 'PAID', 'PT06', 'TXN-BK0003', 'DEPOSIT'),
+ 'PAID', 'PT01', 'TXN-BK0003', 'VQR-DEMO-PM0003', 'DEPOSIT', 0),
 ('PM0004', 'BK0004', '2026-09-11 14:05:00', 885000,
- 'PAID', 'PT02', 'TXN-BK0004-DEPOSIT', 'DEPOSIT'),
+ 'PAID', 'PT01', 'TXN-BK0004-DEPOSIT', 'VQR-DEMO-PM0004', 'DEPOSIT', 0),
 ('PM0005', 'BK0005', '2026-09-12 16:15:00', 1000000,
- 'PENDING', 'PT07', NULL, 'FULL'),
+ 'PENDING', 'PT01', NULL, NULL, 'FULL', 0),
 ('PM0006', 'BK0006', '2026-09-13 11:50:00', 3350000,
- 'PAID', 'PT04', 'TXN-BK0006', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0006', 'VQR-DEMO-PM0006', 'FULL', 0),
 ('PM0007', 'BK0007', '2026-09-14 09:25:00', 3200000,
- 'REFUNDED', 'PT02', 'REF-BK0007', 'FULL'),
+ 'REFUNDED', 'PT01', 'REF-BK0007', 'VQR-DEMO-PM0007', 'FULL', 0),
 ('PM0008', 'BK0008', '2026-09-15 13:35:00', 2900000,
- 'PAID', 'PT03', 'TXN-BK0008', 'FULL'),
+ 'PAID', 'PT03', 'CASH-PM0008', 'PAYMENT-PM0008', 'FULL', 0),
 ('PM0009', 'BK0009', '2026-09-16 15:05:00', 1050000,
- 'PAID', 'PT06', 'TXN-BK0009', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0009', 'VQR-DEMO-PM0009', 'FULL', 0),
 ('PM0010', 'BK0010', '2026-09-17 06:35:00', 2400000,
- 'FAILED', 'PT05', NULL, 'FULL'),
+ 'FAILED', 'PT01', NULL, NULL, 'FULL', 0),
 ('PM0011', 'BK0011', '2026-07-27 09:05:00', 1075000,
- 'PAID', 'PT02', 'TXN-BK0011', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0011', 'VQR-DEMO-PM0011', 'FULL', 0),
 ('PM0012', 'BK0012', '2026-07-28 09:05:00', 2400000,
- 'PAID', 'PT04', 'TXN-BK0012', 'FULL'),
+ 'PAID', 'PT03', 'CASH-PM0012', 'PAYMENT-PM0012', 'FULL', 0),
 ('PM0013', 'BK0013', '2026-08-02 09:05:00', 2850000,
- 'PAID', 'PT02', 'TXN-BK0013', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0013', 'VQR-DEMO-PM0013', 'FULL', 0),
 ('PM0014', 'BK0014', '2026-08-05 09:05:00', 3200000,
- 'PAID', 'PT04', 'TXN-BK0014', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0014', 'VQR-DEMO-PM0014', 'FULL', 0),
 ('PM0015', 'BK0015', '2026-08-10 09:05:00', 1650000,
- 'PAID', 'PT02', 'TXN-BK0015', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0015', 'VQR-DEMO-PM0015', 'FULL', 0),
 ('PM0016', 'BK0016', '2026-08-11 09:05:00', 2400000,
- 'PAID', 'PT04', 'TXN-BK0016', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0016', 'VQR-DEMO-PM0016', 'FULL', 0),
 ('PM0017', 'BK0017', '2026-08-16 09:05:00', 2800000,
- 'PAID', 'PT02', 'TXN-BK0017', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0017', 'VQR-DEMO-PM0017', 'FULL', 0),
 ('PM0018', 'BK0018', '2026-08-19 09:05:00', 4800000,
- 'PAID', 'PT04', 'TXN-BK0018', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0018', 'VQR-DEMO-PM0018', 'FULL', 0),
 ('PM0019', 'BK0019', '2026-08-23 09:05:00', 1050000,
- 'PAID', 'PT02', 'TXN-BK0019', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0019', 'VQR-DEMO-PM0019', 'FULL', 0),
 ('PM0020', 'BK0020', '2026-08-24 09:05:00', 2400000,
- 'PAID', 'PT04', 'TXN-BK0020', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0020', 'VQR-DEMO-PM0020', 'FULL', 0),
 ('PM0021', 'BK0021', '2026-08-28 09:05:00', 2750000,
- 'PAID', 'PT02', 'TXN-BK0021', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0021', 'VQR-DEMO-PM0021', 'FULL', 0),
 ('PM0022', 'BK0022', '2026-08-30 09:05:00', 3200000,
- 'PAID', 'PT04', 'TXN-BK0022', 'FULL'),
+ 'PAID', 'PT03', 'CASH-PM0022', 'PAYMENT-PM0022', 'FULL', 0),
 ('PM0023', 'BK0023', '2026-09-02 09:05:00', 1700000,
- 'PAID', 'PT02', 'TXN-BK0023', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0023', 'VQR-DEMO-PM0023', 'FULL', 0),
 ('PM0024', 'BK0024', '2026-09-04 09:05:00', 1600000,
- 'PAID', 'PT04', 'TXN-BK0024', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0024', 'VQR-DEMO-PM0024', 'FULL', 0),
 ('PM0025', 'BK0025', '2026-09-06 09:05:00', 4050000,
- 'PAID', 'PT02', 'TXN-BK0025', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0025', 'VQR-DEMO-PM0025', 'FULL', 0),
 ('PM0026', 'BK0026', '2026-09-08 09:05:00', 3200000,
- 'PAID', 'PT04', 'TXN-BK0026', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0026', 'VQR-DEMO-PM0026', 'FULL', 0),
 ('PM0027', 'BK0027', '2026-09-10 09:05:00', 1150000,
- 'PAID', 'PT02', 'TXN-BK0027', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0027', 'VQR-DEMO-PM0027', 'FULL', 0),
 ('PM0028', 'BK0028', '2026-09-12 09:05:00', 1600000,
- 'PAID', 'PT04', 'TXN-BK0028', 'FULL'),
+ 'PAID', 'PT03', 'CASH-PM0028', 'PAYMENT-PM0028', 'FULL', 0),
 ('PM0029', 'BK0029', '2026-09-13 09:05:00', 2550000,
- 'PAID', 'PT02', 'TXN-BK0029', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0029', 'VQR-DEMO-PM0029', 'FULL', 0),
 ('PM0030', 'BK0030', '2026-09-14 09:05:00', 3200000,
- 'PAID', 'PT04', 'TXN-BK0030', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0030', 'VQR-DEMO-PM0030', 'FULL', 0),
 ('PM0031', 'BK0031', '2026-09-23 09:05:00', 405000,
- 'PAID', 'PT02', 'TXN-BK0031', 'DEPOSIT'),
+ 'PAID', 'PT03', 'CASH-PM0031', 'PAYMENT-PM0031', 'DEPOSIT', 0),
 ('PM0032', 'BK0032', '2026-09-20 09:05:00', 1800000,
- 'PAID', 'PT04', 'TXN-BK0032', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0032', 'VQR-DEMO-PM0032', 'FULL', 0),
 ('PM0033', 'BK0033', '2026-09-21 09:05:00', 2400000,
- 'PAID', 'PT02', 'TXN-BK0033', 'FULL'),
+ 'PAID', 'PT02', 'WALLET-PM0033', 'PAYMENT-PM0033', 'FULL', 2400000),
 ('PM0034', 'BK0034', '2026-09-22 09:05:00', 3550000,
- 'PAID', 'PT04', 'TXN-BK0034', 'FULL'),
+ 'PAID', 'PT03', 'CASH-PM0034', 'PAYMENT-PM0034', 'FULL', 0),
 ('PM0035', 'BK0035', '2026-09-23 09:05:00', 1750000,
- 'PAID', 'PT02', 'TXN-BK0035', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0035', 'VQR-DEMO-PM0035', 'FULL', 0),
 ('PM0036', 'BK0036', '2026-09-20 09:05:00', 1500000,
- 'PENDING', 'PT04', NULL, 'FULL'),
+ 'PENDING', 'PT01', NULL, NULL, 'FULL', 0),
 ('PM0037', 'BK0037', '2026-09-21 09:05:00', 2400000,
- 'FAILED', 'PT02', NULL, 'FULL'),
+ 'FAILED', 'PT01', NULL, NULL, 'FULL', 0),
 ('PM0038', 'BK0038', '2026-09-22 09:05:00', 3200000,
- 'REFUNDED', 'PT04', 'REF-BK0038', 'FULL'),
+ 'REFUNDED', 'PT01', 'REF-BK0038', 'VQR-DEMO-PM0038', 'FULL', 0),
 ('PM0039', 'BK0039', '2026-09-23 09:05:00', 1050000,
- 'PAID', 'PT02', 'TXN-BK0039', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0039', 'VQR-DEMO-PM0039', 'FULL', 350000),
 ('PM0040', 'BK0040', '2026-09-20 09:05:00', 2850000,
- 'PAID', 'PT04', 'TXN-BK0040', 'FULL'),
+ 'PAID', 'PT01', 'TXN-BK0040', 'VQR-DEMO-PM0040', 'FULL', 0),
 ('PM0041', 'BK0004', '2026-09-12 10:00:00', 2065000,
- 'PAID', 'PT04', 'TXN-BK0004-BALANCE', 'BALANCE');
+ 'PAID', 'PT01', 'TXN-BK0004-BALANCE', 'VQR-DEMO-PM0041', 'BALANCE', 0);
 GO
 
 INSERT INTO INVOICE
 (InvoiceID, InvoiceDate, TotalAmount, Status, ReplacedInvoiceID, EmployeeID, BookingID)
 VALUES
 ('HD0005', '2026-09-01',  900000, N'Mất hiệu lực', NULL,     'NV02', 'BK0001'),
-('HD0007', '2026-09-01', 1075000, N'Có hiệu lực',  'HD0005', 'NV02', 'BK0001'),
-('HD0002', '2026-09-03', 2100000, N'Có hiệu lực',  NULL, NULL, 'BK0002'),
-('HD0003', '2026-09-10', 2500000, N'Có hiệu lực',  NULL, NULL, 'BK0003'),
-('HD0004', '2026-09-11', 2950000, N'Có hiệu lực',  NULL, NULL, 'BK0004'),
-('HD0006', '2026-09-13', 3350000, N'Có hiệu lực',  NULL, NULL, 'BK0006'),
-('HD0008', '2026-09-15', 2900000, N'Có hiệu lực',  NULL, NULL, 'BK0008'),
-('HD0009', '2026-09-16', 1050000, N'Có hiệu lực',  NULL, NULL, 'BK0009'),
-('HD0011', '2026-07-27', 1075000, N'Có hiệu lực',  NULL, NULL, 'BK0011'),
-('HD0012', '2026-07-28', 2400000, N'Có hiệu lực',  NULL, NULL, 'BK0012'),
-('HD0013', '2026-08-02', 2850000, N'Có hiệu lực',  NULL, NULL, 'BK0013'),
-('HD0014', '2026-08-05', 3200000, N'Có hiệu lực',  NULL, NULL, 'BK0014'),
-('HD0015', '2026-08-10', 1650000, N'Có hiệu lực',  NULL, NULL, 'BK0015'),
-('HD0016', '2026-08-11', 2400000, N'Có hiệu lực',  NULL, NULL, 'BK0016'),
-('HD0017', '2026-08-16', 2800000, N'Có hiệu lực',  NULL, NULL, 'BK0017'),
-('HD0018', '2026-08-19', 4800000, N'Có hiệu lực',  NULL, NULL, 'BK0018'),
-('HD0019', '2026-08-23', 1050000, N'Có hiệu lực',  NULL, NULL, 'BK0019'),
-('HD0020', '2026-08-24', 2400000, N'Có hiệu lực',  NULL, NULL, 'BK0020'),
-('HD0021', '2026-08-28', 2750000, N'Có hiệu lực',  NULL, NULL, 'BK0021'),
-('HD0022', '2026-08-30', 3200000, N'Có hiệu lực',  NULL, NULL, 'BK0022'),
-('HD0023', '2026-09-02', 1700000, N'Có hiệu lực',  NULL, NULL, 'BK0023'),
-('HD0024', '2026-09-04', 1600000, N'Có hiệu lực',  NULL, NULL, 'BK0024'),
-('HD0025', '2026-09-06', 4050000, N'Có hiệu lực',  NULL, NULL, 'BK0025'),
-('HD0026', '2026-09-08', 3200000, N'Có hiệu lực',  NULL, NULL, 'BK0026'),
-('HD0027', '2026-09-10', 1150000, N'Có hiệu lực',  NULL, NULL, 'BK0027'),
-('HD0028', '2026-09-12', 1600000, N'Có hiệu lực',  NULL, NULL, 'BK0028'),
-('HD0029', '2026-09-13', 2550000, N'Có hiệu lực',  NULL, NULL, 'BK0029'),
-('HD0030', '2026-09-14', 3200000, N'Có hiệu lực',  NULL, NULL, 'BK0030'),
-('HD0031', '2026-09-23', 1350000, N'Có hiệu lực',  NULL, NULL, 'BK0031'),
-('HD0032', '2026-09-20', 1800000, N'Có hiệu lực',  NULL, NULL, 'BK0032'),
-('HD0033', '2026-09-21', 2400000, N'Có hiệu lực',  NULL, NULL, 'BK0033'),
-('HD0034', '2026-09-22', 3550000, N'Có hiệu lực',  NULL, NULL, 'BK0034'),
-('HD0035', '2026-09-23', 1750000, N'Có hiệu lực',  NULL, NULL, 'BK0035'),
-('HD0039', '2026-09-23', 1050000, N'Có hiệu lực',  NULL, NULL, 'BK0039'),
-('HD0040', '2026-09-20', 2850000, N'Có hiệu lực',  NULL, NULL, 'BK0040');
+('HD0007', '2026-09-01', 1075000, N'Có hiệu lực',  'HD0005', 'NV03', 'BK0001'),
+('HD0002', '2026-09-03', 2100000, N'Có hiệu lực',  NULL, 'NV04', 'BK0002'),
+('HD0003', '2026-09-10', 2500000, N'Có hiệu lực',  NULL, 'NV05', 'BK0003'),
+('HD0004', '2026-09-11', 2950000, N'Có hiệu lực',  NULL, 'NV06', 'BK0004'),
+('HD0006', '2026-09-13', 3350000, N'Có hiệu lực',  NULL, 'NV02', 'BK0006'),
+('HD0008', '2026-09-15', 2900000, N'Có hiệu lực',  NULL, 'NV03', 'BK0008'),
+('HD0009', '2026-09-16', 1050000, N'Có hiệu lực',  NULL, 'NV04', 'BK0009'),
+('HD0011', '2026-07-27', 1075000, N'Có hiệu lực',  NULL, 'NV05', 'BK0011'),
+('HD0012', '2026-07-28', 2400000, N'Có hiệu lực',  NULL, 'NV06', 'BK0012'),
+('HD0013', '2026-08-02', 2850000, N'Có hiệu lực',  NULL, 'NV02', 'BK0013'),
+('HD0014', '2026-08-05', 3200000, N'Có hiệu lực',  NULL, 'NV03', 'BK0014'),
+('HD0015', '2026-08-10', 1650000, N'Có hiệu lực',  NULL, 'NV04', 'BK0015'),
+('HD0016', '2026-08-11', 2400000, N'Có hiệu lực',  NULL, 'NV05', 'BK0016'),
+('HD0017', '2026-08-16', 2800000, N'Có hiệu lực',  NULL, 'NV06', 'BK0017'),
+('HD0018', '2026-08-19', 4800000, N'Có hiệu lực',  NULL, 'NV02', 'BK0018'),
+('HD0019', '2026-08-23', 1050000, N'Có hiệu lực',  NULL, 'NV03', 'BK0019'),
+('HD0020', '2026-08-24', 2400000, N'Có hiệu lực',  NULL, 'NV04', 'BK0020'),
+('HD0021', '2026-08-28', 2750000, N'Có hiệu lực',  NULL, 'NV05', 'BK0021'),
+('HD0022', '2026-08-30', 3200000, N'Có hiệu lực',  NULL, 'NV06', 'BK0022'),
+('HD0023', '2026-09-02', 1700000, N'Có hiệu lực',  NULL, 'NV02', 'BK0023'),
+('HD0024', '2026-09-04', 1600000, N'Có hiệu lực',  NULL, 'NV03', 'BK0024'),
+('HD0025', '2026-09-06', 4050000, N'Có hiệu lực',  NULL, 'NV04', 'BK0025'),
+('HD0026', '2026-09-08', 3200000, N'Có hiệu lực',  NULL, 'NV05', 'BK0026'),
+('HD0027', '2026-09-10', 1150000, N'Có hiệu lực',  NULL, 'NV06', 'BK0027'),
+('HD0028', '2026-09-12', 1600000, N'Có hiệu lực',  NULL, 'NV02', 'BK0028'),
+('HD0029', '2026-09-13', 2550000, N'Có hiệu lực',  NULL, 'NV03', 'BK0029'),
+('HD0030', '2026-09-14', 3200000, N'Có hiệu lực',  NULL, 'NV04', 'BK0030'),
+('HD0031', '2026-09-23', 1350000, N'Có hiệu lực',  NULL, 'NV05', 'BK0031'),
+('HD0032', '2026-09-20', 1800000, N'Có hiệu lực',  NULL, 'NV06', 'BK0032'),
+('HD0033', '2026-09-21', 2400000, N'Có hiệu lực',  NULL, 'NV02', 'BK0033'),
+('HD0034', '2026-09-22', 3550000, N'Có hiệu lực',  NULL, 'NV03', 'BK0034'),
+('HD0035', '2026-09-23', 1750000, N'Có hiệu lực',  NULL, 'NV04', 'BK0035'),
+('HD0039', '2026-09-23', 1050000, N'Có hiệu lực',  NULL, 'NV05', 'BK0039'),
+('HD0040', '2026-09-20', 2850000, N'Có hiệu lực',  NULL, 'NV06', 'BK0040');
+GO
+
+INSERT INVOICE_TRANSACTION(InvoiceID, BookingID, PaymentID, TransactionID)
+SELECT i.InvoiceID, i.BookingID, p.PaymentID, p.TransactionID
+FROM INVOICE AS i JOIN PAYMENT AS p ON p.BookingID = i.BookingID
+WHERE i.Status = N'Có hiệu lực' AND p.Status IN ('PAID', 'REFUNDED');
 GO
 
 INSERT INTO COMPLAINT (Title, Content, Status, CustomerID)
@@ -1388,12 +1448,6 @@ VALUES (
 );
 GO
 
-/*******************************************************************************
-   AVAILABILITY PROCEDURE AND INDEXES
-********************************************************************************/
-
--- Availability is based on requested room-type quantities, even before staff
--- assigns concrete rooms. Only unexpired pending payments count as holds.
 CREATE PROCEDURE SP_GET_ROOM_TYPE_AVAILABILITY
     @CheckInDate DATE,
     @CheckOutDate DATE
@@ -1482,22 +1536,21 @@ GO
 CREATE INDEX IX_PAYMENT_Booking_Status
 ON PAYMENT (BookingID, Status);
 GO
-/*
-   update reply cho complaint
-*/
+
 USE QLKS;
 GO
 
-ALTER TABLE COMPLAINT 
+ALTER TABLE COMPLAINT
 ADD ReplyMessage NVARCHAR(MAX) NULL;
 
-ALTER TABLE COMPLAINT 
+ALTER TABLE COMPLAINT
 ADD EmployeeID CHAR(6) NULL;
+
+ALTER TABLE dbo.COMPLAINT WITH CHECK
+ADD CONSTRAINT FK_COMPLAINT_EMPLOYEE
+    FOREIGN KEY (EmployeeID) REFERENCES dbo.EMPLOYEE(EmployeeID);
 GO
 
-/*******************************************************************************
-   INITIALIZE NEW FIELDS AND KEEP THE 40 EXISTING SEED BOOKINGS
-********************************************************************************/
 UPDATE BOOKING SET PaymentOption = 'DEPOSIT'
 WHERE BookingID IN ('BK0003', 'BK0004', 'BK0031');
 GO
@@ -1511,15 +1564,14 @@ CROSS APPLY (
 WHERE p.FirstPaidAt IS NOT NULL;
 GO
 
--- Historical seed refunds happened one hour after their first successful payment.
 UPDATE BOOKING SET CancelledAt = DATEADD(HOUR, 1, FirstPaidAt),
     CancellationReason = 'CUSTOMER_REQUEST',
     CancelledByUserID = (SELECT UserID FROM CUSTOMER WHERE CUSTOMER.CustomerID = BOOKING.CustomerID)
 WHERE BookingStatus = 'CANCELLED';
 GO
 
-INSERT BOOKING_REFUND(BookingID, CustomerID, WalletID, Amount, RefundedAt)
-SELECT b.BookingID, b.CustomerID, w.WalletID, SUM(p.Amount), b.CancelledAt
+INSERT BOOKING_REFUND(BookingID, CustomerID, WalletID, Amount, RefundedAt, TransactionID)
+SELECT b.BookingID, b.CustomerID, w.WalletID, SUM(p.Amount), b.CancelledAt, CONCAT('REFUND-', RTRIM(b.BookingID))
 FROM BOOKING AS b JOIN CUSTOMER_WALLET AS w ON w.CustomerID = b.CustomerID
 JOIN PAYMENT AS p ON p.BookingID = b.BookingID AND p.Status = 'REFUNDED'
 GROUP BY b.BookingID, b.CustomerID, w.WalletID, b.CancelledAt;
@@ -1529,11 +1581,16 @@ SELECT r.RefundID, p.BookingID, p.PaymentID, p.Amount
 FROM BOOKING_REFUND AS r JOIN PAYMENT AS p ON p.BookingID = r.BookingID
 WHERE p.Status = 'REFUNDED';
 
-INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, RefundID)
-SELECT WalletID, 'REFUND_CREDIT', Amount, RefundedAt, RefundID FROM BOOKING_REFUND;
+INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, RefundID, TransactionID)
+SELECT WalletID, 'REFUND_CREDIT', Amount, RefundedAt, RefundID, TransactionID FROM BOOKING_REFUND;
+
+INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, PaymentID, TransactionID)
+SELECT w.WalletID, 'PAYMENT_DEBIT', p.WalletAmount, p.PaymentTime, p.PaymentID, p.TransactionID
+FROM PAYMENT AS p JOIN BOOKING AS b ON b.BookingID = p.BookingID
+JOIN CUSTOMER_WALLET AS w ON w.CustomerID = b.CustomerID
+WHERE p.WalletAmount > 0 AND p.Status IN ('PAID', 'REFUNDED');
 GO
 
--- Initialize historic cancellation windows; expired windows are reset on access.
 UPDATE c SET WindowStartedAt = b.CancelledAt, ConsecutiveCancellationCount = 1,
     CancellationCountInWindow = 1, UpdatedAt = b.CancelledAt
 FROM USER_BOOKING_CONTROL AS c
@@ -1548,13 +1605,6 @@ ALTER TABLE BOOKING ADD CONSTRAINT CK_BOOKING_CancellationData CHECK (
 );
 GO
 
-/*******************************************************************************
-   VIEWS AND TRANSACTIONAL APPLICATION API
-   Java must pass the authenticated session's UserID; never take it from a form.
-   SP_RECORD_PAYMENT is called only after verifying external provider callbacks,
-   or after staff has collected cash. A pending attempt is not a successful payment.
-   SQL Server 2016+; execute with SSMS/sqlcmd because GO is a batch separator.
-********************************************************************************/
 CREATE VIEW V_WALLET_BALANCE AS
 SELECT w.WalletID, w.CustomerID, w.CreatedAt,
     CAST(COALESCE(SUM(CASE WHEN t.TransactionType = 'REFUND_CREDIT'
@@ -1587,6 +1637,25 @@ OUTER APPLY (
 ) AS p LEFT JOIN BOOKING_REFUND AS r ON r.BookingID = b.BookingID;
 GO
 
+CREATE OR ALTER VIEW dbo.V_BOOKING_ROOM_BALANCE AS
+SELECT ps.BookingID, charges.RoomTotal, charges.ServiceTotal,
+    CAST(CASE WHEN ps.TotalPaidAmount >= charges.RoomTotal THEN charges.RoomTotal
+        ELSE ps.TotalPaidAmount END AS DECIMAL(12,2)) AS RoomPaidAmount,
+    CAST(CASE WHEN ps.BookingStatus = 'CANCELLED' OR ps.TotalPaidAmount >= charges.RoomTotal THEN 0
+        ELSE charges.RoomTotal - ps.TotalPaidAmount END AS DECIMAL(12,2)) AS RoomRemainingAmount,
+    CAST(CASE WHEN ps.BookingStatus = 'CANCELLED' THEN 0
+        WHEN ps.TotalPaidAmount <= charges.RoomTotal THEN charges.ServiceTotal
+        WHEN ps.TotalPaidAmount >= charges.RoomTotal + charges.ServiceTotal THEN 0
+        ELSE charges.RoomTotal + charges.ServiceTotal - ps.TotalPaidAmount END AS DECIMAL(12,2)) AS ServiceRemainingAmount
+FROM dbo.V_BOOKING_PAYMENT_SUMMARY ps
+CROSS APPLY (
+    SELECT CAST(COALESCE((SELECT SUM(d.Subtotal) FROM dbo.BOOKING_DETAIL d
+        WHERE d.BookingID = ps.BookingID), 0) AS DECIMAL(12,2)) AS RoomTotal,
+        CAST(COALESCE((SELECT SUM(s.Subtotal) FROM dbo.BOOKING_SERVICE s
+        WHERE s.BookingID = ps.BookingID), 0) AS DECIMAL(12,2)) AS ServiceTotal
+) charges;
+GO
+
 CREATE VIEW V_USER_BOOKING_ACCESS AS
 SELECT c.UserID, cu.CustomerID,
     CASE WHEN c.WindowStartedAt IS NULL OR DATEADD(DAY, 1, c.WindowStartedAt) <= SYSDATETIME()
@@ -1605,9 +1674,6 @@ FROM USER_BOOKING_CONTROL AS c JOIN CUSTOMER AS cu ON cu.UserID = c.UserID
 LEFT JOIN BOOKING AS pending ON pending.CustomerID = cu.CustomerID AND pending.BookingStatus = 'PENDING_PAYMENT';
 GO
 
--- Serialize mutations for this small, single-hotel project. The lock is owned
--- by the transaction and is released at commit/rollback. This also protects
--- room availability and wallet debits across different customer accounts.
 CREATE PROCEDURE SP_HBMS_ACQUIRE_WRITE_LOCK AS
 BEGIN
     SET NOCOUNT ON;
@@ -1662,7 +1728,6 @@ BEGIN
             OR @Deadline IS NULL OR @Deadline > @Now)
             THROW 51005, 'Payment timeout cancellation is not applicable.', 1;
 
-        -- Retrying a cancellation never credits the wallet or increments the streak twice.
         IF @Status = 'CANCELLED'
         BEGIN
             COMMIT TRANSACTION;
@@ -1684,20 +1749,22 @@ BEGIN
         BEGIN
             SELECT @WalletID = WalletID FROM CUSTOMER_WALLET WHERE CustomerID = @CustomerID;
             IF @WalletID IS NULL THROW 51007, 'Customer wallet not found.', 1;
-            INSERT BOOKING_REFUND(BookingID, CustomerID, WalletID, Amount, RefundedAt)
-            VALUES (@BookingID, @CustomerID, @WalletID, @Paid, @Now);
+            DECLARE @RefundTransactionID VARCHAR(100) = CONCAT('REFUND-', RTRIM(@BookingID));
+            INSERT dbo.[TRANSACTION](TransactionID, TransactionType, TransactionValue)
+            VALUES (@RefundTransactionID, 'REFUND', @Paid);
+            INSERT BOOKING_REFUND(BookingID, CustomerID, WalletID, Amount, RefundedAt, TransactionID)
+            VALUES (@BookingID, @CustomerID, @WalletID, @Paid, @Now, @RefundTransactionID);
             SET @RefundID = CONVERT(BIGINT, SCOPE_IDENTITY());
             INSERT REFUND_PAYMENT(RefundID, BookingID, PaymentID, Amount)
             SELECT @RefundID, BookingID, PaymentID, Amount FROM PAYMENT
             WHERE BookingID = @BookingID AND Status = 'PAID';
-            INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, RefundID)
-            VALUES (@WalletID, 'REFUND_CREDIT', @Paid, @Now, @RefundID);
+            INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, RefundID, TransactionID)
+            VALUES (@WalletID, 'REFUND_CREDIT', @Paid, @Now, @RefundID, @RefundTransactionID);
             UPDATE PAYMENT SET Status = 'REFUNDED' WHERE BookingID = @BookingID AND Status = 'PAID';
         END;
 
         EXEC SP_RESET_BOOKING_CONTROL @UserID = @OwnerUserID;
-        -- Customers may cancel previously paid bookings during a lock; this
-        -- still refunds eligible payments but does not escalate the lock early.
+
         SELECT @PreviouslyLockedUntil = BookingLockedUntil FROM USER_BOOKING_CONTROL WHERE UserID = @OwnerUserID;
         UPDATE USER_BOOKING_CONTROL SET WindowStartedAt = COALESCE(WindowStartedAt, @Now),
             ConsecutiveCancellationCount = ConsecutiveCancellationCount
@@ -1737,7 +1804,7 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
         EXEC SP_HBMS_ACQUIRE_WRITE_LOCK;
-        -- No result sets from each cancellation. Process oldest bookings first.
+
         DECLARE expired CURSOR LOCAL FAST_FORWARD FOR
             SELECT BookingID FROM BOOKING WHERE BookingStatus = 'PENDING_PAYMENT'
                 AND PaymentDeadline <= SYSDATETIME() AND (@CustomerID IS NULL OR CustomerID = @CustomerID)
@@ -1778,7 +1845,7 @@ CREATE PROCEDURE SP_CREATE_BOOKING
     @BookingID CHAR(6), @CustomerID CHAR(6), @ActorUserID INT,
     @CheckInDate DATE, @CheckOutDate DATE, @PaymentOption VARCHAR(10),
     @Rooms BOOKING_ROOM_INPUT READONLY,
-    @PaymentDeadline DATETIME -- Supply your existing timeout policy; no new timeout is imposed.
+    @PaymentDeadline DATETIME
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1799,8 +1866,6 @@ BEGIN
 
     IF @@TRANCOUNT <> 0 THROW 51021, 'Call SP_CREATE_BOOKING without an outer transaction.', 1;
 
-    -- Commit expired holds before creating; a rejected new booking must not undo
-    -- a timeout cancellation or its anti-spam penalty.
     EXEC SP_EXPIRE_PENDING_BOOKINGS @CustomerID = @CustomerID, @ReturnResult = 0;
     BEGIN TRY
         BEGIN TRANSACTION;
@@ -1852,7 +1917,8 @@ GO
 CREATE PROCEDURE SP_RECORD_PAYMENT
     @PaymentID CHAR(6), @BookingID CHAR(6), @ActorUserID INT,
     @PaymentType VARCHAR(10), @Amount DECIMAL(12,2), @MethodID CHAR(4),
-    @TransactionCode VARCHAR(100) = NULL
+    @TransactionCode VARCHAR(100) = NULL, @WalletAmount DECIMAL(12,2) = 0,
+    @TransactionID VARCHAR(100) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1878,22 +1944,39 @@ BEGIN
             THROW 51033, 'Invalid payment type.', 1;
         IF NOT EXISTS (SELECT 1 FROM PAYMENTMETHOD WHERE MethodID = @MethodID)
             THROW 51034, 'Payment method not found.', 1;
-        IF @MethodID = 'PT09' SET @TransactionCode = CONCAT('WALLET-', RTRIM(@PaymentID));
-        IF @MethodID = 'PT01'
+        SET @TransactionCode = NULLIF(LTRIM(RTRIM(@TransactionCode)), '');
+        SET @TransactionID = NULLIF(LTRIM(RTRIM(@TransactionID)), '');
+        IF @WalletAmount IS NULL OR @WalletAmount < 0 OR @WalletAmount > @Amount
+            THROW 51047, 'Invalid wallet contribution.', 1;
+        IF @MethodID = 'PT02'
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM USERS WHERE UserID = @ActorUserID AND Role IN ('Admin', 'Staff'))
-                THROW 51035, 'Cash collection must be recorded by staff.', 1;
+            SET @WalletAmount = @Amount;
+            SET @TransactionCode = CONCAT('WALLET-', RTRIM(@PaymentID));
+        END
+        ELSE IF @WalletAmount >= @Amount OR (@WalletAmount > 0 AND @MethodID <> 'PT01')
+            THROW 51047, 'Choose Internal wallet for a wallet-only payment, or VietQR for the shortfall.', 1;
+        IF @WalletAmount > 0 AND @ActorUserID <> @OwnerUserID
+            THROW 51048, 'Only the wallet owner can authorize a wallet contribution.', 1;
+        IF @MethodID = 'PT03'
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM USERS AS u JOIN EMPLOYEE AS e ON e.UserID = u.UserID
+                WHERE u.UserID = @ActorUserID AND u.Role = 'Staff' AND e.Position = N'Receptionist')
+                THROW 51035, 'Cash collection must be recorded by a receptionist on behalf of the customer.', 1;
             IF @TransactionCode IS NULL SET @TransactionCode = CONCAT('CASH-', RTRIM(@PaymentID));
         END;
+        IF @TransactionID IS NULL AND @MethodID <> 'PT01'
+            SET @TransactionID = CONCAT('PAYMENT-', RTRIM(@PaymentID));
+        IF @TransactionID IS NULL
+            THROW 51210, 'VietQR requires the verified transaction ID from the payment provider.', 1;
         IF @TransactionCode IS NULL OR LEN(LTRIM(RTRIM(@TransactionCode))) = 0
             THROW 51036, 'Successful payment requires a unique transaction code.', 1;
 
-        -- Provider retries after payment or cancellation are idempotent.
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND Status IN ('PAID', 'REFUNDED'))
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND BookingID = @BookingID
-                AND PaymentType = @PaymentType AND Amount = @Amount AND MethodID = @MethodID
-                AND TransactionCode = @TransactionCode)
+                AND PaymentType = @PaymentType AND Amount = @Amount AND WalletAmount = @WalletAmount AND MethodID = @MethodID
+                AND TransactionCode = @TransactionCode
+                AND (TransactionID = @TransactionID OR (TransactionID IS NULL AND @TransactionID IS NULL)))
                 THROW 51037, 'Payment ID already used with different payment data.', 1;
             COMMIT TRANSACTION;
             SELECT * FROM V_BOOKING_PAYMENT_SUMMARY WHERE BookingID = @BookingID;
@@ -1901,6 +1984,9 @@ BEGIN
         END;
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE TransactionCode = @TransactionCode AND PaymentID <> @PaymentID)
             THROW 51038, 'Transaction code already recorded under another payment ID.', 1;
+        IF @TransactionID IS NOT NULL AND EXISTS (
+            SELECT 1 FROM dbo.[TRANSACTION] WHERE TransactionID = @TransactionID)
+            THROW 51049, 'Transaction ID already recorded in the transaction ledger.', 1;
         IF @Status IN ('CANCELLED', 'CHECKED_OUT')
             THROW 51039, 'Cannot record a new payment on a cancelled or completed booking.', 1;
         IF @Status = 'PENDING_PAYMENT' AND @Deadline <= @Now
@@ -1925,21 +2011,29 @@ BEGIN
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND (
             BookingID <> @BookingID OR PaymentType <> @PaymentType OR Amount <> @Amount))
             THROW 51045, 'Payment attempt does not match this booking and amount.', 1;
-        IF @MethodID = 'PT09'
+        IF @WalletAmount > 0
         BEGIN
             SELECT @WalletID = WalletID, @Balance = Balance FROM V_WALLET_BALANCE WHERE CustomerID = @CustomerID;
-            IF @WalletID IS NULL OR @Balance < @Amount
+            IF @WalletID IS NULL OR @Balance < @WalletAmount
                 THROW 51046, 'Insufficient internal wallet balance.', 1;
         END;
+        INSERT dbo.[TRANSACTION](TransactionID, TransactionType, TransactionValue)
+        VALUES (@TransactionID, 'PAYMENT', @Amount);
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID)
             UPDATE PAYMENT SET Status = 'PAID', PaymentTime = @Now,
-                MethodID = @MethodID, TransactionCode = @TransactionCode WHERE PaymentID = @PaymentID;
+                MethodID = @MethodID, WalletAmount = @WalletAmount, TransactionCode = @TransactionCode, TransactionID = @TransactionID WHERE PaymentID = @PaymentID;
         ELSE
-            INSERT PAYMENT(PaymentID, BookingID, PaymentType, PaymentTime, Amount, Status, MethodID, TransactionCode)
-            VALUES (@PaymentID, @BookingID, @PaymentType, @Now, @Amount, 'PAID', @MethodID, @TransactionCode);
-        IF @MethodID = 'PT09'
-            INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, PaymentID)
-            VALUES (@WalletID, 'PAYMENT_DEBIT', @Amount, @Now, @PaymentID);
+            INSERT PAYMENT(PaymentID, BookingID, PaymentType, PaymentTime, Amount, Status, MethodID, WalletAmount, TransactionCode, TransactionID)
+            VALUES (@PaymentID, @BookingID, @PaymentType, @Now, @Amount, 'PAID', @MethodID, @WalletAmount, @TransactionCode, @TransactionID);
+        IF @WalletAmount > 0
+            INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, PaymentID, TransactionID)
+            VALUES (@WalletID, 'PAYMENT_DEBIT', @WalletAmount, @Now, @PaymentID, @TransactionID);
+        INSERT INVOICE_TRANSACTION(InvoiceID, BookingID, PaymentID, TransactionID)
+        SELECT i.InvoiceID, @BookingID, @PaymentID, @TransactionID
+        FROM INVOICE AS i
+        WHERE i.BookingID = @BookingID AND i.Status = N'Có hiệu lực'
+          AND NOT EXISTS (SELECT 1 FROM INVOICE_TRANSACTION AS link
+              WHERE link.InvoiceID = i.InvoiceID AND link.TransactionID = @TransactionID);
         IF @FirstPaidAt IS NULL
             UPDATE BOOKING SET FirstPaidAt = @Now, BookingAmountAtFirstPayment = @Total,
                 BookingStatus = 'CONFIRMED', PaymentDeadline = NULL WHERE BookingID = @BookingID;
@@ -1953,8 +2047,6 @@ BEGIN
 END;
 GO
 
--- Existing room/service total triggers still calculate TotalAmount. Room details
--- are fixed after creation; additional service charges increase the balance due.
 CREATE PROCEDURE SP_ADD_BOOKING_SERVICE
     @BookingID CHAR(6), @ServiceID CHAR(4), @Quantity INT, @ActorUserID INT,
     @UnitPrice DECIMAL(12,2) = NULL
@@ -2002,7 +2094,7 @@ BEGIN
 END;
 GO
 
-CREATE PROCEDURE SP_SET_BOOKING_STATUS
+CREATE PROCEDURE dbo.SP_SET_BOOKING_STATUS
     @BookingID CHAR(6), @NewStatus VARCHAR(30), @ActorUserID INT
 AS
 BEGIN
@@ -2035,6 +2127,25 @@ BEGIN
         IF @NewStatus = 'CHECKED_OUT' AND EXISTS (
             SELECT 1 FROM V_BOOKING_PAYMENT_SUMMARY WHERE BookingID = @BookingID AND RemainingAmount > 0)
             THROW 51065, 'Pay the remaining balance before check-out.', 1;
+        IF @NewStatus = 'CHECKED_IN'
+        BEGIN
+            IF EXISTS (SELECT 1 FROM dbo.V_BOOKING_ROOM_BALANCE
+                WHERE BookingID = @BookingID AND RoomRemainingAmount > 0)
+                THROW 51110, 'Pay all outstanding room charges before check-in.', 1;
+            IF EXISTS (SELECT 1 FROM BOOKING WHERE BookingID = @BookingID
+                AND NULLIF(LTRIM(RTRIM(GuestCCCDs)), '') IS NULL)
+                THROW 51069, 'Verify guest identity documents before check-in.', 1;
+            IF EXISTS (SELECT 1 FROM ROOM_ASSIGNMENT a
+                JOIN BOOKING_DETAIL d ON d.BookingDetailID = a.BookingDetailID
+                JOIN ROOM r ON r.RoomID = a.RoomID
+                WHERE d.BookingID = @BookingID AND (r.Status <> 'ACTIVE' OR EXISTS
+                    (SELECT 1 FROM ROOM_ASSIGNMENT otherA
+                    JOIN BOOKING_DETAIL otherD ON otherD.BookingDetailID = otherA.BookingDetailID
+                    JOIN BOOKING otherB ON otherB.BookingID = otherD.BookingID
+                    WHERE otherA.RoomID = r.RoomID AND otherB.BookingID <> @BookingID
+                        AND otherB.BookingStatus = 'CHECKED_IN')))
+                THROW 51070, 'An assigned room is unavailable or still occupied.', 1;
+        END;
         UPDATE BOOKING SET BookingStatus = @NewStatus WHERE BookingID = @BookingID;
         IF @NewStatus = 'CHECKED_OUT'
         BEGIN
@@ -2042,6 +2153,33 @@ BEGIN
             UPDATE USER_BOOKING_CONTROL SET ConsecutiveCancellationCount = 0, UpdatedAt = SYSDATETIME()
             WHERE UserID = @OwnerUserID;
         END;
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH;
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.SP_COUNTER_CHECKIN
+    @BookingID CHAR(6), @ActorUserID INT, @GuestDocuments VARCHAR(500)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        EXEC dbo.SP_HBMS_ACQUIRE_WRITE_LOCK;
+        IF NOT EXISTS (SELECT 1 FROM EMPLOYEE e JOIN USERS u ON u.UserID = e.UserID
+            WHERE e.UserID = @ActorUserID AND e.Position = N'Receptionist' AND u.Role = 'Staff')
+            THROW 51193, 'Only receptionists can check in guests.', 1;
+        IF NULLIF(LTRIM(RTRIM(@GuestDocuments)), '') IS NULL
+            THROW 51194, 'Guest documents are required.', 1;
+        IF NOT EXISTS (SELECT 1 FROM BOOKING WHERE BookingID = @BookingID AND BookingStatus = 'ASSIGNED')
+            THROW 51195, 'Assign all rooms before check-in.', 1;
+        UPDATE BOOKING SET GuestCCCDs = @GuestDocuments WHERE BookingID = @BookingID;
+        EXEC dbo.SP_SET_BOOKING_STATUS @BookingID, 'CHECKED_IN', @ActorUserID;
         COMMIT TRANSACTION;
     END TRY
     BEGIN CATCH
@@ -2078,22 +2216,16 @@ BEGIN
 END;
 GO
 
--- Read this before enabling the application login:
--- * Use a dedicated login mapped to HBMS_APP_ROLE, never sa/db_owner.
--- * The login must not belong to another role granting bypass permissions.
--- * Old DAO code using INSERT/UPDATE on the protected tables must call these
---   procedures instead. Application authentication still checks actors by role.
--- * Schedule SP_EXPIRE_PENDING_BOOKINGS periodically in Java/SQL Agent and call
---   it before loading availability/booking access. SQL does not run on a timer.
--- * JDBC writes should use autocommit for each complete procedure call; do not
---   wrap SP_CREATE_BOOKING in an outer transaction (expiry must remain committed).
 CREATE ROLE HBMS_APP_ROLE AUTHORIZATION dbo;
 GO
+
 DENY INSERT, UPDATE, DELETE ON BOOKING TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON BOOKING_DETAIL TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON BOOKING_SERVICE TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON ROOM_ASSIGNMENT TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON PAYMENT TO HBMS_APP_ROLE;
+DENY INSERT, UPDATE, DELETE ON dbo.[TRANSACTION] TO HBMS_APP_ROLE;
+DENY INSERT, UPDATE, DELETE ON INVOICE_TRANSACTION TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON CUSTOMER_WALLET TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON WALLET_TRANSACTION TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON BOOKING_REFUND TO HBMS_APP_ROLE;
@@ -2111,10 +2243,6 @@ GRANT EXECUTE ON SP_GET_ROOM_TYPE_AVAILABILITY TO HBMS_APP_ROLE;
 GRANT EXECUTE, REFERENCES ON TYPE::BOOKING_ROOM_INPUT TO HBMS_APP_ROLE;
 GRANT SELECT ON SCHEMA::dbo TO HBMS_APP_ROLE;
 GO
-
-/*******************************************************************************
-   FINAL CONSISTENCY CHECKS
-********************************************************************************/
 
 IF EXISTS (
     SELECT 1
@@ -2178,21 +2306,19 @@ BEGIN
 END;
 GO
 
-
-/*******************************************************************************
-   VALIDATE SPLIT PAYMENTS, REFUNDS AND INTERNAL WALLET SEED
-********************************************************************************/
 IF EXISTS (
     SELECT 1 FROM V_BOOKING_PAYMENT_SUMMARY
     WHERE BookingStatus IN ('CONFIRMED', 'ASSIGNED', 'CHECKED_IN', 'CHECKED_OUT')
       AND (FirstPaidAt IS NULL OR TotalPaidAmount < InitialRequiredAmount OR TotalPaidAmount > TotalAmount)
 ) THROW 51100, 'Seed confirmed bookings must have at least their required initial payment.', 1;
 GO
+
 IF EXISTS (
     SELECT 1 FROM V_BOOKING_PAYMENT_SUMMARY
     WHERE BookingStatus = 'CHECKED_OUT' AND RemainingAmount <> 0
 ) THROW 51101, 'Seed checked-out bookings must be fully paid.', 1;
 GO
+
 IF EXISTS (
     SELECT 1 FROM PAYMENT AS p JOIN BOOKING AS b ON b.BookingID = p.BookingID
     WHERE p.Status IN ('PAID', 'REFUNDED') AND (
@@ -2203,6 +2329,7 @@ IF EXISTS (
     )
 ) THROW 51102, 'Seed initial payment types or amounts are inconsistent.', 1;
 GO
+
 IF EXISTS (
     SELECT 1 FROM BOOKING AS b OUTER APPLY (
         SELECT MIN(PaymentTime) AS FirstPaidAt FROM PAYMENT
@@ -2213,6 +2340,7 @@ IF EXISTS (
        OR b.FirstPaidAt <> p.FirstPaidAt
 ) THROW 51103, 'Seed first-payment timestamp is inconsistent.', 1;
 GO
+
 IF EXISTS (
     SELECT 1 FROM BOOKING_REFUND AS r JOIN BOOKING AS b ON b.BookingID = r.BookingID
     WHERE b.BookingStatus <> 'CANCELLED' OR b.FirstPaidAt IS NULL
@@ -2225,6 +2353,7 @@ IF EXISTS (
            AND t.WalletID = r.WalletID AND t.Amount = r.Amount AND t.TransactionType = 'REFUND_CREDIT')
 ) THROW 51104, 'Seed refunds must equal all captured payments and credit the correct wallet within 24h.', 1;
 GO
+
 IF EXISTS (
     SELECT 1 FROM REFUND_PAYMENT AS r JOIN PAYMENT AS p ON p.PaymentID = r.PaymentID
     WHERE p.Status <> 'REFUNDED' OR p.Amount <> r.Amount
@@ -2233,6 +2362,7 @@ IF EXISTS (
     AND NOT EXISTS (SELECT 1 FROM REFUND_PAYMENT AS r WHERE r.PaymentID = p.PaymentID)
 ) THROW 51105, 'Seed refunded payments require matching refund details.', 1;
 GO
+
 IF EXISTS (SELECT 1 FROM V_WALLET_BALANCE WHERE Balance < 0)
     THROW 51106, 'Internal wallet cannot have a negative balance.', 1;
 IF (SELECT COUNT(*) FROM CUSTOMER_WALLET) <> (SELECT COUNT(*) FROM CUSTOMER)
@@ -2244,46 +2374,13 @@ GO
 PRINT N'QLKS created: 40 bookings, deposit/full payment, 24h wallet refunds and anti-spam booking locks.';
 GO
 
-/*******************************************************************************
-   APPLICATION INTEGRATION / EXAMPLES (COMMENTED OUT; NO EXTRA SEED WRITES)
-   Use authenticated UserID from session. Amount and payment options must come
-   from the server. SQL procedures do not authenticate payment-provider receipts.
-********************************************************************************/
--- Read available actions / balance / deposit and final-payment amount:
--- EXEC SP_EXPIRE_PENDING_BOOKINGS;
--- SELECT * FROM V_USER_BOOKING_ACCESS WHERE UserID = 32;
--- SELECT * FROM V_WALLET_BALANCE WHERE CustomerID = 'KH01';
--- SELECT * FROM V_BOOKING_PAYMENT_SUMMARY WHERE BookingID IN ('BK0003','BK0004','BK0031');
--- BK0003: 750,000 deposit; 1,750,000 remaining.
--- BK0004: 885,000 deposit + 2,065,000 balance; first-payment time stays 2026-09-11 14:05.
--- BK0031: 405,000 deposit; 945,000 remaining.
--- KH07 and KH38: 3,200,000 credited to each internal wallet from historical refunds.
-
--- DECLARE @Rooms BOOKING_ROOM_INPUT;
--- INSERT @Rooms(RoomTypeID, Quantity, GuestCount) VALUES ('RT01', 1, 2);
--- DECLARE @Deadline DATETIME = DATEADD(MINUTE, 15, GETDATE()); -- existing example timeout only
--- EXEC SP_CREATE_BOOKING @BookingID='BK0041', @CustomerID='KH01', @ActorUserID=32,
---     @CheckInDate='2026-12-01', @CheckOutDate='2026-12-03', @PaymentOption='DEPOSIT',
---     @Rooms=@Rooms, @PaymentDeadline=@Deadline;
--- EXEC SP_RECORD_PAYMENT @PaymentID='PM0042', @BookingID='BK0041', @ActorUserID=32,
---     @PaymentType='DEPOSIT', @Amount=300000, @MethodID='PT04', @TransactionCode='DEMO-BK0041-DEPOSIT';
--- EXEC SP_RECORD_PAYMENT @PaymentID='PM0043', @BookingID='BK0041', @ActorUserID=32,
---     @PaymentType='BALANCE', @Amount=700000, @MethodID='PT04', @TransactionCode='DEMO-BK0041-BALANCE';
--- EXEC SP_CANCEL_BOOKING @BookingID='BK0041', @ActorUserID=32;
--- EXEC SP_CANCEL_BOOKING @BookingID='BK0041', @ActorUserID=32; -- retry: no additional refund/streak
--- SELECT * FROM V_WALLET_BALANCE WHERE CustomerID='KH01'; -- exactly 1,000,000 refund credit
-
--- To connect the Java login after updating DAO code:
--- CREATE USER hbms_app FOR LOGIN hbms_app;
--- ALTER ROLE HBMS_APP_ROLE ADD MEMBER hbms_app;
--- Grant account/profile and other unrelated module permissions separately.
--- Do not add hbms_app to db_owner or db_datawriter to bypass the intended API.
-
 USE QLKS;
 GO
+
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
+
 CREATE OR ALTER PROCEDURE dbo.SP_CHECKOUT_WITH_INVOICE
     @BookingID CHAR(6), @ActorUserID INT
 AS
@@ -2323,6 +2420,12 @@ BEGIN
             VALUES (@InvoiceID, CAST(SYSDATETIME() AS DATE), @Total, N'Có hiệu lực', @EmployeeID, @BookingID);
             SET @Created = 1;
         END;
+        INSERT INVOICE_TRANSACTION(InvoiceID, BookingID, PaymentID, TransactionID)
+        SELECT @InvoiceID, @BookingID, p.PaymentID, p.TransactionID
+        FROM PAYMENT AS p
+        WHERE p.BookingID = @BookingID AND p.Status = 'PAID'
+          AND NOT EXISTS (SELECT 1 FROM INVOICE_TRANSACTION AS link
+              WHERE link.InvoiceID = @InvoiceID AND link.TransactionID = p.TransactionID);
         IF @Status = 'CHECKED_IN'
             EXEC dbo.SP_SET_BOOKING_STATUS @BookingID = @BookingID, @NewStatus = 'CHECKED_OUT', @ActorUserID = @ActorUserID;
         COMMIT TRANSACTION;
@@ -2334,22 +2437,14 @@ BEGIN
     END CATCH;
 END;
 GO
+
 DENY INSERT, UPDATE, DELETE ON dbo.INVOICE TO HBMS_APP_ROLE;
 GRANT EXECUTE ON dbo.SP_CHECKOUT_WITH_INVOICE TO HBMS_APP_ROLE;
 GO
 
-/* HBMS: wallet + external payment, non-destructive migration for DB_v3.sql.
-Run in the existing HBMS database as schema owner, using SSMS or sqlcmd.
-Do NOT rerun DB_v3.sql to install this feature: that script recreates the database.
-One PAYMENT.Amount records the complete deposit/full/balance installment.
-WalletAmount is debited once; ExternalAmount = Amount - WalletAmount.
-External collection remains SIMULATED by the existing Java application.
-This migration does not change refund eligibility, booking cutoff or check-in rules.
-Before using a real gateway: reserve wallet funds, verify callbacks, and reconcile
-failures before calling SP_RECORD_PAYMENT; no real gateway is introduced here.
-*/
 SET XACT_ABORT ON;
 GO
+
 BEGIN TRY
     BEGIN TRANSACTION;
     EXEC dbo.SP_HBMS_ACQUIRE_WRITE_LOCK;
@@ -2357,7 +2452,7 @@ BEGIN TRY
     BEGIN
         ALTER TABLE dbo.PAYMENT ADD WalletAmount DECIMAL(12,2) NOT NULL
             CONSTRAINT DF_PAYMENT_WalletAmount DEFAULT (0) WITH VALUES;
-        -- Backfill from the actual debit ledger, including refunded old payments.
+
         EXEC(N'UPDATE p SET WalletAmount = t.Amount
             FROM dbo.PAYMENT p JOIN dbo.WALLET_TRANSACTION t ON t.PaymentID = p.PaymentID
             WHERE t.TransactionType = ''PAYMENT_DEBIT'';');
@@ -2379,7 +2474,8 @@ GO
 ALTER PROCEDURE dbo.SP_RECORD_PAYMENT
     @PaymentID CHAR(6), @BookingID CHAR(6), @ActorUserID INT,
     @PaymentType VARCHAR(10), @Amount DECIMAL(12,2), @MethodID CHAR(4),
-    @TransactionCode VARCHAR(100) = NULL, @WalletAmount DECIMAL(12,2) = 0
+    @TransactionCode VARCHAR(100) = NULL, @WalletAmount DECIMAL(12,2) = 0,
+    @TransactionID VARCHAR(100) = NULL, @WalletAuthorizedBy INT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -2405,32 +2501,42 @@ BEGIN
             THROW 51033, 'Invalid payment type.', 1;
         IF NOT EXISTS (SELECT 1 FROM PAYMENTMETHOD WHERE MethodID = @MethodID)
             THROW 51034, 'Payment method not found.', 1;
+        SET @TransactionCode = NULLIF(LTRIM(RTRIM(@TransactionCode)), '');
+        SET @TransactionID = NULLIF(LTRIM(RTRIM(@TransactionID)), '');
         IF @WalletAmount IS NULL OR @WalletAmount < 0 OR @WalletAmount > @Amount
             THROW 51047, 'Invalid wallet contribution.', 1;
-        IF @MethodID = 'PT09'
+        IF @MethodID = 'PT02'
         BEGIN
             SET @WalletAmount = @Amount;
             SET @TransactionCode = CONCAT('WALLET-', RTRIM(@PaymentID));
         END
-        ELSE IF @WalletAmount >= @Amount OR (@WalletAmount > 0 AND @MethodID = 'PT01')
-            THROW 51047, 'Choose Internal Wallet for a wallet-only payment, or an external method for the shortfall.', 1;
+        ELSE IF @WalletAmount >= @Amount OR (@WalletAmount > 0 AND @MethodID <> 'PT01')
+            THROW 51047, 'Choose Internal wallet for a wallet-only payment, or VietQR for the shortfall.', 1;
         IF @WalletAmount > 0 AND @ActorUserID <> @OwnerUserID
+            AND (ISNULL(@WalletAuthorizedBy, -1) <> @OwnerUserID OR NOT EXISTS
+                (SELECT 1 FROM EMPLOYEE e JOIN USERS u ON u.UserID = e.UserID
+                 WHERE e.UserID = @ActorUserID AND u.Role = 'Staff' AND e.Position = N'Receptionist'))
             THROW 51048, 'Only the wallet owner can authorize a wallet contribution.', 1;
-        IF @MethodID = 'PT01'
+        IF @MethodID = 'PT03'
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM USERS WHERE UserID = @ActorUserID AND Role IN ('Admin', 'Staff'))
-                THROW 51035, 'Cash collection must be recorded by staff.', 1;
+            IF NOT EXISTS (SELECT 1 FROM USERS AS u JOIN EMPLOYEE AS e ON e.UserID = u.UserID
+                WHERE u.UserID = @ActorUserID AND u.Role = 'Staff' AND e.Position = N'Receptionist')
+                THROW 51035, 'Cash collection must be recorded by a receptionist on behalf of the customer.', 1;
             IF @TransactionCode IS NULL SET @TransactionCode = CONCAT('CASH-', RTRIM(@PaymentID));
         END;
+        IF @TransactionID IS NULL AND @MethodID <> 'PT01'
+            SET @TransactionID = CONCAT('PAYMENT-', RTRIM(@PaymentID));
+        IF @TransactionID IS NULL
+            THROW 51210, 'VietQR requires the verified transaction ID from the payment provider.', 1;
         IF @TransactionCode IS NULL OR LEN(LTRIM(RTRIM(@TransactionCode))) = 0
             THROW 51036, 'Successful payment requires a unique transaction code.', 1;
 
-        -- Provider retries after payment or cancellation are idempotent.
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND Status IN ('PAID', 'REFUNDED'))
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND BookingID = @BookingID
                 AND PaymentType = @PaymentType AND Amount = @Amount AND WalletAmount = @WalletAmount AND MethodID = @MethodID
-                AND TransactionCode = @TransactionCode)
+                AND TransactionCode = @TransactionCode
+                AND (TransactionID = @TransactionID OR (TransactionID IS NULL AND @TransactionID IS NULL)))
                 THROW 51037, 'Payment ID already used with different payment data.', 1;
             COMMIT TRANSACTION;
             SELECT * FROM V_BOOKING_PAYMENT_SUMMARY WHERE BookingID = @BookingID;
@@ -2438,6 +2544,9 @@ BEGIN
         END;
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE TransactionCode = @TransactionCode AND PaymentID <> @PaymentID)
             THROW 51038, 'Transaction code already recorded under another payment ID.', 1;
+        IF @TransactionID IS NOT NULL AND EXISTS (
+            SELECT 1 FROM dbo.[TRANSACTION] WHERE TransactionID = @TransactionID)
+            THROW 51049, 'Transaction ID already recorded in the transaction ledger.', 1;
         IF @Status IN ('CANCELLED', 'CHECKED_OUT')
             THROW 51039, 'Cannot record a new payment on a cancelled or completed booking.', 1;
         IF @Status = 'PENDING_PAYMENT' AND @Deadline <= @Now
@@ -2455,10 +2564,13 @@ BEGIN
         ELSE
         BEGIN
             IF @PaymentType <> 'BALANCE' THROW 51043, 'Initial payment already made; use BALANCE.', 1;
-            SET @Required = @Total - @Paid;
+            IF @Status IN ('CONFIRMED', 'ASSIGNED')
+                SELECT @Required = RoomRemainingAmount FROM dbo.V_BOOKING_ROOM_BALANCE WHERE BookingID = @BookingID;
+            ELSE
+                SET @Required = @Total - @Paid;
         END;
         IF @Required <= 0 OR @Amount <> @Required
-            THROW 51044, 'Pay exactly the initial required amount or the current remaining balance.', 1;
+            THROW 51044, 'Pay exactly the amount currently due for this payment stage.', 1;
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND (
             BookingID <> @BookingID OR PaymentType <> @PaymentType OR Amount <> @Amount))
             THROW 51045, 'Payment attempt does not match this booking and amount.', 1;
@@ -2468,18 +2580,29 @@ BEGIN
             IF @WalletID IS NULL OR @Balance < @WalletAmount
                 THROW 51046, 'Insufficient internal wallet balance.', 1;
         END;
+        INSERT dbo.[TRANSACTION](TransactionID, TransactionType, TransactionValue)
+        VALUES (@TransactionID, 'PAYMENT', @Amount);
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID)
             UPDATE PAYMENT SET Status = 'PAID', PaymentTime = @Now,
-                MethodID = @MethodID, WalletAmount = @WalletAmount, TransactionCode = @TransactionCode WHERE PaymentID = @PaymentID;
+                MethodID = @MethodID, WalletAmount = @WalletAmount, TransactionCode = @TransactionCode, TransactionID = @TransactionID WHERE PaymentID = @PaymentID;
         ELSE
-            INSERT PAYMENT(PaymentID, BookingID, PaymentType, PaymentTime, Amount, Status, MethodID, WalletAmount, TransactionCode)
-            VALUES (@PaymentID, @BookingID, @PaymentType, @Now, @Amount, 'PAID', @MethodID, @WalletAmount, @TransactionCode);
+            INSERT PAYMENT(PaymentID, BookingID, PaymentType, PaymentTime, Amount, Status, MethodID, WalletAmount, TransactionCode, TransactionID)
+            VALUES (@PaymentID, @BookingID, @PaymentType, @Now, @Amount, 'PAID', @MethodID, @WalletAmount, @TransactionCode, @TransactionID);
         IF @WalletAmount > 0
-            INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, PaymentID)
-            VALUES (@WalletID, 'PAYMENT_DEBIT', @WalletAmount, @Now, @PaymentID);
+            INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, PaymentID, TransactionID)
+            VALUES (@WalletID, 'PAYMENT_DEBIT', @WalletAmount, @Now, @PaymentID, @TransactionID);
+        INSERT INVOICE_TRANSACTION(InvoiceID, BookingID, PaymentID, TransactionID)
+        SELECT i.InvoiceID, @BookingID, @PaymentID, @TransactionID
+        FROM INVOICE AS i
+        WHERE i.BookingID = @BookingID AND i.Status = N'Có hiệu lực'
+          AND NOT EXISTS (SELECT 1 FROM INVOICE_TRANSACTION AS link
+              WHERE link.InvoiceID = i.InvoiceID AND link.TransactionID = @TransactionID);
         IF @FirstPaidAt IS NULL
             UPDATE BOOKING SET FirstPaidAt = @Now, BookingAmountAtFirstPayment = @Total,
                 BookingStatus = 'CONFIRMED', PaymentDeadline = NULL WHERE BookingID = @BookingID;
+        UPDATE PAYMENT SET CollectedByUserID = @ActorUserID,
+            WalletAuthorizedByUserID = CASE WHEN @WalletAmount > 0 THEN @OwnerUserID ELSE NULL END
+        WHERE PaymentID = @PaymentID;
         COMMIT TRANSACTION;
         SELECT * FROM V_BOOKING_PAYMENT_SUMMARY WHERE BookingID = @BookingID;
     END TRY
@@ -2490,22 +2613,81 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE dbo.SP_CHECKIN_WITH_ROOM_PAYMENT
+    @BookingID CHAR(6), @ActorUserID INT, @GuestDocuments VARCHAR(500),
+    @ExpectedRoomAmount DECIMAL(12,2), @MethodID CHAR(4) = NULL,
+    @TransactionCode VARCHAR(100) = NULL, @WalletAuthorizedBy INT = NULL,
+    @TransactionID VARCHAR(100) = NULL, @WalletAmount DECIMAL(12,2) = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        EXEC dbo.SP_HBMS_ACQUIRE_WRITE_LOCK;
+        IF NOT EXISTS (SELECT 1 FROM dbo.USERS WHERE UserID = @ActorUserID AND Role IN ('Admin', 'Staff'))
+            THROW 51060, 'Only staff/admin can check in guests.', 1;
+        DECLARE @Status VARCHAR(30), @FirstPaidAt DATETIME2(3), @RoomDue DECIMAL(12,2),
+            @PaymentID CHAR(6), @NextPayment INT, @AssignedRooms INT;
+        SELECT @Status = BookingStatus, @FirstPaidAt = FirstPaidAt
+        FROM dbo.BOOKING WITH (UPDLOCK, HOLDLOCK) WHERE BookingID = @BookingID;
+        SELECT @RoomDue = RoomRemainingAmount FROM dbo.V_BOOKING_ROOM_BALANCE WHERE BookingID = @BookingID;
+        IF @Status = 'CHECKED_IN'
+        BEGIN
+            IF @RoomDue > 0 THROW 51110, 'This existing stay still has unpaid room charges.', 1;
+            COMMIT TRANSACTION;
+            SELECT * FROM dbo.V_BOOKING_ROOM_BALANCE WHERE BookingID = @BookingID;
+            RETURN;
+        END;
+        IF @Status IS NULL OR @Status <> 'ASSIGNED'
+            THROW 51115, 'Assign all rooms before check-in; cancelled/completed bookings are not eligible.', 1;
+        IF @FirstPaidAt IS NULL
+            THROW 51116, 'A successful initial booking payment is required.', 1;
+        IF @ExpectedRoomAmount IS NULL OR @ExpectedRoomAmount < 0 OR @RoomDue IS NULL OR @ExpectedRoomAmount <> @RoomDue
+            THROW 51111, 'Room balance changed. Reload the check-in form before collecting payment.', 1;
+        SELECT @AssignedRooms = COUNT(*) FROM dbo.ROOM_ASSIGNMENT a
+        JOIN dbo.BOOKING_DETAIL d ON d.BookingDetailID = a.BookingDetailID WHERE d.BookingID = @BookingID;
+        IF NULLIF(LTRIM(RTRIM(@GuestDocuments)), '') IS NULL
+            OR (SELECT COUNT(*) FROM STRING_SPLIT(@GuestDocuments, ',')) < @AssignedRooms
+            OR EXISTS (SELECT 1 FROM STRING_SPLIT(@GuestDocuments, ',')
+                WHERE LEN(LTRIM(RTRIM(value))) <> 12 OR LTRIM(RTRIM(value)) LIKE '%[^0-9]%')
+            THROW 51114, 'Valid 12-digit guest identity documents are required for every assigned room.', 1;
+        IF @RoomDue > 0
+        BEGIN
+            IF @MethodID IS NULL OR @MethodID NOT IN ('PT01', 'PT02', 'PT03')
+                OR NOT EXISTS (SELECT 1 FROM dbo.PAYMENTMETHOD WHERE MethodID = @MethodID)
+                THROW 51112, 'Select an available booking payment method.', 1;
+            SELECT @NextPayment = COALESCE(MAX(TRY_CONVERT(INT, SUBSTRING(PaymentID, 3, 4))), 0) + 1
+            FROM dbo.PAYMENT WHERE PaymentID LIKE 'PM[0-9][0-9][0-9][0-9]';
+            IF @NextPayment > 9999 THROW 51113, 'Payment ID limit reached.', 1;
+            SET @PaymentID = 'PM' + RIGHT('0000' + CONVERT(VARCHAR(4), @NextPayment), 4);
+            EXEC dbo.SP_RECORD_PAYMENT @PaymentID = @PaymentID, @BookingID = @BookingID,
+                @ActorUserID = @ActorUserID, @PaymentType = 'BALANCE', @Amount = @RoomDue,
+                @MethodID = @MethodID, @TransactionCode = @TransactionCode, @WalletAmount = @WalletAmount,
+                @WalletAuthorizedBy = @WalletAuthorizedBy, @TransactionID = @TransactionID;
+        END;
+        UPDATE dbo.BOOKING SET GuestCCCDs = @GuestDocuments WHERE BookingID = @BookingID;
+        EXEC dbo.SP_SET_BOOKING_STATUS @BookingID = @BookingID, @NewStatus = 'CHECKED_IN', @ActorUserID = @ActorUserID;
+        COMMIT TRANSACTION;
+        SELECT * FROM dbo.V_BOOKING_ROOM_BALANCE WHERE BookingID = @BookingID;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH;
+END;
+GO
+
+GRANT EXECUTE ON dbo.SP_COUNTER_CHECKIN TO HBMS_APP_ROLE;
+GRANT EXECUTE ON dbo.SP_HBMS_ACQUIRE_WRITE_LOCK TO HBMS_APP_ROLE;
+GRANT SELECT ON dbo.V_BOOKING_ROOM_BALANCE TO HBMS_APP_ROLE;
+GRANT EXECUTE ON dbo.SP_CHECKIN_WITH_ROOM_PAYMENT TO HBMS_APP_ROLE;
+GO
+
 IF DATABASE_PRINCIPAL_ID('HBMS_APP_ROLE') IS NOT NULL
     GRANT EXECUTE ON dbo.SP_RECORD_PAYMENT TO HBMS_APP_ROLE;
 GO
 
-/* HBMS: cutoff 10:00, check-in 14:00, new refund, manual staff no-show at 14:15.
-Non-destructive migration for the existing database based on DB_v3.sql.
-Run in SSMS/sqlcmd as schema owner, SQL Server 2016 SP1 or later.
-No email, scheduler, automatic no-show cancellation or identity-data change.
-Does not replace SP_RECORD_PAYMENT (keeps combined-wallet payments),
-SP_SET_BOOKING_STATUS, check-in procedures or check-in triggers.
-Existing BookingDate values are interpreted as Vietnam local wall time.
-New BookingDate is recorded using UTC+07:00, independent of server timezone.
-Other historic operational timestamps and anti-spam clock remain unchanged.
-Existing completed refunds are kept; eligibility changes for future cancellations.
-All schema and module changes below commit together or roll back together.
-*/
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_PADDING ON;
@@ -2591,7 +2773,7 @@ OUTER APPLY (
     @BookingID CHAR(6), @CustomerID CHAR(6), @ActorUserID INT,
     @CheckInDate DATE, @CheckOutDate DATE, @PaymentOption VARCHAR(10),
     @Rooms BOOKING_ROOM_INPUT READONLY,
-    @PaymentDeadline DATETIME -- Supply your existing timeout policy; no new timeout is imposed.
+    @PaymentDeadline DATETIME
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -2609,13 +2791,14 @@ BEGIN
     IF @PaymentDeadline IS NULL OR @PaymentDeadline <= SYSDATETIME()
         THROW 51014, ''Payment deadline must be in the future.'', 1;
     IF NOT EXISTS (SELECT 1 FROM @Rooms) THROW 51015, ''At least one room type is required.'', 1;
-    IF @CheckInDate < dbo.FN_HBMS_MIN_CHECKIN_DATE(@BookedAt)
+    IF @CheckInDate < CAST(@BookedAt AS DATE) OR
+        (@CheckInDate < dbo.FN_HBMS_MIN_CHECKIN_DATE(@BookedAt) AND NOT EXISTS
+            (SELECT 1 FROM EMPLOYEE e JOIN USERS u ON u.UserID = e.UserID
+             WHERE e.UserID = @ActorUserID AND u.Role = ''Staff'' AND e.Position = N''Receptionist''))
         THROW 51022, ''Same-day bookings close at 10:00 Vietnam time. Select tomorrow or later.'', 1;
 
     IF @@TRANCOUNT <> 0 THROW 51021, ''Call SP_CREATE_BOOKING without an outer transaction.'', 1;
 
-    -- Commit expired holds before creating; a rejected new booking must not undo
-    -- a timeout cancellation or its anti-spam penalty.
     EXEC SP_EXPIRE_PENDING_BOOKINGS @CustomerID = @CustomerID, @ReturnResult = 0;
     BEGIN TRY
         BEGIN TRANSACTION;
@@ -2644,14 +2827,17 @@ BEGIN
             ) AS reserved
             WHERE i.Quantity > available.ActiveRooms - reserved.ReservedRooms
         ) THROW 51019, ''Not enough available rooms for the requested dates.'', 1;
-        -- Recheck after acquiring the write lock and room availability checks.
+
         SET @BookedAt = dbo.FN_HBMS_VIETNAM_NOW();
-        IF @CheckInDate < dbo.FN_HBMS_MIN_CHECKIN_DATE(@BookedAt)
+        IF @CheckInDate < CAST(@BookedAt AS DATE) OR
+        (@CheckInDate < dbo.FN_HBMS_MIN_CHECKIN_DATE(@BookedAt) AND NOT EXISTS
+            (SELECT 1 FROM EMPLOYEE e JOIN USERS u ON u.UserID = e.UserID
+             WHERE e.UserID = @ActorUserID AND u.Role = ''Staff'' AND e.Position = N''Receptionist''))
             THROW 51022, ''Same-day bookings close at 10:00 Vietnam time. Select tomorrow or later.'', 1;
         INSERT BOOKING(BookingID, BookingDate, PaymentDeadline, CheckInDate, CheckOutDate,
-            BookingStatus, CustomerID, PaymentOption)
+            BookingStatus, CustomerID, PaymentOption, BookedByUserID)
         VALUES (@BookingID, @BookedAt, @PaymentDeadline, @CheckInDate, @CheckOutDate,
-            ''PENDING_PAYMENT'', @CustomerID, @PaymentOption);
+            ''PENDING_PAYMENT'', @CustomerID, @PaymentOption, @ActorUserID);
         INSERT BOOKING_DETAIL(BookingID, RoomTypeID, Quantity, GuestCount, UnitPrice, Subtotal)
         SELECT @BookingID, i.RoomTypeID, i.Quantity, i.GuestCount, rt.Price,
             i.Quantity * rt.Price * DATEDIFF(DAY, @CheckInDate, @CheckOutDate)
@@ -2701,13 +2887,20 @@ BEGIN
             OR @Deadline IS NULL OR @Deadline > @Now)
             THROW 51005, ''Payment timeout cancellation is not applicable.'', 1;
 
-        -- Retrying a cancellation never credits the wallet or increments the streak twice.
         IF @Status = ''CANCELLED''
         BEGIN
             COMMIT TRANSACTION;
             IF @ReturnResult = 1 SELECT * FROM V_BOOKING_PAYMENT_SUMMARY WHERE BookingID = @BookingID;
             RETURN;
         END;
+        IF @Reason = ''NO_SHOW'' AND EXISTS (
+            SELECT 1 FROM dbo.BOOKING wb
+            JOIN dbo.CUSTOMER wc ON wc.CustomerID = wb.CustomerID
+            WHERE wb.BookingID = @BookingID
+                AND wb.BookedByUserID IS NOT NULL
+                AND wb.BookedByUserID <> wc.UserID
+                AND CAST(wb.BookingDate AS DATE) = wb.CheckInDate)
+            THROW 51009, ''Walk-in guests have already arrived at the counter. Use staff cancellation if needed.'', 1;
         IF @Reason = ''NO_SHOW'' AND (@Status NOT IN (''CONFIRMED'', ''ASSIGNED'')
             OR @PolicyNow < DATEADD(MINUTE, 855, CAST(@CheckInDate AS DATETIME2(3))))
             THROW 51008, ''No-show cancellation is allowed from 14:15, only before check-in.'', 1;
@@ -2727,20 +2920,22 @@ BEGIN
         BEGIN
             SELECT @WalletID = WalletID FROM CUSTOMER_WALLET WHERE CustomerID = @CustomerID;
             IF @WalletID IS NULL THROW 51007, ''Customer wallet not found.'', 1;
-            INSERT BOOKING_REFUND(BookingID, CustomerID, WalletID, Amount, RefundedAt)
-            VALUES (@BookingID, @CustomerID, @WalletID, @Paid, @Now);
+            DECLARE @RefundTransactionID VARCHAR(100) = CONCAT(''REFUND-'', RTRIM(@BookingID));
+            INSERT dbo.[TRANSACTION](TransactionID, TransactionType, TransactionValue)
+            VALUES (@RefundTransactionID, ''REFUND'', @Paid);
+            INSERT BOOKING_REFUND(BookingID, CustomerID, WalletID, Amount, RefundedAt, TransactionID)
+            VALUES (@BookingID, @CustomerID, @WalletID, @Paid, @Now, @RefundTransactionID);
             SET @RefundID = CONVERT(BIGINT, SCOPE_IDENTITY());
             INSERT REFUND_PAYMENT(RefundID, BookingID, PaymentID, Amount)
             SELECT @RefundID, BookingID, PaymentID, Amount FROM PAYMENT
             WHERE BookingID = @BookingID AND Status = ''PAID'';
-            INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, RefundID)
-            VALUES (@WalletID, ''REFUND_CREDIT'', @Paid, @Now, @RefundID);
+            INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, RefundID, TransactionID)
+            VALUES (@WalletID, ''REFUND_CREDIT'', @Paid, @Now, @RefundID, @RefundTransactionID);
             UPDATE PAYMENT SET Status = ''REFUNDED'' WHERE BookingID = @BookingID AND Status = ''PAID'';
         END;
 
         EXEC SP_RESET_BOOKING_CONTROL @UserID = @OwnerUserID;
-        -- Customers may cancel previously paid bookings during a lock; this
-        -- still refunds eligible payments but does not escalate the lock early.
+
         SELECT @PreviouslyLockedUntil = BookingLockedUntil FROM USER_BOOKING_CONTROL WHERE UserID = @OwnerUserID;
         UPDATE USER_BOOKING_CONTROL SET WindowStartedAt = COALESCE(WindowStartedAt, @Now),
             ConsecutiveCancellationCount = ConsecutiveCancellationCount
@@ -2782,3 +2977,97 @@ BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
     THROW;
 END CATCH;
+GO
+
+IF (SELECT COUNT(*) FROM PAYMENTMETHOD) <> 3
+    OR EXISTS (SELECT 1 FROM PAYMENTMETHOD WHERE MethodID NOT IN ('PT01', 'PT02', 'PT03'))
+    THROW 51120, 'Expected only Cash, VietQR and Internal wallet payment methods.', 1;
+IF EXISTS (
+    SELECT 1 FROM PAYMENT
+    WHERE (MethodID = 'PT02' AND WalletAmount <> Amount)
+       OR (MethodID = 'PT03' AND WalletAmount <> 0)
+       OR (MethodID = 'PT01' AND WalletAmount >= Amount)
+)
+    THROW 51121, 'Seed payment methods and wallet contributions are inconsistent.', 1;
+IF EXISTS (
+    SELECT 1 FROM PAYMENT AS p
+    OUTER APPLY (
+        SELECT COALESCE(SUM(t.Amount), 0) AS DebitedAmount
+        FROM WALLET_TRANSACTION AS t
+        WHERE t.PaymentID = p.PaymentID AND t.TransactionType = 'PAYMENT_DEBIT'
+    ) AS ledger
+    WHERE ledger.DebitedAmount <> CASE WHEN p.Status IN ('PAID', 'REFUNDED') THEN p.WalletAmount ELSE 0 END
+)
+    THROW 51122, 'Seed wallet debits must match successful wallet contributions.', 1;
+IF EXISTS (
+    SELECT 1 FROM PAYMENT
+    WHERE MethodID = 'PT01' AND Status IN ('PAID', 'REFUNDED') AND TransactionID IS NULL
+)
+    THROW 51123, 'Seed successful VietQR payments require a transaction ID.', 1;
+IF EXISTS (SELECT 1 FROM V_WALLET_BALANCE WHERE Balance < 0)
+    THROW 51124, 'Internal wallet cannot have a negative balance.', 1;
+GO
+
+CREATE VIEW V_INVOICE_TRANSACTION_DETAILS AS
+SELECT i.InvoiceID, i.InvoiceDate, i.BookingID, i.Status AS InvoiceStatus,
+    i.TotalAmount AS InvoiceAmount, t.id AS TransactionRowID, t.TransactionID,
+    t.TransactionType, t.TransactionValue, p.PaymentID, p.PaymentType,
+    p.PaymentTime, p.Status AS PaymentStatus, p.MethodID, m.MethodName,
+    p.TransactionCode, p.WalletAmount, p.ExternalAmount
+FROM INVOICE AS i
+JOIN INVOICE_TRANSACTION AS link ON link.InvoiceID = i.InvoiceID AND link.BookingID = i.BookingID
+JOIN PAYMENT AS p ON p.PaymentID = link.PaymentID AND p.TransactionID = link.TransactionID
+JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = link.TransactionID
+JOIN PAYMENTMETHOD AS m ON m.MethodID = p.MethodID;
+GO
+
+IF (SELECT COUNT(*) FROM dbo.[TRANSACTION]) <> 39
+    THROW 51220, 'Expected 37 successful payment transactions and 2 refund transactions.', 1;
+IF EXISTS (
+    SELECT 1 FROM PAYMENT AS p
+    LEFT JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = p.TransactionID
+    WHERE p.Status IN ('PAID', 'REFUNDED')
+      AND (t.TransactionID IS NULL OR t.TransactionType <> 'PAYMENT' OR t.TransactionValue <> p.Amount)
+)
+    THROW 51221, 'Seed successful payments must match their central transactions.', 1;
+IF EXISTS (
+    SELECT 1 FROM BOOKING_REFUND AS r
+    JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = r.TransactionID
+    WHERE t.TransactionType <> 'REFUND' OR t.TransactionValue <> r.Amount
+)
+    THROW 51222, 'Seed refunds must match their central transactions.', 1;
+IF EXISTS (
+    SELECT 1 FROM dbo.[TRANSACTION] AS t
+    WHERE (t.TransactionType = 'PAYMENT' AND NOT EXISTS (
+        SELECT 1 FROM PAYMENT AS p WHERE p.TransactionID = t.TransactionID))
+       OR (t.TransactionType = 'REFUND' AND NOT EXISTS (
+        SELECT 1 FROM BOOKING_REFUND AS r WHERE r.TransactionID = t.TransactionID))
+)
+    THROW 51223, 'Seed central transactions must reference a payment or refund.', 1;
+IF EXISTS (
+    SELECT 1 FROM INVOICE AS i JOIN PAYMENT AS p ON p.BookingID = i.BookingID
+    WHERE i.Status = N'Có hiệu lực' AND p.Status IN ('PAID', 'REFUNDED')
+      AND NOT EXISTS (SELECT 1 FROM INVOICE_TRANSACTION AS link
+          WHERE link.InvoiceID = i.InvoiceID AND link.PaymentID = p.PaymentID
+            AND link.TransactionID = p.TransactionID)
+)
+    THROW 51224, 'Seed active invoices must link every captured payment transaction.', 1;
+GO
+
+IF COL_LENGTH('dbo.BOOKING', 'GuestCCCDs') IS NULL
+    OR COL_LENGTH('dbo.BOOKING', 'BookedByUserID') IS NULL
+    OR COL_LENGTH('dbo.PAYMENT', 'CollectedByUserID') IS NULL
+    OR COL_LENGTH('dbo.PAYMENT', 'WalletAuthorizedByUserID') IS NULL
+    THROW 51230, 'Counter booking and payment audit columns are required.', 1;
+IF OBJECT_ID('dbo.FK_COMPLAINT_EMPLOYEE', 'F') IS NULL
+    THROW 51231, 'Complaint must reference an employee.', 1;
+IF OBJECT_ID('dbo.V_BOOKING_ROOM_BALANCE', 'V') IS NULL
+    OR OBJECT_ID('dbo.SP_COUNTER_CHECKIN', 'P') IS NULL
+    OR OBJECT_ID('dbo.SP_CHECKIN_WITH_ROOM_PAYMENT', 'P') IS NULL
+    THROW 51232, 'Room balance and check-in procedures are required.', 1;
+IF NOT EXISTS (SELECT 1 FROM PAYMENTMETHOD WHERE MethodID = 'PT01' AND MethodName = N'VietQR')
+    OR NOT EXISTS (SELECT 1 FROM PAYMENTMETHOD WHERE MethodID = 'PT02' AND MethodName = N'Internal wallet')
+    OR NOT EXISTS (SELECT 1 FROM PAYMENTMETHOD WHERE MethodID = 'PT03' AND MethodName = N'Cash')
+    THROW 51233, 'Payment method IDs must be PT01 VietQR, PT02 Internal wallet, PT03 Cash.', 1;
+PRINT N'QLKS merged: central transactions, VietQR/internal wallet/cash, counter bookings, room settlement at check-in and released rooms after checkout.';
+GO
