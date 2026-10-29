@@ -5,6 +5,7 @@ import entity.BookingService;
 import entity.BookingServicePK;
 import entity.Service;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -213,6 +214,30 @@ public class ServiceDAO {
             throw new IllegalStateException("Không thể thêm dịch vụ: " + e.getMessage(), e);
         } finally {
             close(em);
+        }
+    }
+
+    public boolean completeBookingService(String bookingId, String serviceId, String staffId) {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            Query query = em.createQuery("UPDATE BookingService bs SET bs.serviceStatus = 'COMPLETED' "
+                    + "WHERE TRIM(bs.booking.bookingID) = :bid AND TRIM(bs.service.serviceID) = :sid"
+            );
+            query.setParameter("bid", bookingId.trim());
+            query.setParameter("sid", serviceId.trim());
+
+            int rows = query.executeUpdate();
+            em.getTransaction().commit();
+            return rows > 0;
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            em.close();
         }
     }
 

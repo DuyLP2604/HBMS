@@ -40,7 +40,6 @@ public class Service implements Serializable {
     @Size(min = 1, max = 60)
     @Column(name = "ServiceName")
     private String serviceName;
-    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
     @Basic(optional = false)
     @NotNull
     @Column(name = "UnitPrice")
@@ -76,7 +75,6 @@ public class Service implements Serializable {
     public void setServiceID(String serviceID) {
         this.serviceID = serviceID;
     }
-
 
     @XmlTransient
     public Collection<BookingService> getBookingServiceCollection() {

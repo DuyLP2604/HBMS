@@ -22,7 +22,6 @@
             <c:remove var="errorMessage" scope="session" />
         </c:if>
 
-        <%-- Booking Status Banner --%>
         <div class="card shadow-sm mb-4 border-0">
             <div class="card-body p-3 bg-white rounded">
                 <div class="row align-items-center">
