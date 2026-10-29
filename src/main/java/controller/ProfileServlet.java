@@ -5,6 +5,8 @@ import entity.Customer;
 import entity.Nationality;
 import entity.Users;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -40,7 +42,7 @@ public class ProfileServlet extends HttpServlet
 
     private void forwardUpdateWithError(HttpServletRequest request, HttpServletResponse response, Customer customer, NationalityDAO nationalityDAO, String message) throws ServletException, IOException
     {
-        Flash.error(request, message);
+        request.setAttribute("profileErrorMessage", message);
         request.setAttribute("customerUpdate", customer);
         request.setAttribute("nationalityUpdate", nationalityDAO.getAll());
         request.getRequestDispatcher("/WEB-INF/views/updateProfile.jsp").forward(request, response);
@@ -64,7 +66,7 @@ public class ProfileServlet extends HttpServlet
             response.sendError(HttpServletResponse.SC_NOT_FOUND, "Invalid profile action.");
             return;
         }
-        CustomerDAO customerDAO = new CustomerDAO();
+        CustomerDAO customerDAO = createCustomerDAO();
         Customer customer = customerDAO.getCustomerByUserId(user.getUserID());
         if (customer == null)
         {
@@ -78,8 +80,9 @@ public class ProfileServlet extends HttpServlet
         }
         else
         {
-            NationalityDAO nationalityDAO = new NationalityDAO();
+            NationalityDAO nationalityDAO = createNationalityDAO();
             request.setAttribute("customerUpdate", customer);
+            request.setAttribute("selectedNationalityId", customer.getNationalityID() == null ? null : customer.getNationalityID().getNationalityID());
             request.setAttribute("nationalityUpdate", nationalityDAO.getAll());
             request.getRequestDispatcher("/WEB-INF/views/updateProfile.jsp").forward(request, response);
         }
@@ -100,8 +103,8 @@ public class ProfileServlet extends HttpServlet
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid profile action.");
             return;
         }
-        CustomerDAO customerDAO = new CustomerDAO();
-        NationalityDAO nationalityDAO = new NationalityDAO();
+        CustomerDAO customerDAO = createCustomerDAO();
+        NationalityDAO nationalityDAO = createNationalityDAO();
         Customer customer = customerDAO.getCustomerByUserId(user.getUserID());
         if (customer == null)
         {
@@ -117,35 +120,19 @@ public class ProfileServlet extends HttpServlet
         customer.setPhone(phone);
         customer.setEmail(email);
         customer.setAddress(address);
-        if (fullname == null || nationalityId == null)
+        request.setAttribute("selectedNationalityId", nationalityId);
+        Map<String, String> errors = new LinkedHashMap<>();
+        if (fullname == null) errors.put("fullname", "Please enter your full name.");
+        else if (fullname.length() > 100) errors.put("fullname", "Full name must not exceed 100 characters.");
+        if (phone != null && phone.length() > 15) errors.put("phone", "Phone number must not exceed 15 characters.");
+        if (email != null && email.length() > 100) errors.put("email", "Email must not exceed 100 characters.");
+        if (address != null && address.length() > 200) errors.put("address", "Address must not exceed 200 characters.");
+        Nationality selectedNationality = nationalityId == null ? null : nationalityDAO.getNationalityById(nationalityId);
+        if (selectedNationality == null) errors.put("nationalityId", "Please select a valid nationality.");
+        if (!errors.isEmpty())
         {
-            forwardUpdateWithError(request, response, customer, nationalityDAO, "Full name and nationality are required.");
-            return;
-        }
-        if (fullname.length() > 100)
-        {
-            forwardUpdateWithError(request, response, customer, nationalityDAO, "Full name must not exceed 100 characters.");
-            return;
-        }
-        if (phone != null && phone.length() > 15)
-        {
-            forwardUpdateWithError(request, response, customer, nationalityDAO, "Phone number must not exceed 15 characters.");
-            return;
-        }
-        if (email != null && email.length() > 100)
-        {
-            forwardUpdateWithError(request, response, customer, nationalityDAO, "Email must not exceed 100 characters.");
-            return;
-        }
-        if (address != null && address.length() > 200)
-        {
-            forwardUpdateWithError(request, response, customer, nationalityDAO, "Address must not exceed 200 characters.");
-            return;
-        }
-        Nationality selectedNationality = nationalityDAO.getNationalityById(nationalityId);
-        if (selectedNationality == null)
-        {
-            forwardUpdateWithError(request, response, customer, nationalityDAO, "Please select a valid nationality.");
+            request.setAttribute("profileErrors", errors);
+            forwardUpdateWithError(request, response, customer, nationalityDAO, "Please check the highlighted fields and try again.");
             return;
         }
         customer.setNationalityID(selectedNationality);
@@ -156,6 +143,16 @@ public class ProfileServlet extends HttpServlet
         }
         Flash.success(request, "Profile updated successfully.");
         response.sendRedirect(request.getContextPath() + "/profile?action=view");
+    }
+
+    protected CustomerDAO createCustomerDAO()
+    {
+        return new CustomerDAO();
+    }
+
+    protected NationalityDAO createNationalityDAO()
+    {
+        return new NationalityDAO();
     }
 
     @Override

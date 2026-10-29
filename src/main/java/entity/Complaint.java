@@ -36,17 +36,9 @@ import java.util.Date;
     @NamedQuery(name = "Complaint.findByTitle", query = "SELECT c FROM Complaint c WHERE c.title = :title"),
     @NamedQuery(name = "Complaint.findByContent", query = "SELECT c FROM Complaint c WHERE c.content = :content"),
     @NamedQuery(name = "Complaint.findByCreatedAt", query = "SELECT c FROM Complaint c WHERE c.createdAt = :createdAt"),
-    @NamedQuery(name = "Complaint.findByStatus", query = "SELECT c FROM Complaint c WHERE c.status = :status"),
-    @NamedQuery(name = "Complaint.findByReplyMessage", query = "SELECT c FROM Complaint c WHERE c.replyMessage = :replyMessage"),
-    @NamedQuery(name = "Complaint.findByEmployeeID", query = "SELECT c FROM Complaint c WHERE c.employeeID = :employeeID")})
+    @NamedQuery(name = "Complaint.findByStatus", query = "SELECT c FROM Complaint c WHERE c.status = :status")})
 public class Complaint implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Basic(optional = false)
-    @Column(name = "ComplaintID")
-    private Integer complaintID;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 200)
@@ -67,15 +59,24 @@ public class Complaint implements Serializable {
     @Size(min = 1, max = 30)
     @Column(name = "Status")
     private String status;
+    // them vo database de reply compnat
     @Size(max = 2147483647)
     @Column(name = "ReplyMessage")
     private String replyMessage;
-    @Size(max = 6)
-    @Column(name = "EmployeeID")
-    private String employeeID;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Basic(optional = false)
+    @Column(name = "ComplaintID")
+    private Integer complaintID;
     @JoinColumn(name = "CustomerID", referencedColumnName = "CustomerID")
     @ManyToOne
     private Customer customerID;
+
+    @JoinColumn(name = "EmployeeID", referencedColumnName = "EmployeeID")
+    @ManyToOne(optional = true)
+    private Employee employeeID;
 
     public Complaint() {
     }
@@ -98,6 +99,47 @@ public class Complaint implements Serializable {
 
     public void setComplaintID(Integer complaintID) {
         this.complaintID = complaintID;
+    }
+
+    public Customer getCustomerID() {
+        return customerID;
+    }
+
+    public void setCustomerID(Customer customerID) {
+        this.customerID = customerID;
+    }
+
+    public Employee getEmployeeID() {
+        return employeeID;
+    }
+
+    public void setEmployeeID(Employee employeeID) {
+        this.employeeID = employeeID;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 0;
+        hash += (complaintID != null ? complaintID.hashCode() : 0);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        // TODO: Warning - this method won't work in the case the id fields are not set
+        if (!(object instanceof Complaint)) {
+            return false;
+        }
+        Complaint other = (Complaint) object;
+        if ((this.complaintID == null && other.complaintID != null) || (this.complaintID != null && !this.complaintID.equals(other.complaintID))) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return "entity.Complaint[ complaintID=" + complaintID + " ]";
     }
 
     public String getTitle() {
@@ -138,47 +180,6 @@ public class Complaint implements Serializable {
 
     public void setReplyMessage(String replyMessage) {
         this.replyMessage = replyMessage;
-    }
-
-    public String getEmployeeID() {
-        return employeeID;
-    }
-
-    public void setEmployeeID(String employeeID) {
-        this.employeeID = employeeID;
-    }
-
-    public Customer getCustomerID() {
-        return customerID;
-    }
-
-    public void setCustomerID(Customer customerID) {
-        this.customerID = customerID;
-    }
-
-    @Override
-    public int hashCode() {
-        int hash = 0;
-        hash += (complaintID != null ? complaintID.hashCode() : 0);
-        return hash;
-    }
-
-    @Override
-    public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
-        if (!(object instanceof Complaint)) {
-            return false;
-        }
-        Complaint other = (Complaint) object;
-        if ((this.complaintID == null && other.complaintID != null) || (this.complaintID != null && !this.complaintID.equals(other.complaintID))) {
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public String toString() {
-        return "entity.Complaint[ complaintID=" + complaintID + " ]";
     }
 
 }

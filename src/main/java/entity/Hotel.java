@@ -32,24 +32,6 @@ import java.io.Serializable;
     @NamedQuery(name = "Hotel.findByAddress", query = "SELECT h FROM Hotel h WHERE h.address = :address")})
 public class Hotel implements Serializable {
 
-    @Size(max = 100)
-    @Column(name = "HotelImage")
-    private String hotelImage;
-    @Size(max = 100)
-    @Column(name = "RoomImage")
-    private String roomImage;
-    @Size(max = 100)
-    @Column(name = "PoolImage")
-    private String poolImage;
-    @Size(max = 100)
-    @Column(name = "RestaurantImage")
-    private String restaurantImage;
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 500)
-    @Column(name = "Address")
-    private String address;
-
     private static final long serialVersionUID = 1L;
 
     /**
@@ -65,6 +47,32 @@ public class Hotel implements Serializable {
     @Column(name = "HotelName")
     private String hotelName;
 
+    /** Background image at the top of the home page. */
+    @Size(max = 100)
+    @Column(name = "HotelImage")
+    private String hotelImage;
+
+    /** "Luxury Rooms" image in the Overview section. */
+    @Size(max = 100)
+    @Column(name = "RoomImage")
+    private String roomImage;
+
+    /** "Swimming Pool" image in the Overview section. */
+    @Size(max = 100)
+    @Column(name = "PoolImage")
+    private String poolImage;
+
+    /** "Restaurant" image in the Overview section. */
+    @Size(max = 100)
+    @Column(name = "RestaurantImage")
+    private String restaurantImage;
+
+    /** One address per line. */
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 500)
+    @Column(name = "Address")
+    private String address;
 
     public Hotel() {
     }
@@ -84,27 +92,6 @@ public class Hotel implements Serializable {
 
     public void setHotelName(String hotelName) {
         this.hotelName = hotelName;
-    }
-    @Override
-    public int hashCode() {
-        int hash = 0;
-        hash += (hotelName != null ? hotelName.hashCode() : 0);
-        return hash;
-    }
-    @Override
-    public boolean equals(Object object) {
-        if (!(object instanceof Hotel)) {
-            return false;
-        }
-        Hotel other = (Hotel) object;
-        if ((this.hotelName == null && other.hotelName != null) || (this.hotelName != null && !this.hotelName.equals(other.hotelName))) {
-            return false;
-        }
-        return true;
-    }
-    @Override
-    public String toString() {
-        return "entity.Hotel[ hotelName=" + hotelName + " ]";
     }
 
     public String getHotelImage() {
@@ -145,6 +132,30 @@ public class Hotel implements Serializable {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 0;
+        hash += (hotelName != null ? hotelName.hashCode() : 0);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof Hotel)) {
+            return false;
+        }
+        Hotel other = (Hotel) object;
+        if ((this.hotelName == null && other.hotelName != null) || (this.hotelName != null && !this.hotelName.equals(other.hotelName))) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return "entity.Hotel[ hotelName=" + hotelName + " ]";
     }
 
 }

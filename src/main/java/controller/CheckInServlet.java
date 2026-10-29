@@ -27,14 +27,14 @@ public class CheckInServlet extends HttpServlet
         }
         try
         {
-            List<Booking> checkedInBookings = bookingDAO.getByStatus("CHECKED_IN");
+            List<Booking> checkedInBookings = bookingDAO.getByStatusWithDetails("CHECKED_IN");
             request.setAttribute("bookings", checkedInBookings);
             request.getRequestDispatcher("/WEB-INF/views/CheckIn.jsp").forward(request, response);
         }
         catch (Exception ex)
         {
             log("Unable to load checked-in bookings.", ex);
-            response.sendRedirect(request.getContextPath() + "/error.jsp");
+            throw new ServletException("Unable to load checked-in bookings.", ex);
         }
     }
 
@@ -62,9 +62,10 @@ public class CheckInServlet extends HttpServlet
                 throw new IllegalArgumentException("Mã booking không hợp lệ.");
             }
             bookingID = bookingID.trim();
-            bookingDAO.updateStatus(bookingID, "CHECKED_IN", user.getUserID());
-            session.removeAttribute("errorMessage");
-            session.setAttribute("successMessage", "Đã Check-in thành công cho Booking: " + bookingID);
+            // Use the room-payment and identity form for every check-in entry point.
+            response.sendRedirect(request.getContextPath() + "/process-checkin?bookingID="
+                    + java.net.URLEncoder.encode(bookingID, java.nio.charset.StandardCharsets.UTF_8));
+            return;
         }
         catch (Exception ex)
         {

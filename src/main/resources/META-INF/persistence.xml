@@ -27,13 +27,7 @@
     <!-- Hotel entity -->
     <class>entity.Hotel</class>
     <class>entity.Transaction</class>
-    <class>entity.CustomerWallet</class>
-    <class>entity.BookingLockHistory</class>
-    <class>entity.UserBookingControl</class>
-    <class>entity.InvoiceTransaction</class>
-    <class>entity.BookingRefund</class>
-    <class>entity.WalletTransaction</class>
-    <exclude-unlisted-classes>false</exclude-unlisted-classes>
+    <exclude-unlisted-classes>true</exclude-unlisted-classes>
     <properties>
       <property name="jakarta.persistence.jdbc.url" value="jdbc:sqlserver://localhost:1433;databaseName=QLKS;encrypt=true;trustServerCertificate=true;"/>
       <property name="jakarta.persistence.jdbc.user" value="sa"/>

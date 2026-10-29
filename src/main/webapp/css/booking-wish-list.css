@@ -1,0 +1,141 @@
+.wishlist-body { margin: 0; background: #f3f6f4; color: #293e31; font: 16px/1.6 "Segoe UI", Arial, sans-serif; }
+.wishlist-body .navbar, .wishlist-body .navbar * { box-sizing: border-box; }
+.wishlist-page, .wishlist-page * { box-sizing: border-box; }
+.wishlist-page { width: min(1200px, calc(100% - 64px)); margin: 30px auto 48px; }
+.wishlist-page a { text-decoration: none; }
+.wishlist-page button { font: inherit; }
+.wishlist-page a:focus-visible, .wishlist-page button:focus-visible { outline: 3px solid #89b397; outline-offset: 4px; }
+.wishlist-page .wl-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 25px; }
+.wishlist-page .wl-eyebrow { margin: 0 0 7px; color: #5b7762; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
+.wishlist-page h1 { margin: 0; font-size: clamp(28px, 3vw, 34px); font-weight: 650; line-height: 1.25; letter-spacing: -.7px; color: #213c2b; }
+.wishlist-page .wl-description { margin: 10px 0 0; color: #63756a; }
+.wishlist-page .wl-text-link { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; color: #40634b; font-size: 15px; font-weight: 600; flex-shrink: 0; }
+.wishlist-page .wl-text-link:hover { text-decoration: underline; }
+.wishlist-page .wl-notice { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px; margin-bottom: 18px; border: 1px solid; border-radius: 10px; font-size: 15px; overflow-wrap: anywhere; }
+.wishlist-page .wl-notice-success { background: #edf5ed; border-color: #cddfcd; color: #386245; }
+.wishlist-page .wl-notice-error { background: #fff2ef; border-color: #e9c6bf; color: #9b4036; }
+.wishlist-page .wl-stay { display: flex; align-items: center; gap: 24px; padding: 22px 28px; margin-bottom: 28px; border-radius: 15px; background: #294c3c; color: #fff; }
+.wishlist-page .wl-stay-title { display: flex; align-items: center; gap: 13px; padding-right: 28px; margin-right: 3px; border-right: 1px solid #5e7a63; }
+.wishlist-page .wl-stay-icon { display: grid; place-items: center; width: 43px; height: 43px; border-radius: 11px; background: #3b5c48; color: #e1e9c3; font-size: 19px; flex-shrink: 0; }
+.wishlist-page .wl-stay-kicker { display: block; color: #c5d7c4; font-size: 11px; letter-spacing: 1.3px; font-weight: 600; }
+.wishlist-page .wl-stay-title strong { font-size: 17px; font-weight: 600; }
+.wishlist-page .wl-stay-date { display: flex; flex-direction: column; gap: 3px; }
+.wishlist-page .wl-stay-date > span { color: #cedecd; font-size: 13px; }
+.wishlist-page .wl-stay-date time { font-size: 18px; font-weight: 600; white-space: nowrap; }
+.wishlist-page .wl-stay-arrow { color: #b7ccaf; font-size: 13px; padding-top: 16px; }
+.wishlist-page .wl-stay-guests { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px 20px; margin-left: auto; color: #e2eadb; font-size: 15px; }
+.wishlist-page .wl-stay-guests span { white-space: nowrap; }
+.wishlist-page .wl-stay-guests i { margin-right: 5px; font-size: 13px; color: #c9d9b8; }
+.wishlist-page .wl-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 27px; align-items: start; }
+.wishlist-page .wl-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 19px; }
+.wishlist-page .wl-section-heading h2, .wishlist-page .wl-summary h2 { margin: 0; font-size: 22px; font-weight: 650; }
+.wishlist-page .wl-section-heading p { margin: 5px 0 0; color: #6b7b6f; font-size: 15px; }
+.wishlist-page .wl-count { padding: 4px 11px; border: 1px solid #d8e1d5; border-radius: 20px; background: #ecf1e8; color: #5c7458; font-size: 13px; white-space: nowrap; }
+.wishlist-page .wl-room-list { display: grid; gap: 17px; }
+.wishlist-page .wl-room-card { padding: 24px 26px 0; border: 1px solid #d6e0d7; border-radius: 14px; background: #fff; }
+.wishlist-page .wl-room-heading { display: flex; align-items: center; gap: 14px; }
+.wishlist-page .wl-room-heading > div { min-width: 0; }
+.wishlist-page .wl-room-icon { display: grid; place-items: center; width: 47px; height: 47px; flex-shrink: 0; border: 1px solid #dbe4d2; border-radius: 12px; background: #f1f5e9; color: #6f8457; font-size: 20px; }
+.wishlist-page .wl-room-kicker { margin: 0 0 4px; color: #7a8775; font-size: 11px; font-weight: 600; letter-spacing: 1.2px; }
+.wishlist-page .wl-room-card h3 { margin: 0; color: #294532; font-size: 22px; font-weight: 650; overflow-wrap: anywhere; line-height: 1.4; }
+.wishlist-page .wl-room-facts { display: grid; grid-template-columns: .7fr .7fr 1.5fr; gap: 16px; margin: 25px 0 21px; }
+.wishlist-page .wl-room-facts > div + div { border-left: 1px solid #e1e7dd; padding-left: 24px; }
+.wishlist-page .wl-room-facts dt { color: #73806f; font-size: 13px; font-weight: 400; }
+.wishlist-page .wl-room-facts dd { margin: 4px 0 0; font-size: 17px; font-weight: 600; color: #3e5842; overflow-wrap: anywhere; }
+.wishlist-page small { font-size: 12px; font-weight: 500; }
+.wishlist-page .wl-room-footer { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 16px 0; border-top: 1px solid #dce4d8; }
+.wishlist-page .wl-calculation { margin: 0 0 3px; color: #778373; font-size: 13px; }
+.wishlist-page .wl-room-subtotal { margin: 0; color: #345d3e; font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.wishlist-page .wl-room-subtotal small { color: #75816d; }
+.wishlist-page .wl-remove { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 2px; border: 0; background: transparent; color: #a75545; font-size: 14px; cursor: pointer; }
+.wishlist-page .wl-remove:hover { color: #8b382d; text-decoration: underline; }
+.wishlist-page .wl-remove i { font-size: 13px; }
+.wishlist-page .wl-button { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 46px; padding: 11px 16px; border: 1px solid #c9d8c9; border-radius: 9px; background: #fff; color: #426449; font-size: 15px; font-weight: 600; cursor: pointer; line-height: 1.5; }
+.wishlist-page .wl-button:hover { background: #eaf2e6; color: #294c34; border-color: #91ad92; }
+.wishlist-page .wl-button i { font-size: 13px; }
+.wishlist-page .wl-button-primary { background: #355d44; color: #fff; border-color: #355d44; }
+.wishlist-page .wl-button-primary:hover { background: #274a35; border-color: #274a35; color: #fff; }
+.wishlist-page .wl-list-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.wishlist-page .wl-availability-note { display: flex; align-items: baseline; gap: 8px; margin: 20px 0 0; color: #6a7b6e; font-size: 14px; line-height: 1.7; }
+.wishlist-page .wl-availability-note i { font-size: 12px; }
+.wishlist-page .wl-summary { position: sticky; top: 24px; padding: 24px; background: #fff; border: 1px solid #cddccd; border-radius: 15px; box-shadow: 0 4px 20px #294c3c05; }
+.wishlist-page .wl-summary-heading { padding-bottom: 20px; border-bottom: 1px solid #dfe6da; }
+.wishlist-page .wl-totals { margin: 19px 0 22px; }
+.wishlist-page .wl-totals > div { display: flex; justify-content: space-between; gap: 16px; margin-top: 9px; }
+.wishlist-page .wl-totals dt { color: #6b7c6e; font-size: 14px; font-weight: 400; }
+.wishlist-page .wl-totals dd { margin: 0; color: #3f5b45; font-size: 15px; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.wishlist-page .wl-totals .wl-booking-total { margin-top: 17px; padding-top: 17px; border-top: 1px dashed #d3decc; align-items: baseline; }
+.wishlist-page .wl-booking-total dt { font-size: 15px; font-weight: 600; color: #3a543e; }
+.wishlist-page .wl-booking-total dd { font-size: 23px; color: #355d42; font-variant-numeric: tabular-nums; }
+.wishlist-page .wl-booking-total small { display: block; color: #778570; margin-top: -3px; }
+.wishlist-page .wl-payment-options { border: 0; padding: 0; margin: 0; min-width: 0; }
+.wishlist-page .wl-payment-options legend { width: 100%; margin-bottom: 13px; font-size: 15px; font-weight: 600; line-height: 1.6; }
+.wishlist-page .wl-payment-option { position: relative; margin-bottom: 11px; }
+.wishlist-page .wl-payment-option input { position: absolute; z-index: 1; top: 19px; left: 14px; width: 17px; height: 17px; margin: 0; accent-color: #3f6a4a; cursor: pointer; }
+.wishlist-page .wl-payment-option label { display: flex; flex-direction: column; gap: 5px; padding: 15px 14px 15px 41px; border: 1px solid #dbe3d5; border-radius: 10px; background: #fdfefb; cursor: pointer; }
+.wishlist-page .wl-payment-option label:hover { border-color: #93ad8d; }
+.wishlist-page .wl-payment-option input:checked + label { border-color: #658a66; background: #f0f6eb; box-shadow: 0 0 0 1px #658a66; }
+.wishlist-page .wl-payment-option input:focus-visible + label { outline: 3px solid #89b397; outline-offset: 3px; }
+.wishlist-page .wl-option-title { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 15px; color: #3b5640; font-weight: 600; }
+.wishlist-page .wl-percent { padding: 2px 6px; border-radius: 4px; background: #e9efdf; color: #677b53; font-size: 11px; }
+.wishlist-page .wl-payment-option strong { color: #3f6344; font-size: 19px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.wishlist-page .wl-option-description { color: #73806e; font-size: 13px; line-height: 1.65; }
+.wishlist-page .wl-due { padding: 18px 0 0; margin-top: 18px; border-top: 1px solid #dbe4d3; }
+.wishlist-page .wl-due > div { display: flex; flex-direction: column; gap: 5px; }
+.wishlist-page .wl-due > div > span { font-size: 14px; color: #5f765e; }
+.wishlist-page .wl-due strong { color: #2d573b; font-size: 25px; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.wishlist-page .wl-due strong.wl-unselected { color: #75816f; font-size: 18px; font-weight: 500; }
+.wishlist-page .wl-due p { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 9px 0 0; color: #72806c; font-size: 12px; }
+.wishlist-page .wl-due p span { color: #536b4e; white-space: nowrap; font-weight: 600; }
+.wishlist-page .wl-checkout-button { width: 100%; margin-top: 20px; }
+.wishlist-page .wl-next-step, .wishlist-page .wl-noscript { margin: 12px 0 0; color: #7a8573; font-size: 12px; line-height: 1.7; text-align: center; }
+.wishlist-page .wl-next-step i { margin-right: 4px; }
+.wishlist-page .wl-empty { display: flex; align-items: center; flex-direction: column; padding: 64px 24px; border: 1px solid #d7e1d5; border-radius: 16px; background: #fff; text-align: center; }
+.wishlist-page .wl-empty-icon { display: grid; place-items: center; width: 76px; height: 76px; margin-bottom: 24px; border: 1px solid #dfe8d5; border-radius: 24px; background: #eff5e8; color: #718b5e; font-size: 29px; }
+.wishlist-page .wl-empty h2 { margin: 3px 0 12px; color: #324f37; font-size: 26px; font-weight: 650; }
+.wishlist-page .wl-empty > p:not(.wl-eyebrow) { max-width: 440px; margin: 0 0 25px; color: #73806e; font-size: 16px; }
+@media (max-width: 1100px) {
+    .wishlist-page .wl-stay { gap: 20px; }
+    .wishlist-page .wl-stay-title { padding-right: 20px; }
+    .wishlist-page .wl-stay-guests { flex-direction: column; gap: 2px; }
+    .wishlist-page .wl-layout { grid-template-columns: minmax(0, 1fr) 350px; gap: 20px; }
+    .wishlist-page .wl-room-card { padding-left: 21px; padding-right: 21px; }
+    .wishlist-page .wl-room-facts > div + div { padding-left: 16px; }
+}
+@media (max-width: 900px) {
+    .wishlist-page .wl-layout { grid-template-columns: 1fr; gap: 28px; }
+    .wishlist-page .wl-summary { position: static; }
+    .wishlist-page .wl-stay { flex-wrap: wrap; gap: 18px; }
+    .wishlist-page .wl-stay-title { flex-basis: 100%; border-right: 0; margin: 0; padding: 0 0 17px; border-bottom: 1px solid #5e7a63; }
+    .wishlist-page .wl-stay-guests { flex-direction: row; gap: 12px; }
+}
+@media (max-width: 640px) {
+    .wishlist-body .navbar a.navbar-wallet { width: 46px; padding: 0; justify-content: center; }
+    .wishlist-body .navbar .navbar-wallet-info { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@media (max-width: 575px) {
+    .wishlist-page { width: calc(100% - 32px); margin-top: 24px; }
+    .wishlist-page .wl-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
+    .wishlist-page .wl-stay { padding: 21px; gap: 16px; }
+    .wishlist-page .wl-stay-date { flex: 1; }
+    .wishlist-page .wl-stay-date time { font-size: 16px; }
+    .wishlist-page .wl-stay-guests { flex-basis: 100%; justify-content: flex-start; margin-top: 2px; }
+    .wishlist-page .wl-section-heading { align-items: flex-start; }
+    .wishlist-page .wl-section-heading h2 { font-size: 20px; }
+    .wishlist-page .wl-section-heading p { font-size: 14px; }
+    .wishlist-page .wl-count { padding: 4px 8px; font-size: 12px; }
+    .wishlist-page .wl-room-card { padding: 21px 20px 0; }
+    .wishlist-page .wl-room-card h3 { font-size: 21px; }
+    .wishlist-page .wl-room-facts { grid-template-columns: 1fr 1fr; gap: 17px; margin-top: 22px; }
+    .wishlist-page .wl-room-facts > div:last-child { grid-column: 1 / -1; padding: 14px 0 0; border-left: 0; border-top: 1px solid #e5ebdf; }
+    .wishlist-page .wl-room-facts > div:last-child dd { font-size: 18px; }
+    .wishlist-page .wl-room-subtotal { font-size: 21px; }
+    .wishlist-page .wl-summary { padding: 22px 20px; }
+    .wishlist-page .wl-due p { flex-wrap: wrap; }
+    .wishlist-page .wl-empty { padding: 44px 22px; }
+}
+@media (max-width: 360px) {
+    .wishlist-page .wl-stay { gap: 12px; }
+    .wishlist-page .wl-stay-arrow { display: none; }
+    .wishlist-page .wl-stay-date time { font-size: 15px; }
+}

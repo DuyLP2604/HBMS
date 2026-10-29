@@ -1,61 +1,58 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
-<layout:layout title="Checked In" useBootstrap="true">
-    <div class="container py-5">
-        <h1 class="h3 mb-4 text-success">
-            <i class="fa-solid fa-bell-concierge"></i> List of In-house Guests
-        </h1>
-        
-        <c:if test="${not empty sessionScope.successMessage}">
-            <div class="alert alert-success alert-dismissible fade show shadow-sm">
-                <c:out value="${sessionScope.successMessage}" />
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+<fmt:setLocale value="en_GB" scope="page" />
+<fmt:setTimeZone value="Asia/Ho_Chi_Minh" scope="page" />
+<jsp:useBean id="inhouseToday" class="java.util.Date" scope="request" />
+<fmt:formatDate var="hotelDay" value="${inhouseToday}" pattern="yyyy-MM-dd" />
+<c:set var="dueTodayCount" value="0" /><c:set var="overdueCount" value="0" />
+<c:forEach var="stay" items="${bookings}"><fmt:formatDate var="stayDeparture" value="${stay.checkOutDate}" pattern="yyyy-MM-dd" /><c:if test="${stayDeparture eq hotelDay}"><c:set var="dueTodayCount" value="${dueTodayCount + 1}" /></c:if><c:if test="${stayDeparture lt hotelDay}"><c:set var="overdueCount" value="${overdueCount + 1}" /></c:if></c:forEach>
+<c:url var="inhouseUrl" value="/checkin" /><c:url var="staysUrl" value="/staff/stays" /><c:url var="dashboardUrl" value="/staff/dashboard" />
+<layout:layout title="In-house Guests" pageCss="guest-workspace.css" pageJs="inhouse-guests.js" bodyClass="stay-workspace-page">
+    <div class="stay-workspace guest-workspace" data-inhouse-list>
+        <header class="stay-page-heading"><div><p class="stay-eyebrow">FRONT DESK / CURRENT STAYS</p><h1>In-house guests</h1><p class="stay-page-description">See who is staying, find their rooms and review upcoming departures.</p></div><div class="stay-heading-actions"><a href="${dashboardUrl}" class="stay-back-link"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Dashboard</a><a href="${staysUrl}" class="stay-button stay-button-primary"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> Guest stays</a></div></header>
+        <c:if test="${not empty sessionScope.successMessage}"><div class="stay-notice stay-notice-success" role="status"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><c:out value="${sessionScope.successMessage}" /></div><c:remove var="successMessage" scope="session" /></c:if>
+        <c:if test="${not empty sessionScope.errorMessage}"><div class="stay-notice stay-notice-error" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><c:out value="${sessionScope.errorMessage}" /></div><c:remove var="errorMessage" scope="session" /></c:if>
+        <noscript><div class="stay-notice stay-notice-error">Enable JavaScript to search guests, filter departures and open stay details.</div></noscript>
+        <section class="stay-list-panel" aria-labelledby="inhouse-list-title">
+            <div class="stay-list-heading"><div><h2 id="inhouse-list-title">Current stays</h2><p><span data-inhouse-date><fmt:formatDate value="${inhouseToday}" pattern="EEE, dd MMM yyyy" /> · Vietnam time</span><span class="stay-list-subtitle">Only guests who have checked in are listed here.</span></p></div><a href="${inhouseUrl}" class="stay-refresh" data-inhouse-refresh><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Refresh</a></div>
+            <div class="stay-list-toolbar">
+                <div class="stay-search"><label for="inhouse-search" class="stay-sr-only">Search by guest, booking, room or phone</label><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="inhouse-search" placeholder="Search guest, booking, room or phone" autocomplete="off" disabled data-inhouse-search></div>
+                <nav class="stay-filters" aria-label="Filter in-house guests"><button type="button" data-inhouse-filter="all" aria-pressed="true" disabled>All stays <span data-inhouse-count="all">${fn:length(bookings)}</span></button><button type="button" data-inhouse-filter="today" aria-pressed="false" disabled>Due today <span data-inhouse-count="today">${dueTodayCount}</span></button><button type="button" data-inhouse-filter="overdue" aria-pressed="false" disabled>Departure overdue <span data-inhouse-count="overdue">${overdueCount}</span></button></nav>
             </div>
-            <c:remove var="successMessage" scope="session"/>
-        </c:if>
-
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0 text-center">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Booking ID</th>
-                                <th>Customer Name</th>
-                                <th>Check-in</th>
-                                <th>Check-out</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <c:forEach var="booking" items="${bookings}">
-                                <tr>
-                                    <td class="fw-bold">${booking.bookingID}</td>
-                                    <td>${booking.customerID.fullName}</td>
-                                    <td><fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" /></td>
-                                    <td><fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" /></td>
-                                    <td><span class="badge bg-success">Staying</span></td>
-                                </tr>
-                            </c:forEach>
-                            
-                            <c:if test="${empty bookings}">
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">There are currently no guests staying.</td>
-                                </tr>
-                            </c:if>
-                        </tbody>
-                    </table>
+            <div class="stay-table-wrap" data-inhouse-table ${empty bookings ? 'hidden' : ''}>
+                <table class="stay-table guest-inhouse-table"><caption class="stay-sr-only">In-house guests, assigned rooms, stay dates and available actions.</caption><thead><tr><th scope="col">Guest</th><th scope="col">Room(s)</th><th scope="col">Stay</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead><tbody data-inhouse-rows>
+                    <c:forEach var="booking" items="${bookings}" varStatus="row">
+                        <fmt:formatDate var="arrivalDay" value="${booking.checkInDate}" pattern="yyyy-MM-dd" /><fmt:formatDate var="departureDay" value="${booking.checkOutDate}" pattern="yyyy-MM-dd" />
+                        <c:set var="roomSearch" value="" /><c:set var="roomCount" value="0" />
+                        <c:forEach var="detail" items="${booking.bookingDetailCollection}"><c:forEach var="assignment" items="${detail.roomAssignmentCollection}"><c:set var="roomSearch" value="${roomSearch} ${assignment.roomID.roomNumber}" /><c:set var="roomCount" value="${roomCount + 1}" /></c:forEach></c:forEach>
+                        <c:url var="checkoutUrl" value="/CheckoutEmployee"><c:param name="action" value="detail" /><c:param name="bookingID" value="${fn:trim(booking.bookingID)}" /></c:url>
+                        <tr data-inhouse-row data-booking="${fn:escapeXml(fn:trim(booking.bookingID))}" data-departure="${departureDay}" data-phone="${fn:escapeXml(booking.customerID.phone)}" data-search="${fn:escapeXml(booking.customerID.fullName)} ${fn:escapeXml(booking.bookingID)} ${fn:escapeXml(roomSearch)} ${fn:escapeXml(booking.customerID.phone)}">
+                            <td class="stay-guest-cell"><strong class="stay-guest-name"><c:out value="${empty fn:trim(booking.customerID.fullName) ? 'Guest' : booking.customerID.fullName}" /></strong><div class="stay-guest-reference"><span><c:out value="${booking.bookingID}" /></span><c:if test="${not empty fn:trim(booking.customerID.phone)}"><span class="stay-meta-divider" aria-hidden="true">·</span><span><c:out value="${booking.customerID.phone}" /></span></c:if></div></td>
+                            <td class="guest-inhouse-room-cell"><c:forEach var="detail" items="${booking.bookingDetailCollection}"><c:forEach var="assignment" items="${detail.roomAssignmentCollection}"><span class="guest-room-chip"><i class="fa-solid fa-bed" aria-hidden="true"></i> <c:out value="${assignment.roomID.roomNumber}" /></span></c:forEach></c:forEach><c:if test="${roomCount eq 0}"><span class="guest-inline-text">No room data</span></c:if></td>
+                            <td class="stay-dates-cell"><div class="stay-date-pair"><div><span>Arrival</span><time datetime="${arrivalDay}"><fmt:formatDate value="${booking.checkInDate}" pattern="dd MMM yyyy" /></time></div><i class="fa-solid fa-arrow-right" aria-hidden="true"></i><div><span>Departure</span><time datetime="${departureDay}"><fmt:formatDate value="${booking.checkOutDate}" pattern="dd MMM yyyy" /></time></div></div></td>
+                            <td class="stay-status-cell"><span class="guest-state ${departureDay lt hotelDay ? 'guest-state-overdue' : departureDay eq hotelDay ? 'guest-state-due' : ''}" data-inhouse-status><c:choose><c:when test="${departureDay lt hotelDay}">Departure overdue</c:when><c:when test="${departureDay eq hotelDay}">Due today</c:when><c:otherwise>In-house</c:otherwise></c:choose></span></td>
+                            <td class="stay-action-cell"><div class="stay-row-actions guest-table-actions"><button type="button" class="stay-row-button" data-open-stay="stay-detail-${row.index}" aria-haspopup="dialog"><i class="fa-regular fa-eye" aria-hidden="true"></i> View details</button><a href="${checkoutUrl}" class="stay-row-button"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Check out</a></div></td>
+                        </tr>
+                    </c:forEach>
+                </tbody></table>
+            </div>
+            <div class="guest-list-empty" data-inhouse-empty ${not empty bookings ? 'hidden' : ''}><i class="fa-solid fa-door-open" aria-hidden="true"></i><h3 data-inhouse-empty-title>No in-house guests</h3><p data-inhouse-empty-text>Guests will appear here after check-in is completed.</p><button type="button" class="stay-button stay-button-secondary" data-inhouse-reset ${empty bookings ? 'hidden' : ''}>Clear filters</button></div>
+            <div class="stay-list-footer"><p class="guest-result-note" data-inhouse-result aria-live="polite">Showing ${fn:length(bookings)} stays</p><span class="guest-result-note">Check-out payments are reviewed before an invoice is issued.</span></div>
+        </section>
+        <c:forEach var="booking" items="${bookings}" varStatus="row">
+            <c:url var="detailCheckoutUrl" value="/CheckoutEmployee"><c:param name="action" value="detail" /><c:param name="bookingID" value="${fn:trim(booking.bookingID)}" /></c:url>
+            <dialog class="guest-dialog" id="stay-detail-${row.index}" aria-labelledby="stay-detail-title-${row.index}">
+                <div class="guest-dialog-header"><div><p class="stay-eyebrow">IN-HOUSE GUEST / <c:out value="${booking.bookingID}" /></p><h2 id="stay-detail-title-${row.index}">Stay details</h2></div><button type="button" class="guest-close" data-close-stay aria-label="Close stay details"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+                <div class="guest-dialog-body"><div class="guest-identity"><span class="guest-avatar" aria-hidden="true"><i class="fa-regular fa-user"></i></span><div class="guest-identity-text"><h3 class="guest-customer-name"><c:out value="${booking.customerID.fullName}" /></h3><div class="guest-contact"><span><c:out value="${booking.customerID.phone}" /></span><span><c:out value="${booking.customerID.email}" /></span></div></div></div>
+                    <dl class="guest-facts"><div><dt>Arrival</dt><dd><fmt:formatDate value="${booking.checkInDate}" pattern="dd MMM yyyy" /></dd></div><div><dt>Departure</dt><dd><fmt:formatDate value="${booking.checkOutDate}" pattern="dd MMM yyyy" /></dd></div><div><dt>Booking ID</dt><dd><c:out value="${booking.bookingID}" /></dd></div><div><dt>Status</dt><dd><span class="guest-state">In-house</span></dd></div></dl>
+                    <section class="guest-dialog-section"><h3>Assigned rooms</h3><div class="guest-rooms"><c:forEach var="detail" items="${booking.bookingDetailCollection}"><c:forEach var="assignment" items="${detail.roomAssignmentCollection}"><span class="guest-room-chip">Room <c:out value="${assignment.roomID.roomNumber}" /> · <c:out value="${detail.roomTypeID.typeName}" /></span></c:forEach></c:forEach></div></section>
+                    <section class="guest-dialog-section"><h3>Guest identity documents</h3><c:choose><c:when test="${not empty fn:trim(booking.guestCCCDs)}"><ul class="guest-documents-list"><c:forEach var="document" items="${fn:split(booking.guestCCCDs, ',')}" varStatus="guest"><c:if test="${not empty fn:trim(document)}"><li><span>Guest ${guest.index + 1}</span><code><c:out value="${fn:trim(document)}" /></code></li></c:if></c:forEach></ul></c:when><c:otherwise><p class="guest-help">No guest documents have been recorded.</p></c:otherwise></c:choose></section>
                 </div>
-            </div>
-        </div>
-        
-        <div class="mt-4">
-            <a href="${pageContext.request.contextPath}/staff/dashboard" class="btn btn-secondary">
-                <i class="fa-solid fa-arrow-left"></i> Back to dashboard
-            </a>
-        </div>
+                <div class="guest-dialog-footer"><button type="button" class="stay-button stay-button-secondary" data-close-stay>Close</button><a href="${detailCheckoutUrl}" class="stay-button stay-button-primary">Review checkout <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+            </dialog>
+        </c:forEach>
     </div>
 </layout:layout>

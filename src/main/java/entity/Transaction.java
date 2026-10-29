@@ -5,7 +5,6 @@
 package entity;
 
 import jakarta.persistence.Basic;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,16 +12,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
-import jakarta.xml.bind.annotation.XmlTransient;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Collection;
 
 /**
  *
@@ -60,15 +55,6 @@ public class Transaction implements Serializable {
     @NotNull
     @Column(name = "TransactionValue")
     private BigDecimal transactionValue;
-    @OneToOne(mappedBy = "transactionID")
-    private Payment payment;
-    @OneToOne(cascade = CascadeType.ALL, mappedBy = "transactionID")
-    private BookingRefund bookingRefund;
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "transaction")
-    private Collection<InvoiceTransaction> invoiceTransactionCollection;
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "transactionID")
-    private Collection<WalletTransaction> walletTransactionCollection;
-
     public Transaction() {
     }
 
@@ -113,40 +99,6 @@ public class Transaction implements Serializable {
 
     public void setTransactionValue(BigDecimal transactionValue) {
         this.transactionValue = transactionValue;
-    }
-
-    public Payment getPayment() {
-        return payment;
-    }
-
-    public void setPayment(Payment payment) {
-        this.payment = payment;
-    }
-
-    public BookingRefund getBookingRefund() {
-        return bookingRefund;
-    }
-
-    public void setBookingRefund(BookingRefund bookingRefund) {
-        this.bookingRefund = bookingRefund;
-    }
-
-    @XmlTransient
-    public Collection<InvoiceTransaction> getInvoiceTransactionCollection() {
-        return invoiceTransactionCollection;
-    }
-
-    public void setInvoiceTransactionCollection(Collection<InvoiceTransaction> invoiceTransactionCollection) {
-        this.invoiceTransactionCollection = invoiceTransactionCollection;
-    }
-
-    @XmlTransient
-    public Collection<WalletTransaction> getWalletTransactionCollection() {
-        return walletTransactionCollection;
-    }
-
-    public void setWalletTransactionCollection(Collection<WalletTransaction> walletTransactionCollection) {
-        this.walletTransactionCollection = walletTransactionCollection;
     }
 
     @Override

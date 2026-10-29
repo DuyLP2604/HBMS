@@ -38,7 +38,7 @@
                 <div class="mb-4">
                     <strong>Initial payment option:</strong>
                     <c:choose>
-                        <c:when test="${paymentOption eq 'DEPOSIT'}">30% deposit, then pay the remaining balance</c:when>
+                        <c:when test="${paymentOption eq 'DEPOSIT'}">30% deposit; room balance settled at check-in</c:when>
                         <c:when test="${paymentOption eq 'FULL'}">Full payment</c:when>
                         <c:otherwise><c:out value="${paymentOption}" /></c:otherwise>
                     </c:choose>
@@ -59,7 +59,7 @@
                         <tbody>
                             <tr>
                                 <td>1</td>
-                                <td class="text-start">Room charges for <c:out value="${roomDetail.totalDays}" /> night(s)</td>
+                                <td class="text-start">Room charges for <c:out value="${roomDetail.totalDays}" /> night(s) (settled at check-in)</td>
                                 <td>—</td>
                                 <td>—</td>
                                 <td class="text-end fw-bold"><fmt:formatNumber value="${roomDetail.roomTotal}" type="number" maxFractionDigits="2" /> VND</td>
@@ -81,7 +81,10 @@
                         <p class="mb-2 fs-5">Total: <strong><fmt:formatNumber value="${totalAmount}" type="number" maxFractionDigits="2" /> VND</strong></p>
                         <p class="mb-2 text-muted">Amount paid: <strong><fmt:formatNumber value="${paidAmount}" type="number" maxFractionDigits="2" /> VND</strong></p>
                         <hr>
-                        <h3 class="${remainingAmount gt 0 ? 'text-danger' : 'text-success'} mb-0">Remaining balance: <fmt:formatNumber value="${remainingAmount}" type="number" maxFractionDigits="2" /> VND</h3>
+                        <h3 class="${bookingSummary.serviceRemainingAmount gt 0 ? 'text-danger' : 'text-success'} mb-0">Extra services due at checkout: <fmt:formatNumber value="${bookingSummary.serviceRemainingAmount}" type="number" maxFractionDigits="2" /> VND</h3>
+                        <c:if test="${bookingSummary.roomRemainingAmount gt 0}">
+                            <div class="alert alert-danger mt-3 text-start">This existing stay has unpaid room charges. Review and settle its payment history before checkout: <fmt:formatNumber value="${bookingSummary.roomRemainingAmount}" type="number" /> VND.</div>
+                        </c:if>
                     </div>
                 </div>
                 <c:choose>
@@ -98,17 +101,20 @@
                     <c:when test="${canCheckout and (bookingSummary.bookingStatus eq 'CHECKED_IN' or bookingSummary.bookingStatus eq 'CHECKED_OUT')}">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 bg-success-subtle p-3 rounded border border-success">
                             <div><strong>Payment complete.</strong> You can confirm checkout and issue the invoice.</div>
-                            <form action="${pageContext.request.contextPath}/CheckoutEmployee" method="post" id="invoiceForm" class="m-0">
+                            <form action="${pageContext.request.contextPath}/CheckoutEmployee" method="post" id="invoiceForm" class="m-0 d-flex align-items-center gap-3">
                                 <input type="hidden" name="action" value="exportInvoice">
                                 <input type="hidden" name="bookingID" value="<c:out value='${bookingID}' />">
-                                <button type="submit" class="btn btn-success btn-lg fw-bold px-4" id="btnInvoice"><i class="bi bi-printer me-2"></i> <c:out value="${bookingSummary.bookingStatus eq 'CHECKED_OUT' ? 'Issue Invoice' : 'Checkout & Issue Invoice'}" /></button>
+
+                                <button type="submit" class="btn btn-success btn-lg fw-bold px-4 text-nowrap" id="btnInvoice">
+                                    <i class="bi bi-printer me-2"></i> <c:out value="${bookingSummary.bookingStatus eq 'CHECKED_OUT' ? 'Issue Invoice' : 'Checkout & Issue Invoice'}" />
+                                </button>
                             </form>
                         </div>
                     </c:when>
                     <c:otherwise>
                         <div class="alert alert-warning mb-0" role="alert">
                             <c:choose>
-                                <c:when test="${remainingAmount gt 0}">The booking has an unpaid balance. Ask the customer to complete payment from My Bookings before checkout.</c:when>
+                                <c:when test="${remainingAmount gt 0}">Extra services must be paid before checkout. The customer can complete this payment from My Bookings.</c:when>
                                 <c:otherwise>Checkout is unavailable. Reload this page and verify the booking payment status.</c:otherwise>
                             </c:choose>
                         </div>

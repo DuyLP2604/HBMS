@@ -11,6 +11,29 @@ import util.PersistenceManager;
 
 public class CustomerDAO {
 
+    @SuppressWarnings("unchecked")
+    public List<Customer> findByPhone(String phone) {
+        if (phone == null || phone.trim().isEmpty()) {
+            return List.of();
+        }
+
+        String normalizedPhone = phone.replaceAll("[ .-]", "");
+        if (normalizedPhone.isEmpty()) {
+            return List.of();
+        }
+
+        String sql = "SELECT c.* FROM dbo.CUSTOMER c "
+                + "WHERE REPLACE(REPLACE(REPLACE(c.Phone, ' ', ''), '-', ''), '.', '') = ?";
+
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            return em.createNativeQuery(sql, Customer.class)
+                    .setParameter(1, normalizedPhone)
+                    .setHint("jakarta.persistence.cache.retrieveMode",
+                            jakarta.persistence.CacheRetrieveMode.BYPASS)
+                    .getResultList();
+        }
+    }
+
     public String generateCustomerID() {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
             String jpql = "SELECT MAX(CAST(SUBSTRING(c.customerID, 3, LENGTH(c.customerID)) AS Integer)) FROM Customer c";

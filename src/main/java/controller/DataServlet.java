@@ -10,8 +10,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import java.io.IOException;
-import util.PersistenceManager;
-import jakarta.persistence.EntityManager;
 import service.ExportDataService;
 import service.ImportDataService;
 import util.flash.Flash;
@@ -38,7 +36,6 @@ public class DataServlet extends HttpServlet {
         try {
             backupService.exportDB(response.getOutputStream());
             response.getOutputStream().flush(); // Đẩy toàn bộ dữ liệu ra luồng
-            response.sendRedirect(request.getContextPath() + "/dashboard");
         } catch (Exception e) {
             if (!response.isCommitted()) {
                 response.reset(); // Xóa sạch header cũ đang bị lỗi
@@ -64,24 +61,10 @@ public class DataServlet extends HttpServlet {
             try {
                 Part filePart = request.getPart("backupFile");
                 if (filePart != null && filePart.getSize() > 0) {
-                    EntityManager em = PersistenceManager.createEntityManager();
-                    em.getTransaction().begin();
-                    try {
-                        backupService.importDB(filePart.getInputStream(), em);
-                        em.getTransaction().commit();
-                        Flash.success(request, "Phục hồi dữ liệu từ Excel thành công!");
-                    } catch (Exception e) {
-                        // FIX TẠI ĐÂY: Chỉ rollback khi transaction còn sống
-                        if (em != null && em.getTransaction().isActive()) {
-                            em.getTransaction().rollback();
-                        }
-                        // Ném lỗi ra ngoài để outer-catch bắt được lỗi thật sự
-                        throw e;
-                    } finally {
-                        if (em != null && em.isOpen()) {
-                            em.close();
-                        }
+                    try (java.io.InputStream input = filePart.getInputStream()) {
+                        backupService.importDB(input);
                     }
+                    Flash.success(request, "Phục hồi dữ liệu từ Excel thành công!");
                 } else {
                     Flash.error(request, "Vui lòng chọn file Excel để import.");
                 }

@@ -35,8 +35,23 @@ public class BookingCheckoutService
 
     public Booking createPendingBooking(BookingWishList cart, int userID, String paymentOption)
     {
+        return createPendingBooking(cart, userID, paymentOption, userID);
+    }
+
+    public Booking createForReceptionist(BookingWishList cart, int customerUserID, String option, int actorUserID) {
+        if (!new dao.EmployeeDAO().isReceptionistByUserId(actorUserID)) {
+            throw new SecurityException("Only receptionists can book for customers.");
+        }
+        return createPendingBooking(cart, customerUserID, option, actorUserID);
+    }
+
+    private Booking createPendingBooking(BookingWishList cart, int userID, String paymentOption, int actorUserID) {
         validateCart(cart);
-        BookingTimePolicy.validateStayDates(cart.getCheckInDate(), cart.getCheckOutDate());
+        if (actorUserID == userID) {
+            BookingTimePolicy.validateStayDates(cart.getCheckInDate(), cart.getCheckOutDate());
+        } else if (cart.getCheckInDate().isBefore(BookingTimePolicy.now().toLocalDate())) {
+            throw new IllegalArgumentException("Check-in cannot be in the past.");
+        }
         if (userID <= 0)
         {
             throw new IllegalArgumentException("A valid authenticated account is required.");
@@ -68,7 +83,7 @@ public class BookingCheckoutService
             booking.setBookingID(generateBookingID());
             try
             {
-                Booking created = bookingDAO.createBooking(booking, roomRequests, userID);
+                Booking created = bookingDAO.createBooking(booking, roomRequests, actorUserID);
                 if (created == null)
                 {
                     throw new IllegalStateException("The booking was submitted, but its details could not be loaded. Check your bookings before trying again.");

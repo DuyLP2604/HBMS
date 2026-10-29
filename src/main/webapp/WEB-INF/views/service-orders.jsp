@@ -43,14 +43,15 @@
                                 <th class="text-end">Đơn giá</th>
                                 <th class="text-center">Số lượng</th>
                                 <th class="text-end">Thành tiền</th>
-                                <th class="text-center">Trạng thái phòng</th>
+                                <th class="text-center" style="width: 15%">Trạng thái</th>
+                                <th class="text-center" style="width: 20%">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
                             <c:choose>
                                 <c:when test="${empty orders}">
                                     <tr>
-                                        <td colspan="8" class="text-center py-5 text-muted">
+                                        <td colspan="9" class="text-center py-5 text-muted">
                                             <i class="fa-solid fa-inbox fa-3x mb-3 text-secondary opacity-50 d-block"></i>
                                             Hiện chưa có yêu cầu dịch vụ nào từ các phòng lưu trú.
                                         </td>
@@ -92,10 +93,40 @@
                                             <td class="text-end fw-bold text-danger">
                                                 <fmt:formatNumber value="${bs.unitPrice * bs.quantity}" type="number" groupingUsed="true" maxFractionDigits="0" /> VND
                                             </td>
+
                                             <td class="text-center">
-                                                <span class="badge bg-success">
-                                                    <c:out value="${bs.booking.bookingStatus}" />
-                                                </span>
+                                                <c:choose>
+                                                    <c:when test="${bs.serviceStatus eq 'COMPLETED'}">
+                                                        <span class="badge bg-success px-2 py-1">
+                                                            <i class="fa-solid fa-check-circle me-1"></i>Đã hoàn thành
+                                                        </span>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <span class="badge bg-warning text-dark px-2 py-1">
+                                                            <i class="fa-solid fa-clock me-1"></i>Chờ phục vụ
+                                                        </span>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </td>
+
+                                            <td class="text-center">
+                                                <c:choose>
+                                                    <c:when test="${bs.serviceStatus eq 'COMPLETED'}">
+                                                        <span class="text-success small fw-bold">
+                                                            <i class="fa-solid fa-circle-check me-1"></i>Đã phục vụ
+                                                        </span>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <form action="${pageContext.request.contextPath}/service" method="post" class="m-0" onsubmit="return confirm('Xác nhận đã phục vụ xong món này cho đơn ${bs.booking.bookingID}?');">
+                                                            <input type="hidden" name="action" value="completeOrder">
+                                                            <input type="hidden" name="bookingID" value="${bs.booking.bookingID.trim()}">
+                                                            <input type="hidden" name="serviceID" value="${bs.service.serviceID.trim()}">
+                                                            <button type="submit" class="btn btn-sm btn-success fw-bold shadow-sm">
+                                                                <i class="fa-solid fa-check me-1"></i>Đã xong
+                                                            </button>
+                                                        </form>
+                                                    </c:otherwise>
+                                                </c:choose>
                                             </td>
                                         </tr>
                                     </c:forEach>

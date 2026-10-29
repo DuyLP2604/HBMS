@@ -38,10 +38,6 @@
                         </c:when>
                     </c:choose>
 
-                    <c:if test="${sessionScope.user.role eq 'Staff' or sessionScope.user.role eq 'Admin'}">
-                        <a href="${pageContext.request.contextPath}/booking-overview">Booking Overview</a>
-                    </c:if>
-
                     <div class="dropdown-divider"></div>
                     <a href="${pageContext.request.contextPath}/logout" class="logout-link">
                         <i class="fa-solid fa-right-from-bracket"></i> Logout

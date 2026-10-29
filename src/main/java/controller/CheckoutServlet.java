@@ -11,10 +11,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.Map;
 import service.BookingCheckoutService;
 import util.BookingWishListSession;
+import util.BookingTimePolicy;
 
 @WebServlet(name = "CheckoutServlet", urlPatterns = {"/checkout"})
 public class CheckoutServlet extends HttpServlet
@@ -22,6 +27,7 @@ public class CheckoutServlet extends HttpServlet
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
+        response.setHeader("Cache-Control", "no-store");
         Users user = requireCustomer(request, response);
         if (user == null)
         {
@@ -35,7 +41,7 @@ public class CheckoutServlet extends HttpServlet
             return;
         }
         String bookingID = ((String) value).trim();
-        BookingDAO bookingDAO = new BookingDAO();
+        BookingDAO bookingDAO = createBookingDAO();
         try
         {
             Booking booking = bookingDAO.getByIdWithDetails(bookingID);
@@ -65,7 +71,7 @@ public class CheckoutServlet extends HttpServlet
             if (!"PENDING_PAYMENT".equals(booking.getBookingStatus()))
             {
                 session.removeAttribute("pendingBookingID");
-                response.sendRedirect(request.getContextPath() + "/booking?action=detail&id=" + booking.getBookingID().trim());
+                response.sendRedirect(request.getContextPath() + "/my-bookings?bookingID=" + booking.getBookingID().trim());
                 return;
             }
             Map<String, Object> summary = bookingDAO.getPaymentSummary(bookingID);
@@ -78,12 +84,28 @@ public class CheckoutServlet extends HttpServlet
             request.setAttribute("bookingSummary", summary);
             request.setAttribute("paymentOption", booking.getPaymentOption());
             request.setAttribute("initialRequiredAmount", summary.get("initialRequiredAmount"));
+            request.setAttribute("checkoutNights", ChronoUnit.DAYS.between(
+                    new java.sql.Date(booking.getCheckInDate().getTime()).toLocalDate(),
+                    new java.sql.Date(booking.getCheckOutDate().getTime()).toLocalDate()));
+            request.setAttribute("checkoutServerNow", System.currentTimeMillis());
+            if (booking.getPaymentDeadline() != null)
+            {
+                // SQL DATETIME stores the hotel's local wall time without a timezone.
+                LocalDateTime deadline = new Timestamp(booking.getPaymentDeadline().getTime()).toLocalDateTime();
+                request.setAttribute("checkoutDeadlineEpoch", deadline.atZone(BookingTimePolicy.HOTEL_ZONE).toInstant().toEpochMilli());
+                request.setAttribute("checkoutDeadlineLabel", deadline.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale.ENGLISH)));
+            }
             request.getRequestDispatcher("/WEB-INF/views/checkout-pending.jsp").forward(request, response);
         }
         catch (Exception exception)
         {
             throw new ServletException("Unable to load checkout information.", exception);
         }
+    }
+
+    protected BookingDAO createBookingDAO()
+    {
+        return new BookingDAO();
     }
 
     @Override

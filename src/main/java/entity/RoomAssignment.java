@@ -77,6 +77,7 @@ public class RoomAssignment implements Serializable {
         this.assignmentID = assignmentID;
     }
 
+
     public BookingDetail getBookingDetailID() {
         return bookingDetailID;
     }

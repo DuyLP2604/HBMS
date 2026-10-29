@@ -80,13 +80,13 @@
 
                         <c:choose>
                             <c:when test="${paymentType eq 'DEPOSIT'}">
-                                <div class="alert alert-info">Pay 30% to confirm your booking. You can pay the remaining 70% later.</div>
+                                <div class="alert alert-info">Pay 30% to confirm your booking. Any outstanding room charges must be settled before check-in.</div>
                             </c:when>
                             <c:when test="${paymentType eq 'FULL'}">
                                 <div class="alert alert-info">Pay the full booking amount to confirm your booking.</div>
                             </c:when>
                             <c:when test="${paymentType eq 'BALANCE'}">
-                                <div class="alert alert-info">This payment covers your current outstanding balance, including any additional service charges. It does not restart the 24-hour refund period.</div>
+                                <div class="alert alert-info">${bookingSummary.bookingStatus eq 'CHECKED_IN' ? 'This payment settles your outstanding charges. Extra services must be paid before checkout.' : 'This payment settles the outstanding room charges before check-in. Extra services are due at checkout.'} It does not restart the 24-hour refund period.</div>
                             </c:when>
                         </c:choose>
 
@@ -177,8 +177,8 @@
 
                                             <c:forEach var="method" items="${paymentMethods}">
                                                 <c:choose>
-                                                    <c:when test="${method.methodID eq 'PT09'}">
-                                                        <option value="PT09" ${walletCanPay ? '' : 'disabled'}>
+                                                    <c:when test="${method.methodID eq 'PT02'}">
+                                                        <option value="PT02" ${walletCanPay ? '' : 'disabled'}>
                                                             My Wallet —
                                                             <c:choose>
                                                                 <c:when test="${walletAvailable}">
@@ -198,21 +198,14 @@
                                             </c:forEach>
                                         </select>
                                     </div>
-                                    <!--QRPay-->
-                                    <div id="vietqr-container" class="mb-4 text-center d-none border rounded p-4 bg-white shadow-sm">
-                                        <h5 class="fw-bold text-primary mb-3">Quét mã QR để thanh toán</h5>
 
-                                        <c:if test="${not empty vietQrUrl}">
-                                            <img src="${vietQrUrl}" alt="VietQR Payment" class="img-fluid border rounded shadow-sm" style="max-width: 260px;">
-                                        </c:if>
-                                        <c:if test="${empty vietQrUrl}">
-                                            <img id="vietqr-img" src="" alt="VietQR Payment" class="img-fluid border rounded shadow-sm" style="max-width: 260px;">
-                                        </c:if>
-
-                                        <p class="mt-3 text-muted small">Mở ứng dụng ngân hàng bất kỳ để quét mã QR thanh toán nhanh.</p>
-                                        <div class="alert alert-warning small text-start mb-0">
-                                            <strong>Lưu ý:</strong> Vui lòng giữ nguyên nội dung chuyển khoản để hệ thống xác nhận tự động.
-                                        </div>
+                                    <div id="vietqr-container" class="mb-4 text-center d-none border rounded p-4 bg-white shadow-sm"
+                                         data-full-url="<c:out value='${vietQrUrl}' />"
+                                         data-wallet-url="<c:out value='${vietQrWalletUrl}' />">
+                                        <h5 class="fw-bold mb-3">Scan VietQR to transfer</h5>
+                                        <img id="vietqr-img" alt="VietQR payment" class="img-fluid border rounded" style="max-width:260px">
+                                        <p class="mt-3 mb-1">Transfer reference: <strong><c:out value="${transferReference}" /></strong></p>
+                                        <p class="small text-muted mb-0">Keep the transfer reference unchanged. This page displays the QR only. Payment remains pending until the transfer is verified.</p>
                                     </div>
                                     <div id="walletPaymentNotice" class="alert alert-info d-none" role="status">Your wallet contribution is checked again when you pay. If the available balance has changed, reload this page to review the amounts.</div>
 
@@ -237,79 +230,4 @@
             </div>
         </div>
     </div>
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const methodSelect = document.getElementById("methodID");
-            const qrContainer = document.getElementById("vietqr-container");
-            const paymentButton = document.getElementById("paymentButton");
-            // Lấy bookingID từ input hidden có sẵn trong form
-            const bookingIDInput = document.querySelector('input[name="bookingID"]');
-            const bookingID = bookingIDInput ? bookingIDInput.value : '';
-
-            let pollInterval = null;
-
-            // Hàm gọi API kiểm tra trạng thái
-            function checkPaymentStatus() {
-                if (!bookingID)
-                    return;
-
-                fetch('${pageContext.request.contextPath}/api/check-payment?bookingID=' + bookingID)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success' && data.isPaid) {
-                                // Thanh toán thành công -> Dừng polling
-                                clearInterval(pollInterval);
-                                pollInterval = null;
-
-                                // Cập nhật giao diện QR thành thông báo thành công (Không redirect)
-                                qrContainer.classList.remove("bg-white");
-                                qrContainer.classList.add("bg-success", "text-white");
-                                qrContainer.innerHTML = `
-                            <h4 class="fw-bold mb-3"><i class="fas fa-check-circle fs-1"></i></h4>
-                            <h5 class="fw-bold mb-3">Thanh toán thành công!</h5>
-                            <p class="mb-0 small text-white">Hệ thống đã ghi nhận thanh toán của bạn.</p>
-                            <a href="${pageContext.request.contextPath}/my-bookings" class="btn btn-light btn-sm mt-3 fw-bold text-success">Xem đặt phòng của tôi</a>
-                        `;
-
-                                // Đảm bảo nút process payment vẫn bị ẩn
-                                if (paymentButton)
-                                    paymentButton.classList.add("d-none");
-                            } else if (data.status === 'error') {
-                                // Nếu có lỗi (ví dụ hết hạn thanh toán), có thể xử lý dừng poll
-                                console.log("Status Check:", data.message);
-                            }
-                        })
-                        .catch(err => console.error("Lỗi kiểm tra thanh toán:", err));
-            }
-
-            if (methodSelect && qrContainer && paymentButton) {
-                methodSelect.addEventListener("change", function () {
-                    const selectedText = this.options[this.selectedIndex].text.toLowerCase();
-
-                    // Kiểm tra nếu chọn phương thức QR
-                    if (this.value === "PT10" || selectedText.includes("qr") || selectedText.includes("vietqr")) {
-                        qrContainer.classList.remove("d-none");
-                        // ẨN NÚT THANH TOÁN (Chống skip)
-                        paymentButton.classList.add("d-none");
-
-                        // Khởi động vòng lặp kiểm tra ngầm mỗi 2000ms (2 giây)
-                        if (!pollInterval) {
-                            pollInterval = setInterval(checkPaymentStatus, 2000);
-                        }
-                    } else {
-                        // Nếu chọn phương thức khác (Tiền mặt, ví, v.v.)
-                        qrContainer.classList.add("d-none");
-                        // HIỆN LẠI NÚT THANH TOÁN
-                        paymentButton.classList.remove("d-none");
-
-                        // Dừng vòng lặp kiểm tra QR
-                        if (pollInterval) {
-                            clearInterval(pollInterval);
-                            pollInterval = null;
-                        }
-                    }
-                });
-            }
-        });
-    </script>
 </layout:layout>

@@ -13,7 +13,7 @@ import util.PersistenceManager;
 
 public class DAOFramework<T> {
 
-    private static final Set<String> PROCEDURE_TABLES = Set.of("BOOKING", "BOOKING_DETAIL", "BOOKING_SERVICE", "ROOM_ASSIGNMENT", "PAYMENT", "CUSTOMER_WALLET", "BOOKING_REFUND", "REFUND_PAYMENT", "WALLET_TRANSACTION", "USER_BOOKING_CONTROL", "BOOKING_LOCK_HISTORY");
+    private static final Set<String> PROCEDURE_TABLES = Set.of("BOOKING", "BOOKING_DETAIL", "BOOKING_SERVICE", "ROOM_ASSIGNMENT", "PAYMENT", "CUSTOMER_WALLET", "BOOKING_REFUND", "REFUND_PAYMENT", "WALLET_TRANSACTION", "USER_BOOKING_CONTROL", "BOOKING_LOCK_HISTORY", "TRANSACTION", "INVOICE_TRANSACTION", "INVOICE");
     private final Class<T> entityClass;
 
     public DAOFramework(Class<T> entityClassType) {
@@ -193,7 +193,7 @@ public class DAOFramework<T> {
     private void requireDirectWriteAllowed() {
         Table table = entityClass.getAnnotation(Table.class);
         String tableName = table == null || table.name().isBlank() ? entityClass.getSimpleName() : table.name();
-        if (PROCEDURE_TABLES.contains(tableName.toUpperCase(Locale.ROOT))) {
+        if (PROCEDURE_TABLES.contains(tableName.replace("[", "").replace("]", "").toUpperCase(Locale.ROOT))) {
             throw new UnsupportedOperationException("Direct writes to " + tableName + " are disabled. Use the HBMS stored procedures.");
         }
     }

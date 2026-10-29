@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", function ()
     const countdown = document.getElementById("paymentCountdown");
     const expiredMessage = document.getElementById("expiredMessage");
     const walletNotice = document.getElementById("walletPaymentNotice");
+    const qrContainer = document.getElementById("vietqr-container");
+    const qrImage = document.getElementById("vietqr-img");
     const useWallet = document.getElementById("useWallet");
     const walletDisplay = document.getElementById("walletContributionDisplay");
     const externalDisplay = document.getElementById("externalContributionDisplay");
@@ -32,9 +34,9 @@ document.addEventListener("DOMContentLoaded", function ()
             {
                 if (!walletSelectedAutomatically)
                 {
-                    previousExternalMethod = paymentMethod.value === "PT09" ? "" : paymentMethod.value;
+                    previousExternalMethod = paymentMethod.value === "PT02" ? "" : paymentMethod.value;
                 }
-                paymentMethod.value = "PT09";
+                paymentMethod.value = "PT02";
                 walletSelectedAutomatically = true;
             }
             else if (walletSelectedAutomatically)
@@ -45,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function ()
             paymentMethod.required = !walletOnly;
             paymentMethod.disabled = expired || walletOnly;
         }
-        const walletAmount = paymentMethod && paymentMethod.value === "PT09" ? amountCents : (useWallet && useWallet.checked ? walletCents : 0);
+        const walletAmount = paymentMethod && paymentMethod.value === "PT02" ? amountCents : (useWallet && useWallet.checked ? walletCents : 0);
         if (walletDisplay)
         {
             walletDisplay.textContent = currency.format(walletAmount / 100) + " VND";
@@ -57,6 +59,18 @@ document.addEventListener("DOMContentLoaded", function ()
         if (walletNotice)
         {
             walletNotice.classList.toggle("d-none", walletAmount <= 0);
+        }
+        const qrSelected = paymentMethod && paymentMethod.value === "PT01" && amountCents > walletAmount && !expired;
+        if (qrContainer) {
+            qrContainer.classList.toggle("d-none", !qrSelected);
+            if (qrSelected && qrImage) {
+                const url = walletAmount > 0 ? qrContainer.dataset.walletUrl : qrContainer.dataset.fullUrl;
+                if (qrImage.getAttribute("src") !== url) qrImage.setAttribute("src", url);
+            }
+        }
+        if (paymentButton) {
+            paymentButton.classList.toggle("d-none", !!qrSelected);
+            paymentButton.disabled = expired || submitted || !!qrSelected;
         }
     }
     if (useWallet)
@@ -103,6 +117,7 @@ document.addEventListener("DOMContentLoaded", function ()
             expiredMessage.textContent = invalidDeadline ? "The payment deadline is unavailable. Reload the page." : "The payment time limit has expired.";
             expiredMessage.classList.remove("d-none");
         }
+        if (qrContainer) qrContainer.classList.add("d-none");
         stopCountdown();
     }
     function updateCountdown()
@@ -157,12 +172,16 @@ document.addEventListener("DOMContentLoaded", function ()
                 form.reportValidity();
                 return;
             }
-            if (paymentMethod && paymentMethod.value === "PT09" && form.dataset.walletCanPay !== "true")
+            if (paymentMethod && paymentMethod.value === "PT02" && form.dataset.walletCanPay !== "true")
             {
                 event.preventDefault();
                 paymentMethod.setCustomValidity("Your wallet cannot cover this payment. Select another method or reload the page.");
                 paymentMethod.reportValidity();
                 paymentMethod.setCustomValidity("");
+                return;
+            }
+            if (paymentMethod && paymentMethod.value === "PT01") {
+                event.preventDefault();
                 return;
             }
             submitted = true;
