@@ -22,7 +22,7 @@ import java.util.Date;
 @Entity
 @Table(name = "PAYMENT")
 @XmlRootElement
-@NamedQueries({@NamedQuery(name = "Payment.findAll", query = "SELECT p FROM Payment p"), @NamedQuery(name = "Payment.findByPaymentID", query = "SELECT p FROM Payment p WHERE p.paymentID = :paymentID"), @NamedQuery(name = "Payment.findByPaymentTime", query = "SELECT p FROM Payment p WHERE p.paymentTime = :paymentTime"), @NamedQuery(name = "Payment.findByAmount", query = "SELECT p FROM Payment p WHERE p.amount = :amount"), @NamedQuery(name = "Payment.findByStatus", query = "SELECT p FROM Payment p WHERE p.status = :status"), @NamedQuery(name = "Payment.findByTransactionCode", query = "SELECT p FROM Payment p WHERE p.transactionCode = :transactionCode"), @NamedQuery(name = "Payment.findByPaymentType", query = "SELECT p FROM Payment p WHERE p.paymentType = :paymentType"), @NamedQuery(name = "Payment.findByBookingID", query = "SELECT p FROM Payment p WHERE p.bookingID.bookingID = :bookingID")})
+@NamedQueries({@NamedQuery(name = "Payment.findAll", query = "SELECT p FROM Payment p"), @NamedQuery(name = "Payment.findByPaymentID", query = "SELECT p FROM Payment p WHERE p.paymentID = :paymentID"), @NamedQuery(name = "Payment.findByPaymentTime", query = "SELECT p FROM Payment p WHERE p.paymentTime = :paymentTime"), @NamedQuery(name = "Payment.findByAmount", query = "SELECT p FROM Payment p WHERE p.amount = :amount"), @NamedQuery(name = "Payment.findByStatus", query = "SELECT p FROM Payment p WHERE p.status = :status"), @NamedQuery(name = "Payment.findByPaymentType", query = "SELECT p FROM Payment p WHERE p.paymentType = :paymentType"), @NamedQuery(name = "Payment.findByBookingID", query = "SELECT p FROM Payment p WHERE p.bookingID.bookingID = :bookingID")})
 public class Payment implements Serializable
 {
     private static final long serialVersionUID = 1L;
@@ -38,17 +38,32 @@ public class Payment implements Serializable
     private BigDecimal walletAmount = BigDecimal.ZERO;
     @Basic(optional = false) @NotNull @Size(min = 1, max = 30) @Pattern(regexp = "PENDING|PAID|FAILED|REFUNDED") @Column(name = "Status")
     private String status;
-    @Size(max = 100) @Column(name = "TransactionCode")
-    private String transactionCode;
     @Size(max = 100) @Column(name = "TransactionID", insertable = false, updatable = false)
     private String transactionID;
+    @JoinColumn(name = "TransactionID", referencedColumnName = "TransactionID", insertable = false, updatable = false) @ManyToOne
+    private Transaction transaction;
     @JoinColumn(name = "BookingID", referencedColumnName = "BookingID") @ManyToOne(optional = false)
     private Booking bookingID;
     @JoinColumn(name = "MethodID", referencedColumnName = "MethodID") @ManyToOne
     private Paymentmethod methodID;
     public String getTransactionID() { return transactionID; }
 
-    public void setTransactionID(String transactionID) { this.transactionID = transactionID; }
+    public void setTransactionID(String transactionID)
+    {
+        this.transactionID = transactionID;
+        if (transaction != null && !java.util.Objects.equals(transactionID, transaction.getTransactionID()))
+        {
+            transaction = null;
+        }
+    }
+
+    public Transaction getTransaction() { return transaction; }
+
+    public void setTransaction(Transaction transaction)
+    {
+        this.transaction = transaction;
+        this.transactionID = transaction == null ? null : transaction.getTransactionID();
+    }
 
     public Payment()
     {
@@ -135,16 +150,6 @@ public class Payment implements Serializable
     public void setStatus(String status)
     {
         this.status = status;
-    }
-
-    public String getTransactionCode()
-    {
-        return transactionCode;
-    }
-
-    public void setTransactionCode(String transactionCode)
-    {
-        this.transactionCode = transactionCode;
     }
 
     public Booking getBookingID()

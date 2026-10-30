@@ -1,14 +1,53 @@
 package dao; // Thay đổi theo tên package của bạn
 
 import entity.Transaction;
+import jakarta.persistence.CacheRetrieveMode;
+import jakarta.persistence.CacheStoreMode;
+import jakarta.persistence.EntityManager;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
+import java.util.List;
+import util.PersistenceManager;
 
 public class TransactionDAO extends DAOFramework<Transaction> {
 
     public TransactionDAO() {
         super(Transaction.class);
+    }
+
+    public Transaction findByTransactionID(String transactionID) {
+        if (transactionID == null || transactionID.isBlank()) return null;
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            return findByTransactionID(transactionID, em);
+        }
+    }
+
+    public Transaction findByTransactionCode(String transactionCode) {
+        if (transactionCode == null || transactionCode.isBlank()) return null;
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            return findByTransactionCode(transactionCode, em);
+        }
+    }
+
+    public Transaction findByTransactionID(String transactionID, EntityManager em) {
+        return findByReference(em, "Transaction.findByTransactionID", "transactionID", transactionID);
+    }
+
+    public Transaction findByTransactionCode(String transactionCode, EntityManager em) {
+        return findByReference(em, "Transaction.findByTransactionCode", "transactionCode", transactionCode);
+    }
+
+    private Transaction findByReference(EntityManager em, String query, String parameter, String reference) {
+        if (reference == null || reference.isBlank()) {
+            return null;
+        }
+        List<Transaction> matches = em.createNamedQuery(query, Transaction.class)
+                .setParameter(parameter, reference.trim())
+                .setHint("jakarta.persistence.cache.retrieveMode", CacheRetrieveMode.BYPASS)
+                .setHint("jakarta.persistence.cache.storeMode", CacheStoreMode.REFRESH)
+                .getResultList();
+        return matches.isEmpty() ? null : matches.get(0);
     }
 
     /**

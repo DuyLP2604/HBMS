@@ -30,6 +30,7 @@ import java.math.BigDecimal;
     @NamedQuery(name = "Transaction.findAll", query = "SELECT t FROM Transaction t"),
     @NamedQuery(name = "Transaction.findById", query = "SELECT t FROM Transaction t WHERE t.id = :id"),
     @NamedQuery(name = "Transaction.findByTransactionID", query = "SELECT t FROM Transaction t WHERE t.transactionID = :transactionID"),
+    @NamedQuery(name = "Transaction.findByTransactionCode", query = "SELECT t FROM Transaction t WHERE t.transactionCode = :transactionCode"),
     @NamedQuery(name = "Transaction.findByTransactionType", query = "SELECT t FROM Transaction t WHERE t.transactionType = :transactionType"),
     @NamedQuery(name = "Transaction.findByTransactionValue", query = "SELECT t FROM Transaction t WHERE t.transactionValue = :transactionValue")})
 public class Transaction implements Serializable {
@@ -45,6 +46,9 @@ public class Transaction implements Serializable {
     @Size(min = 1, max = 100)
     @Column(name = "TransactionID")
     private String transactionID;
+    @Size(max = 100)
+    @Column(name = "TransactionCode")
+    private String transactionCode;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 20)
@@ -83,6 +87,14 @@ public class Transaction implements Serializable {
 
     public void setTransactionID(String transactionID) {
         this.transactionID = transactionID;
+    }
+
+    public String getTransactionCode() {
+        return transactionCode;
+    }
+
+    public void setTransactionCode(String transactionCode) {
+        this.transactionCode = transactionCode;
     }
 
     public String getTransactionType() {

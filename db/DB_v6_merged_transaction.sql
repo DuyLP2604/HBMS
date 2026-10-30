@@ -290,6 +290,7 @@ GO
 CREATE TABLE dbo.[TRANSACTION] (
     id BIGINT IDENTITY(1,1) NOT NULL,
     TransactionID VARCHAR(100) NOT NULL,
+    TransactionCode VARCHAR(100) NULL,
     TransactionType VARCHAR(20) NOT NULL,
     TransactionValue DECIMAL(12,2) NOT NULL,
 
@@ -310,7 +311,6 @@ CREATE TABLE PAYMENT (
     Amount DECIMAL(12,2) NOT NULL,
     Status VARCHAR(30) NOT NULL,
     MethodID CHAR(4) NULL,
-    TransactionCode VARCHAR(100) NULL,
     TransactionID VARCHAR(100) NULL,
     CollectedByUserID INT NULL,
     WalletAuthorizedByUserID INT NULL,
@@ -534,8 +534,8 @@ GO
 
 CREATE UNIQUE INDEX UQ_BOOKING_OnePendingPerCustomer
 ON BOOKING(CustomerID) WHERE BookingStatus = 'PENDING_PAYMENT';
-CREATE UNIQUE INDEX UQ_PAYMENT_TransactionCode
-ON PAYMENT(TransactionCode) WHERE TransactionCode IS NOT NULL;
+CREATE UNIQUE INDEX UQ_TRANSACTION_TransactionCode
+ON dbo.[TRANSACTION](TransactionCode) WHERE TransactionCode IS NOT NULL;
 CREATE UNIQUE INDEX UQ_PAYMENT_TransactionID
 ON PAYMENT(TransactionID) WHERE TransactionID IS NOT NULL;
 GO
@@ -1263,135 +1263,135 @@ VALUES
 ('PT03', N'Cash');
 GO
 
-INSERT INTO dbo.[TRANSACTION] (TransactionID, TransactionType, TransactionValue)
+INSERT INTO dbo.[TRANSACTION] (TransactionID, TransactionCode, TransactionType, TransactionValue)
 VALUES
-('PAYMENT-PM0001', 'PAYMENT', 1075000),
-('PAYMENT-PM0002', 'PAYMENT', 2100000),
-('VQR-DEMO-PM0003', 'PAYMENT', 750000),
-('VQR-DEMO-PM0004', 'PAYMENT', 885000),
-('VQR-DEMO-PM0006', 'PAYMENT', 3350000),
-('VQR-DEMO-PM0007', 'PAYMENT', 3200000),
-('PAYMENT-PM0008', 'PAYMENT', 2900000),
-('VQR-DEMO-PM0009', 'PAYMENT', 1050000),
-('VQR-DEMO-PM0011', 'PAYMENT', 1075000),
-('PAYMENT-PM0012', 'PAYMENT', 2400000),
-('VQR-DEMO-PM0013', 'PAYMENT', 2850000),
-('VQR-DEMO-PM0014', 'PAYMENT', 3200000),
-('VQR-DEMO-PM0015', 'PAYMENT', 1650000),
-('VQR-DEMO-PM0016', 'PAYMENT', 2400000),
-('VQR-DEMO-PM0017', 'PAYMENT', 2800000),
-('VQR-DEMO-PM0018', 'PAYMENT', 4800000),
-('VQR-DEMO-PM0019', 'PAYMENT', 1050000),
-('VQR-DEMO-PM0020', 'PAYMENT', 2400000),
-('VQR-DEMO-PM0021', 'PAYMENT', 2750000),
-('PAYMENT-PM0022', 'PAYMENT', 3200000),
-('VQR-DEMO-PM0023', 'PAYMENT', 1700000),
-('VQR-DEMO-PM0024', 'PAYMENT', 1600000),
-('VQR-DEMO-PM0025', 'PAYMENT', 4050000),
-('VQR-DEMO-PM0026', 'PAYMENT', 3200000),
-('VQR-DEMO-PM0027', 'PAYMENT', 1150000),
-('PAYMENT-PM0028', 'PAYMENT', 1600000),
-('VQR-DEMO-PM0029', 'PAYMENT', 2550000),
-('VQR-DEMO-PM0030', 'PAYMENT', 3200000),
-('PAYMENT-PM0031', 'PAYMENT', 405000),
-('VQR-DEMO-PM0032', 'PAYMENT', 1800000),
-('PAYMENT-PM0033', 'PAYMENT', 2400000),
-('PAYMENT-PM0034', 'PAYMENT', 3550000),
-('VQR-DEMO-PM0035', 'PAYMENT', 1750000),
-('VQR-DEMO-PM0038', 'PAYMENT', 3200000),
-('VQR-DEMO-PM0039', 'PAYMENT', 1050000),
-('VQR-DEMO-PM0040', 'PAYMENT', 2850000),
-('VQR-DEMO-PM0041', 'PAYMENT', 2065000),
-('REFUND-BK0007', 'REFUND', 3200000),
-('REFUND-BK0038', 'REFUND', 3200000);
+('PAYMENT-PM0001', 'CASH-PM0001', 'PAYMENT', 1075000),
+('PAYMENT-PM0002', 'CASH-PM0002', 'PAYMENT', 2100000),
+('VQR-DEMO-PM0003', 'TXN-BK0003', 'PAYMENT', 750000),
+('VQR-DEMO-PM0004', 'TXN-BK0004-DEPOSIT', 'PAYMENT', 885000),
+('VQR-DEMO-PM0006', 'TXN-BK0006', 'PAYMENT', 3350000),
+('VQR-DEMO-PM0007', 'REF-BK0007', 'PAYMENT', 3200000),
+('PAYMENT-PM0008', 'CASH-PM0008', 'PAYMENT', 2900000),
+('VQR-DEMO-PM0009', 'TXN-BK0009', 'PAYMENT', 1050000),
+('VQR-DEMO-PM0011', 'TXN-BK0011', 'PAYMENT', 1075000),
+('PAYMENT-PM0012', 'CASH-PM0012', 'PAYMENT', 2400000),
+('VQR-DEMO-PM0013', 'TXN-BK0013', 'PAYMENT', 2850000),
+('VQR-DEMO-PM0014', 'TXN-BK0014', 'PAYMENT', 3200000),
+('VQR-DEMO-PM0015', 'TXN-BK0015', 'PAYMENT', 1650000),
+('VQR-DEMO-PM0016', 'TXN-BK0016', 'PAYMENT', 2400000),
+('VQR-DEMO-PM0017', 'TXN-BK0017', 'PAYMENT', 2800000),
+('VQR-DEMO-PM0018', 'TXN-BK0018', 'PAYMENT', 4800000),
+('VQR-DEMO-PM0019', 'TXN-BK0019', 'PAYMENT', 1050000),
+('VQR-DEMO-PM0020', 'TXN-BK0020', 'PAYMENT', 2400000),
+('VQR-DEMO-PM0021', 'TXN-BK0021', 'PAYMENT', 2750000),
+('PAYMENT-PM0022', 'CASH-PM0022', 'PAYMENT', 3200000),
+('VQR-DEMO-PM0023', 'TXN-BK0023', 'PAYMENT', 1700000),
+('VQR-DEMO-PM0024', 'TXN-BK0024', 'PAYMENT', 1600000),
+('VQR-DEMO-PM0025', 'TXN-BK0025', 'PAYMENT', 4050000),
+('VQR-DEMO-PM0026', 'TXN-BK0026', 'PAYMENT', 3200000),
+('VQR-DEMO-PM0027', 'TXN-BK0027', 'PAYMENT', 1150000),
+('PAYMENT-PM0028', 'CASH-PM0028', 'PAYMENT', 1600000),
+('VQR-DEMO-PM0029', 'TXN-BK0029', 'PAYMENT', 2550000),
+('VQR-DEMO-PM0030', 'TXN-BK0030', 'PAYMENT', 3200000),
+('PAYMENT-PM0031', 'CASH-PM0031', 'PAYMENT', 405000),
+('VQR-DEMO-PM0032', 'TXN-BK0032', 'PAYMENT', 1800000),
+('PAYMENT-PM0033', 'WALLET-PM0033', 'PAYMENT', 2400000),
+('PAYMENT-PM0034', 'CASH-PM0034', 'PAYMENT', 3550000),
+('VQR-DEMO-PM0035', 'TXN-BK0035', 'PAYMENT', 1750000),
+('VQR-DEMO-PM0038', 'REF-BK0038', 'PAYMENT', 3200000),
+('VQR-DEMO-PM0039', 'TXN-BK0039', 'PAYMENT', 1050000),
+('VQR-DEMO-PM0040', 'TXN-BK0040', 'PAYMENT', 2850000),
+('VQR-DEMO-PM0041', 'TXN-BK0004-BALANCE', 'PAYMENT', 2065000),
+('REFUND-BK0007', NULL, 'REFUND', 3200000),
+('REFUND-BK0038', NULL, 'REFUND', 3200000);
 GO
 
 INSERT INTO PAYMENT
 (PaymentID, BookingID, PaymentTime, Amount,
- Status, MethodID, TransactionCode, TransactionID, PaymentType, WalletAmount)
+ Status, MethodID, TransactionID, PaymentType, WalletAmount)
 VALUES
 ('PM0001', 'BK0001', '2026-09-01 09:05:00', 1075000,
- 'PAID', 'PT03', 'CASH-PM0001', 'PAYMENT-PM0001', 'FULL', 0),
+ 'PAID', 'PT03', 'PAYMENT-PM0001', 'FULL', 0),
 ('PM0002', 'BK0002', '2026-09-03 10:20:00', 2100000,
- 'PAID', 'PT03', 'CASH-PM0002', 'PAYMENT-PM0002', 'FULL', 0),
+ 'PAID', 'PT03', 'PAYMENT-PM0002', 'FULL', 0),
 ('PM0003', 'BK0003', '2026-09-10 08:35:00', 750000,
- 'PAID', 'PT01', 'TXN-BK0003', 'VQR-DEMO-PM0003', 'DEPOSIT', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0003', 'DEPOSIT', 0),
 ('PM0004', 'BK0004', '2026-09-11 14:05:00', 885000,
- 'PAID', 'PT01', 'TXN-BK0004-DEPOSIT', 'VQR-DEMO-PM0004', 'DEPOSIT', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0004', 'DEPOSIT', 0),
 ('PM0005', 'BK0005', '2026-09-12 16:15:00', 1000000,
- 'PENDING', 'PT01', NULL, NULL, 'FULL', 0),
+ 'PENDING', 'PT01', NULL, 'FULL', 0),
 ('PM0006', 'BK0006', '2026-09-13 11:50:00', 3350000,
- 'PAID', 'PT01', 'TXN-BK0006', 'VQR-DEMO-PM0006', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0006', 'FULL', 0),
 ('PM0007', 'BK0007', '2026-09-14 09:25:00', 3200000,
- 'REFUNDED', 'PT01', 'REF-BK0007', 'VQR-DEMO-PM0007', 'FULL', 0),
+ 'REFUNDED', 'PT01', 'VQR-DEMO-PM0007', 'FULL', 0),
 ('PM0008', 'BK0008', '2026-09-15 13:35:00', 2900000,
- 'PAID', 'PT03', 'CASH-PM0008', 'PAYMENT-PM0008', 'FULL', 0),
+ 'PAID', 'PT03', 'PAYMENT-PM0008', 'FULL', 0),
 ('PM0009', 'BK0009', '2026-09-16 15:05:00', 1050000,
- 'PAID', 'PT01', 'TXN-BK0009', 'VQR-DEMO-PM0009', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0009', 'FULL', 0),
 ('PM0010', 'BK0010', '2026-09-17 06:35:00', 2400000,
- 'FAILED', 'PT01', NULL, NULL, 'FULL', 0),
+ 'FAILED', 'PT01', NULL, 'FULL', 0),
 ('PM0011', 'BK0011', '2026-07-27 09:05:00', 1075000,
- 'PAID', 'PT01', 'TXN-BK0011', 'VQR-DEMO-PM0011', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0011', 'FULL', 0),
 ('PM0012', 'BK0012', '2026-07-28 09:05:00', 2400000,
- 'PAID', 'PT03', 'CASH-PM0012', 'PAYMENT-PM0012', 'FULL', 0),
+ 'PAID', 'PT03', 'PAYMENT-PM0012', 'FULL', 0),
 ('PM0013', 'BK0013', '2026-08-02 09:05:00', 2850000,
- 'PAID', 'PT01', 'TXN-BK0013', 'VQR-DEMO-PM0013', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0013', 'FULL', 0),
 ('PM0014', 'BK0014', '2026-08-05 09:05:00', 3200000,
- 'PAID', 'PT01', 'TXN-BK0014', 'VQR-DEMO-PM0014', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0014', 'FULL', 0),
 ('PM0015', 'BK0015', '2026-08-10 09:05:00', 1650000,
- 'PAID', 'PT01', 'TXN-BK0015', 'VQR-DEMO-PM0015', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0015', 'FULL', 0),
 ('PM0016', 'BK0016', '2026-08-11 09:05:00', 2400000,
- 'PAID', 'PT01', 'TXN-BK0016', 'VQR-DEMO-PM0016', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0016', 'FULL', 0),
 ('PM0017', 'BK0017', '2026-08-16 09:05:00', 2800000,
- 'PAID', 'PT01', 'TXN-BK0017', 'VQR-DEMO-PM0017', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0017', 'FULL', 0),
 ('PM0018', 'BK0018', '2026-08-19 09:05:00', 4800000,
- 'PAID', 'PT01', 'TXN-BK0018', 'VQR-DEMO-PM0018', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0018', 'FULL', 0),
 ('PM0019', 'BK0019', '2026-08-23 09:05:00', 1050000,
- 'PAID', 'PT01', 'TXN-BK0019', 'VQR-DEMO-PM0019', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0019', 'FULL', 0),
 ('PM0020', 'BK0020', '2026-08-24 09:05:00', 2400000,
- 'PAID', 'PT01', 'TXN-BK0020', 'VQR-DEMO-PM0020', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0020', 'FULL', 0),
 ('PM0021', 'BK0021', '2026-08-28 09:05:00', 2750000,
- 'PAID', 'PT01', 'TXN-BK0021', 'VQR-DEMO-PM0021', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0021', 'FULL', 0),
 ('PM0022', 'BK0022', '2026-08-30 09:05:00', 3200000,
- 'PAID', 'PT03', 'CASH-PM0022', 'PAYMENT-PM0022', 'FULL', 0),
+ 'PAID', 'PT03', 'PAYMENT-PM0022', 'FULL', 0),
 ('PM0023', 'BK0023', '2026-09-02 09:05:00', 1700000,
- 'PAID', 'PT01', 'TXN-BK0023', 'VQR-DEMO-PM0023', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0023', 'FULL', 0),
 ('PM0024', 'BK0024', '2026-09-04 09:05:00', 1600000,
- 'PAID', 'PT01', 'TXN-BK0024', 'VQR-DEMO-PM0024', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0024', 'FULL', 0),
 ('PM0025', 'BK0025', '2026-09-06 09:05:00', 4050000,
- 'PAID', 'PT01', 'TXN-BK0025', 'VQR-DEMO-PM0025', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0025', 'FULL', 0),
 ('PM0026', 'BK0026', '2026-09-08 09:05:00', 3200000,
- 'PAID', 'PT01', 'TXN-BK0026', 'VQR-DEMO-PM0026', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0026', 'FULL', 0),
 ('PM0027', 'BK0027', '2026-09-10 09:05:00', 1150000,
- 'PAID', 'PT01', 'TXN-BK0027', 'VQR-DEMO-PM0027', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0027', 'FULL', 0),
 ('PM0028', 'BK0028', '2026-09-12 09:05:00', 1600000,
- 'PAID', 'PT03', 'CASH-PM0028', 'PAYMENT-PM0028', 'FULL', 0),
+ 'PAID', 'PT03', 'PAYMENT-PM0028', 'FULL', 0),
 ('PM0029', 'BK0029', '2026-09-13 09:05:00', 2550000,
- 'PAID', 'PT01', 'TXN-BK0029', 'VQR-DEMO-PM0029', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0029', 'FULL', 0),
 ('PM0030', 'BK0030', '2026-09-14 09:05:00', 3200000,
- 'PAID', 'PT01', 'TXN-BK0030', 'VQR-DEMO-PM0030', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0030', 'FULL', 0),
 ('PM0031', 'BK0031', '2026-09-23 09:05:00', 405000,
- 'PAID', 'PT03', 'CASH-PM0031', 'PAYMENT-PM0031', 'DEPOSIT', 0),
+ 'PAID', 'PT03', 'PAYMENT-PM0031', 'DEPOSIT', 0),
 ('PM0032', 'BK0032', '2026-09-20 09:05:00', 1800000,
- 'PAID', 'PT01', 'TXN-BK0032', 'VQR-DEMO-PM0032', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0032', 'FULL', 0),
 ('PM0033', 'BK0033', '2026-09-21 09:05:00', 2400000,
- 'PAID', 'PT02', 'WALLET-PM0033', 'PAYMENT-PM0033', 'FULL', 2400000),
+ 'PAID', 'PT02', 'PAYMENT-PM0033', 'FULL', 2400000),
 ('PM0034', 'BK0034', '2026-09-22 09:05:00', 3550000,
- 'PAID', 'PT03', 'CASH-PM0034', 'PAYMENT-PM0034', 'FULL', 0),
+ 'PAID', 'PT03', 'PAYMENT-PM0034', 'FULL', 0),
 ('PM0035', 'BK0035', '2026-09-23 09:05:00', 1750000,
- 'PAID', 'PT01', 'TXN-BK0035', 'VQR-DEMO-PM0035', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0035', 'FULL', 0),
 ('PM0036', 'BK0036', '2026-09-20 09:05:00', 1500000,
- 'PENDING', 'PT01', NULL, NULL, 'FULL', 0),
+ 'PENDING', 'PT01', NULL, 'FULL', 0),
 ('PM0037', 'BK0037', '2026-09-21 09:05:00', 2400000,
- 'FAILED', 'PT01', NULL, NULL, 'FULL', 0),
+ 'FAILED', 'PT01', NULL, 'FULL', 0),
 ('PM0038', 'BK0038', '2026-09-22 09:05:00', 3200000,
- 'REFUNDED', 'PT01', 'REF-BK0038', 'VQR-DEMO-PM0038', 'FULL', 0),
+ 'REFUNDED', 'PT01', 'VQR-DEMO-PM0038', 'FULL', 0),
 ('PM0039', 'BK0039', '2026-09-23 09:05:00', 1050000,
- 'PAID', 'PT01', 'TXN-BK0039', 'VQR-DEMO-PM0039', 'FULL', 350000),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0039', 'FULL', 350000),
 ('PM0040', 'BK0040', '2026-09-20 09:05:00', 2850000,
- 'PAID', 'PT01', 'TXN-BK0040', 'VQR-DEMO-PM0040', 'FULL', 0),
+ 'PAID', 'PT01', 'VQR-DEMO-PM0040', 'FULL', 0),
 ('PM0041', 'BK0004', '2026-09-12 10:00:00', 2065000,
- 'PAID', 'PT01', 'TXN-BK0004-BALANCE', 'VQR-DEMO-PM0041', 'BALANCE', 0);
+ 'PAID', 'PT01', 'VQR-DEMO-PM0041', 'BALANCE', 0);
 GO
 
 INSERT INTO INVOICE
@@ -1974,17 +1974,18 @@ BEGIN
 
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND Status IN ('PAID', 'REFUNDED'))
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND BookingID = @BookingID
-                AND PaymentType = @PaymentType AND Amount = @Amount AND WalletAmount = @WalletAmount AND MethodID = @MethodID
-                AND TransactionCode = @TransactionCode
-                AND (TransactionID = @TransactionID OR (TransactionID IS NULL AND @TransactionID IS NULL)))
+            IF NOT EXISTS (SELECT 1 FROM PAYMENT AS p
+                JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = p.TransactionID
+                WHERE p.PaymentID = @PaymentID AND p.BookingID = @BookingID
+                AND p.PaymentType = @PaymentType AND p.Amount = @Amount AND p.WalletAmount = @WalletAmount AND p.MethodID = @MethodID
+                AND t.TransactionCode = @TransactionCode AND p.TransactionID = @TransactionID)
                 THROW 51037, 'Payment ID already used with different payment data.', 1;
             COMMIT TRANSACTION;
             SELECT * FROM V_BOOKING_PAYMENT_SUMMARY WHERE BookingID = @BookingID;
             RETURN;
         END;
-        IF EXISTS (SELECT 1 FROM PAYMENT WHERE TransactionCode = @TransactionCode AND PaymentID <> @PaymentID)
-            THROW 51038, 'Transaction code already recorded under another payment ID.', 1;
+        IF EXISTS (SELECT 1 FROM dbo.[TRANSACTION] WHERE TransactionCode = @TransactionCode)
+            THROW 51038, 'Transaction code already recorded in the transaction ledger.', 1;
         IF @TransactionID IS NOT NULL AND EXISTS (
             SELECT 1 FROM dbo.[TRANSACTION] WHERE TransactionID = @TransactionID)
             THROW 51049, 'Transaction ID already recorded in the transaction ledger.', 1;
@@ -2018,14 +2019,14 @@ BEGIN
             IF @WalletID IS NULL OR @Balance < @WalletAmount
                 THROW 51046, 'Insufficient internal wallet balance.', 1;
         END;
-        INSERT dbo.[TRANSACTION](TransactionID, TransactionType, TransactionValue)
-        VALUES (@TransactionID, 'PAYMENT', @Amount);
+        INSERT dbo.[TRANSACTION](TransactionID, TransactionCode, TransactionType, TransactionValue)
+        VALUES (@TransactionID, @TransactionCode, 'PAYMENT', @Amount);
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID)
             UPDATE PAYMENT SET Status = 'PAID', PaymentTime = @Now,
-                MethodID = @MethodID, WalletAmount = @WalletAmount, TransactionCode = @TransactionCode, TransactionID = @TransactionID WHERE PaymentID = @PaymentID;
+                MethodID = @MethodID, WalletAmount = @WalletAmount, TransactionID = @TransactionID WHERE PaymentID = @PaymentID;
         ELSE
-            INSERT PAYMENT(PaymentID, BookingID, PaymentType, PaymentTime, Amount, Status, MethodID, WalletAmount, TransactionCode, TransactionID)
-            VALUES (@PaymentID, @BookingID, @PaymentType, @Now, @Amount, 'PAID', @MethodID, @WalletAmount, @TransactionCode, @TransactionID);
+            INSERT PAYMENT(PaymentID, BookingID, PaymentType, PaymentTime, Amount, Status, MethodID, WalletAmount, TransactionID)
+            VALUES (@PaymentID, @BookingID, @PaymentType, @Now, @Amount, 'PAID', @MethodID, @WalletAmount, @TransactionID);
         IF @WalletAmount > 0
             INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, PaymentID, TransactionID)
             VALUES (@WalletID, 'PAYMENT_DEBIT', @WalletAmount, @Now, @PaymentID, @TransactionID);
@@ -2534,17 +2535,18 @@ BEGIN
 
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND Status IN ('PAID', 'REFUNDED'))
         BEGIN
-            IF NOT EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID AND BookingID = @BookingID
-                AND PaymentType = @PaymentType AND Amount = @Amount AND WalletAmount = @WalletAmount AND MethodID = @MethodID
-                AND TransactionCode = @TransactionCode
-                AND (TransactionID = @TransactionID OR (TransactionID IS NULL AND @TransactionID IS NULL)))
+            IF NOT EXISTS (SELECT 1 FROM PAYMENT AS p
+                JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = p.TransactionID
+                WHERE p.PaymentID = @PaymentID AND p.BookingID = @BookingID
+                AND p.PaymentType = @PaymentType AND p.Amount = @Amount AND p.WalletAmount = @WalletAmount AND p.MethodID = @MethodID
+                AND t.TransactionCode = @TransactionCode AND p.TransactionID = @TransactionID)
                 THROW 51037, 'Payment ID already used with different payment data.', 1;
             COMMIT TRANSACTION;
             SELECT * FROM V_BOOKING_PAYMENT_SUMMARY WHERE BookingID = @BookingID;
             RETURN;
         END;
-        IF EXISTS (SELECT 1 FROM PAYMENT WHERE TransactionCode = @TransactionCode AND PaymentID <> @PaymentID)
-            THROW 51038, 'Transaction code already recorded under another payment ID.', 1;
+        IF EXISTS (SELECT 1 FROM dbo.[TRANSACTION] WHERE TransactionCode = @TransactionCode)
+            THROW 51038, 'Transaction code already recorded in the transaction ledger.', 1;
         IF @TransactionID IS NOT NULL AND EXISTS (
             SELECT 1 FROM dbo.[TRANSACTION] WHERE TransactionID = @TransactionID)
             THROW 51049, 'Transaction ID already recorded in the transaction ledger.', 1;
@@ -2581,14 +2583,14 @@ BEGIN
             IF @WalletID IS NULL OR @Balance < @WalletAmount
                 THROW 51046, 'Insufficient internal wallet balance.', 1;
         END;
-        INSERT dbo.[TRANSACTION](TransactionID, TransactionType, TransactionValue)
-        VALUES (@TransactionID, 'PAYMENT', @Amount);
+        INSERT dbo.[TRANSACTION](TransactionID, TransactionCode, TransactionType, TransactionValue)
+        VALUES (@TransactionID, @TransactionCode, 'PAYMENT', @Amount);
         IF EXISTS (SELECT 1 FROM PAYMENT WHERE PaymentID = @PaymentID)
             UPDATE PAYMENT SET Status = 'PAID', PaymentTime = @Now,
-                MethodID = @MethodID, WalletAmount = @WalletAmount, TransactionCode = @TransactionCode, TransactionID = @TransactionID WHERE PaymentID = @PaymentID;
+                MethodID = @MethodID, WalletAmount = @WalletAmount, TransactionID = @TransactionID WHERE PaymentID = @PaymentID;
         ELSE
-            INSERT PAYMENT(PaymentID, BookingID, PaymentType, PaymentTime, Amount, Status, MethodID, WalletAmount, TransactionCode, TransactionID)
-            VALUES (@PaymentID, @BookingID, @PaymentType, @Now, @Amount, 'PAID', @MethodID, @WalletAmount, @TransactionCode, @TransactionID);
+            INSERT PAYMENT(PaymentID, BookingID, PaymentType, PaymentTime, Amount, Status, MethodID, WalletAmount, TransactionID)
+            VALUES (@PaymentID, @BookingID, @PaymentType, @Now, @Amount, 'PAID', @MethodID, @WalletAmount, @TransactionID);
         IF @WalletAmount > 0
             INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, PaymentID, TransactionID)
             VALUES (@WalletID, 'PAYMENT_DEBIT', @WalletAmount, @Now, @PaymentID, @TransactionID);
@@ -3014,7 +3016,7 @@ SELECT i.InvoiceID, i.InvoiceDate, i.BookingID, i.Status AS InvoiceStatus,
     i.TotalAmount AS InvoiceAmount, t.id AS TransactionRowID, t.TransactionID,
     t.TransactionType, t.TransactionValue, p.PaymentID, p.PaymentType,
     p.PaymentTime, p.Status AS PaymentStatus, p.MethodID, m.MethodName,
-    p.TransactionCode, p.WalletAmount, p.ExternalAmount
+    t.TransactionCode, p.WalletAmount, p.ExternalAmount
 FROM INVOICE AS i
 JOIN INVOICE_TRANSACTION AS link ON link.InvoiceID = i.InvoiceID AND link.BookingID = i.BookingID
 JOIN PAYMENT AS p ON p.PaymentID = link.PaymentID AND p.TransactionID = link.TransactionID

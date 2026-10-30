@@ -5,6 +5,7 @@ import dao.WalletDAO;
 import dto.WalletSummary;
 import entity.Booking;
 import entity.Payment;
+import entity.Transaction;
 import entity.Paymentmethod;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
@@ -287,7 +288,7 @@ public class PaymentService
 
     private boolean isIDUsedByAnotherRequest(Connection connection, PaymentRequest request) throws SQLException
     {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT BookingID, PaymentType, Amount, WalletAmount, MethodID, TransactionCode FROM dbo.PAYMENT WHERE PaymentID = ?"))
+        try (PreparedStatement statement = connection.prepareStatement("SELECT p.BookingID, p.PaymentType, p.Amount, p.WalletAmount, p.MethodID, t.TransactionCode FROM dbo.PAYMENT AS p LEFT JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = p.TransactionID WHERE p.PaymentID = ?"))
         {
             statement.setString(1, request.paymentID);
             try (ResultSet result = statement.executeQuery())
@@ -297,7 +298,7 @@ public class PaymentService
                     return false;
                 }
                 String transactionCode = "PT02".equals(request.methodID) ? "WALLET-" + request.paymentID : request.transactionCode;
-                return !request.bookingID.equals(result.getString("BookingID").trim()) || !request.paymentType.equals(result.getString("PaymentType")) || request.amount.compareTo(result.getBigDecimal("Amount")) != 0 || request.walletAmount.compareTo(result.getBigDecimal("WalletAmount")) != 0 || !request.methodID.equals(result.getString("MethodID")) || !transactionCode.equals(result.getString("TransactionCode"));
+                return !request.bookingID.equals(result.getString("BookingID").trim()) || !request.paymentType.equals(result.getString("PaymentType")) || request.amount.compareTo(result.getBigDecimal("Amount")) != 0 || request.walletAmount.compareTo(result.getBigDecimal("WalletAmount")) != 0 || !request.methodID.equals(result.getString("MethodID")) || !java.util.Objects.equals(transactionCode, result.getString("TransactionCode"));
             }
         }
     }
@@ -356,7 +357,7 @@ public class PaymentService
 
     private Payment readPayment(Connection connection, PaymentRequest request, Booking booking, Paymentmethod method) throws SQLException
     {
-        try (PreparedStatement statement = connection.prepareStatement("SELECT PaymentTime, Amount, WalletAmount, Status, TransactionCode, TransactionID FROM dbo.PAYMENT WHERE PaymentID = ? AND BookingID = ?"))
+        try (PreparedStatement statement = connection.prepareStatement("SELECT p.PaymentTime, p.Amount, p.WalletAmount, p.Status, p.TransactionID, t.id AS TransactionRowID, t.TransactionCode, t.TransactionType, t.TransactionValue FROM dbo.PAYMENT AS p JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = p.TransactionID WHERE p.PaymentID = ? AND p.BookingID = ?"))
         {
             statement.setString(1, request.paymentID);
             statement.setString(2, request.bookingID);
@@ -375,8 +376,11 @@ public class PaymentService
                 payment.setWalletAmount(result.getBigDecimal("WalletAmount"));
                 payment.setPaymentType(request.paymentType);
                 payment.setStatus(result.getString("Status"));
-                payment.setTransactionCode(result.getString("TransactionCode"));
-                payment.setTransactionID(result.getString("TransactionID"));
+                Transaction transaction = new Transaction(result.getLong("TransactionRowID"),
+                        result.getString("TransactionID"), result.getString("TransactionType"),
+                        result.getBigDecimal("TransactionValue"));
+                transaction.setTransactionCode(result.getString("TransactionCode"));
+                payment.setTransaction(transaction);
                 return payment;
             }
         }

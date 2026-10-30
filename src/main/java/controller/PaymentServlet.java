@@ -155,7 +155,7 @@ public class PaymentServlet extends HttpServlet
                 {
                     session.setAttribute("successfulPaymentID", payment.getPaymentID());
                     session.setAttribute("successfulBookingID", payment.getBookingID().getBookingID().trim());
-                    session.setAttribute("successfulTransactionCode", payment.getTransactionCode());
+                    session.setAttribute("successfulTransactionCode", payment.getTransaction() == null ? null : payment.getTransaction().getTransactionCode());
                     session.setAttribute("successfulPaymentType", paymentRequest.getPaymentType());
                     session.setAttribute("successfulPaymentAmount", payment.getAmount());
                     session.setAttribute("successfulWalletAmount", payment.getWalletAmount());

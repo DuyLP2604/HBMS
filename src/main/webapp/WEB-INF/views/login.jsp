@@ -35,10 +35,5 @@
                 <a href="${pageContext.request.contextPath}/register">Register</a>
             </div>
         </form>
-
-        <a href="${pageContext.request.contextPath}/home" class="back-home-btn">
-            <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-            Back to Home
-        </a>
     </div>
 </layout:layout>
