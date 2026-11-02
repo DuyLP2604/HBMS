@@ -217,16 +217,44 @@ public class ServiceDAO {
         }
     }
 
-    public boolean completeBookingService(String bookingId, String serviceId, String staffId) {
+    public boolean acceptBookingService(String bookingId, String serviceId, int userId) {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
-            Query query = em.createQuery("UPDATE BookingService bs SET bs.serviceStatus = 'COMPLETED' "
-                    + "WHERE TRIM(bs.booking.bookingID) = :bid AND TRIM(bs.service.serviceID) = :sid"
+            Query query = em.createQuery(
+                    "UPDATE BookingService bs SET bs.serviceStatus = 'IN_PROGRESS', bs.servedByUserID = :uid "
+                    + "WHERE TRIM(bs.booking.bookingID) = :bid AND TRIM(bs.service.serviceID) = :sid "
+                    + "AND (bs.serviceStatus = 'PENDING' OR bs.serviceStatus IS NULL)"
             );
+            query.setParameter("uid", userId);
             query.setParameter("bid", bookingId.trim());
             query.setParameter("sid", serviceId.trim());
+            int rows = query.executeUpdate();
+            em.getTransaction().commit();
+            return rows > 0;
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            em.close();
+        }
+    }
 
+    public boolean completeBookingService(String bookingId, String serviceId, int userId) {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            Query query = em.createQuery(
+                    "UPDATE BookingService bs SET bs.serviceStatus = 'COMPLETED' "
+                    + "WHERE TRIM(bs.booking.bookingID) = :bid AND TRIM(bs.service.serviceID) = :sid "
+                    + "AND bs.servedByUserID = :uid"
+            );
+            query.setParameter("uid", userId);
+            query.setParameter("bid", bookingId.trim());
+            query.setParameter("sid", serviceId.trim());
             int rows = query.executeUpdate();
             em.getTransaction().commit();
             return rows > 0;

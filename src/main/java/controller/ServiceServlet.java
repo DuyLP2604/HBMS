@@ -110,17 +110,36 @@ public class ServiceServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/service?action=manage");
             return;
         }
+        if ("acceptOrder".equalsIgnoreCase(action)) {
+            try {
+                String bookingID = request.getParameter("bookingID");
+                String serviceID = request.getParameter("serviceID");
+                int currentUserId = currentUser.getUserID();
+                if (bookingID != null && serviceID != null) {
+                    boolean success = new ServiceDAO().acceptBookingService(bookingID, serviceID, currentUserId);
+                    if (success) {
+                        session.setAttribute("successMessage", "Bạn đã tiếp nhận đơn phục vụ này!");
+                    } else {
+                        session.setAttribute("errorMessage", "Đơn này đã được nhân viên khác tiếp nhận!");
+                    }
+                }
+            } catch (Exception e) {
+                session.setAttribute("errorMessage", "Lỗi: " + e.getMessage());
+            }
+            response.sendRedirect(request.getContextPath() + "/service?action=orders");
+            return;
+        }
         if ("completeOrder".equalsIgnoreCase(action)) {
             try {
                 String bookingID = request.getParameter("bookingID");
                 String serviceID = request.getParameter("serviceID");
-                String staffID = String.valueOf(currentUser.getUserID());
+                int currentUserId = currentUser.getUserID();
                 if (bookingID != null && serviceID != null) {
-                    boolean success = new ServiceDAO().completeBookingService(bookingID, serviceID, staffID);
+                    boolean success = new ServiceDAO().completeBookingService(bookingID, serviceID, currentUserId);
                     if (success) {
                         session.setAttribute("successMessage", "Đã xác nhận hoàn thành dịch vụ!");
                     } else {
-                        session.setAttribute("errorMessage", "Không thể cập nhật trạng thái dịch vụ!");
+                        session.setAttribute("errorMessage", "Bạn không có quyền hoàn thành đơn của nhân viên khác!");
                     }
                 }
             } catch (Exception e) {
