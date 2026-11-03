@@ -35,7 +35,11 @@
                             What would you like to do next?
                         </h3>
                         <div class="d-grid gap-3">
-                            <a href="${pageContext.request.contextPath}/booking?action=add&amp;customerId=${customer.customerID}"
+                            <c:url var="counterBookingUrl" value="/staff/counter-booking">
+                                <c:param name="customerID" value="${customer.customerID}" />
+                            </c:url>
+
+                            <a href="${counterBookingUrl}"
                                class="btn btn-primary btn-lg">
                                 <i class="bi bi-calendar-check"></i>
                                 1. Create Booking
