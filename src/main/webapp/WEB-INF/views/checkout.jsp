@@ -10,7 +10,36 @@
                useBootstrap="true"
                bodyClass="hbms-ui-page">
 
-    <div class="hbms-ui ui-shell ui-checkout-workspace">
+    <style>
+        .hbms-ui.ui-shell.invoice-management {
+            width: calc(100% - clamp(24px, 3vw, 48px));
+            max-width: none;
+            padding-top: 28px;
+        }
+        .invoice-management-grid { display: grid; gap: 18px; align-items: start; }
+        .invoice-management-grid > * { min-width: 0; }
+        .invoice-management .ui-panel-body { padding: 18px; }
+        .invoice-management .checkout-invoice-table { min-width: 760px; }
+        .invoice-management .checkout-invoice-table th,
+        .invoice-management .checkout-invoice-table td {
+            padding: 10px 9px;
+            vertical-align: middle;
+        }
+        .invoice-management .checkout-invoice-table :is(th, td):nth-child(n+4) {
+            white-space: nowrap;
+        }
+        .invoice-management .checkout-invoice-table .ui-empty-state {
+            padding: 24px 12px;
+        }
+        .invoice-management #invoiceDetails dd { overflow-wrap: anywhere; }
+        @media (min-width: 1200px) {
+            .invoice-management-grid {
+                grid-template-columns: minmax(0, 1fr) clamp(320px, 28%, 460px);
+            }
+        }
+    </style>
+
+    <div class="hbms-ui ui-shell ui-checkout-workspace invoice-management">
         <header class="ui-page-heading">
             <div>
                 <p class="ui-eyebrow">BILLING</p>
@@ -19,6 +48,7 @@
             </div>
         </header>
 
+        <div class="invoice-management-grid">
         <section class="ui-panel" aria-labelledby="issuedInvoicesTitle">
             <div class="ui-panel-body">
                 <div class="ui-section-heading checkout-list-heading">
@@ -95,13 +125,21 @@
             </div>
         </section>
 
+        <aside aria-label="Invoice details">
+            <c:if test="${empty invoiceDTO or empty invoice}">
+                <div class="ui-panel">
+                    <div class="ui-panel-body">
+                        Select <strong>View</strong> on an invoice to see its details here.
+                    </div>
+                </div>
+            </c:if>
         <c:if test="${not empty invoiceDTO and not empty invoice}">
             <c:url var="selectedPrintUrl" value="/invoice">
                 <c:param name="action" value="print" />
                 <c:param name="bookingId" value="${invoiceDTO.bookingID}" />
             </c:url>
 
-            <section id="invoiceDetails" class="ui-panel mt-4"
+            <section id="invoiceDetails" class="ui-panel"
                      aria-labelledby="invoiceDetailsTitle">
                 <div class="ui-panel-body">
                     <div class="ui-section-heading checkout-list-heading">
@@ -163,5 +201,7 @@
                 </div>
             </section>
         </c:if>
+        </aside>
+        </div>
     </div>
 </layout:layout>

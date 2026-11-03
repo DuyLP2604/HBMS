@@ -1,0 +1,22 @@
+diff --git a/src/main/webapp/WEB-INF/views/checkout.jsp b/src/main/webapp/WEB-INF/views/checkout.jsp
+--- a/src/main/webapp/WEB-INF/views/checkout.jsp
++++ b/src/main/webapp/WEB-INF/views/checkout.jsp
+@@ -28,6 +28,18 @@
+         .invoice-management .checkout-invoice-table :is(th, td):nth-child(n+4) {
+             white-space: nowrap;
+         }
++        .invoice-management .checkout-invoice-table :is(th, td):first-child {
++            padding-inline-start: 18px;
++        }
++        .invoice-management .checkout-invoice-table :is(th, td):nth-child(7) {
++            width: 1%;
++            padding-inline-end: 18px;
++            text-align: right;
++        }
++        .invoice-management .checkout-invoice-table td:nth-child(7) > .d-flex {
++            justify-content: flex-end;
++            flex-wrap: nowrap !important;
++        }
+         .invoice-management .checkout-invoice-table .ui-empty-state {
+             padding: 24px 12px;
+         }
