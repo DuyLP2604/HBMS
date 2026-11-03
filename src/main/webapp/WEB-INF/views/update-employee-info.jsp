@@ -6,40 +6,44 @@
 <c:set var="selectedPosition" value="${isPost ? param.position : employee.position}" />
 <c:set var="selectedShift" value="${isPost ? param.shift : employee.shift}" />
 <c:set var="emailValue" value="${isPost and param.email ne null ? param.email : employee.email}" />
-<layout:layout
-    title="Update Employee Information"
-    pageCss="employee.css"
-    pageJs="employeeForm.js"
-    useBootstrap="true"
-    bodyClass="bg-light">
-    <div class="container my-5">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-warning text-dark py-3">
-                        <h2 class="h4 mb-0 fw-semibold">Update Employee Information</h2>
-                    </div>
-                    <div class="card-body p-4">
-                        <c:if test="${not empty flashError}">
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+<layout:layout title="Update Employee Information" pageCss="employee.css" pageJs="employeeForm.js" useBootstrap="true" bodyClass="hbms-ui-page">
+    <div class="hbms-ui ui-shell ui-shell-form ui-employee-workspace">
+        <header class="ui-page-heading"><div><p class="ui-eyebrow">STAFF DIRECTORY</p><h1>Update Employee Information</h1><p class="ui-description">Review the employee's personal and employment details.</p></div></header>
+<c:if test="${not empty flashError}">
+                            <div class="alert alert-dismissible fade show ui-notice ui-notice-danger" role="alert">
                                 <c:out value="${flashError}" />
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         </c:if>
-                        <form id="employeeForm" data-mode="update" action="${pageContext.request.contextPath}/employee" method="post" novalidate>
+        <section class="ui-panel" aria-label="Update employee information">
+<form id="employeeForm" data-mode="update" action="${pageContext.request.contextPath}/employee" method="post" novalidate>
+                <div class="ui-panel-body">
                             <input type="hidden" name="action" value="update">
-                            <div class="row g-3">
-                                <div class="col-md-6">
+                            <div class="employee-form-section"><h2 class="employee-section-title"><i class="fa-regular fa-user" aria-hidden="true"></i> Personal Information</h2><div class="ui-form-grid"><div class="ui-field">
                                     <label for="employeeID" class="form-label fw-semibold text-muted">Employee ID (Read-only)</label>
                                     <input id="employeeID" type="text" name="id" class="form-control bg-light" value="${fn:escapeXml(isPost ? param.id : employee.employeeID)}" maxlength="6" readonly>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="fullName" class="form-label fw-semibold">Full Name *</label>
+<div class="ui-field">
+                                    <label for="fullName" class="form-label fw-semibold">Full Name <span class="ui-required">*</span></label>
                                     <input id="fullName" type="text" name="name" class="form-control${not empty fieldErrors['name'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.name : employee.fullName)}" maxlength="100" autocomplete="name" required>
                                     <div class="invalid-feedback" data-feedback-for="name"><c:out value="${fieldErrors['name']}" /></div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="position" class="form-label fw-semibold">Position *</label>
+<div class="ui-field">
+                                    <label for="phone" class="form-label fw-semibold">Phone Number <span class="ui-required">*</span></label>
+                                    <input id="phone" type="tel" name="phone" class="form-control${not empty fieldErrors['phone'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.phone : employee.phone)}" maxlength="20" autocomplete="tel" required>
+                                    <div class="invalid-feedback" data-feedback-for="phone"><c:out value="${fieldErrors['phone']}" /></div>
+                                </div>
+<div class="ui-field">
+                                    <label for="email" class="form-label fw-semibold">Email</label>
+                                    <input id="email" type="email" name="email" class="form-control${not empty fieldErrors['email'] ? ' is-invalid' : ''}" value="${fn:escapeXml(emailValue)}" placeholder="e.g. employee@gmail.com" maxlength="100" autocomplete="email">
+                                    <div class="invalid-feedback" data-feedback-for="email"><c:out value="${fieldErrors['email']}" /></div>
+                                </div>
+<div class="ui-field ui-field-full">
+                                    <label for="address" class="form-label fw-semibold">Address</label>
+                                    <input id="address" type="text" name="address" class="form-control${not empty fieldErrors['address'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.address : employee.address)}" maxlength="200" autocomplete="street-address">
+                                    <div class="invalid-feedback" data-feedback-for="address"><c:out value="${fieldErrors['address']}" /></div>
+                                </div></div></div><div class="employee-form-section"><h2 class="employee-section-title"><i class="fa-solid fa-briefcase" aria-hidden="true"></i> Employment Details</h2><div class="ui-form-grid"><div class="ui-field">
+                                    <label for="position" class="form-label fw-semibold">Position <span class="ui-required">*</span></label>
                                     <select id="position" name="position" class="form-select${not empty fieldErrors['position'] ? ' is-invalid' : ''}" required>
                                         <option value="" disabled <c:if test="${empty selectedPosition}">selected</c:if>>Select position</option>
                                         <c:forEach var="pos" items="${positions}">
@@ -48,12 +52,12 @@
                                     </select>
                                     <div class="invalid-feedback" data-feedback-for="position"><c:out value="${fieldErrors['position']}" /></div>
                                 </div>
-                                <div class="col-md-6">
+<div class="ui-field">
                                     <label for="salary" class="form-label fw-semibold">Base Salary (VND)</label>
                                     <input id="salary" type="number" name="salary" class="form-control${not empty fieldErrors['salary'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.salary : employee.salary)}" min="0" step="0.01">
                                     <div class="invalid-feedback" data-feedback-for="salary"><c:out value="${fieldErrors['salary']}" /></div>
                                 </div>
-                                <div class="col-md-6">
+<div class="ui-field">
                                     <label for="shift" class="form-label fw-semibold">Work Shift</label>
                                     <select id="shift" name="shift" class="form-select${not empty fieldErrors['shift'] ? ' is-invalid' : ''}">
                                         <option value="" <c:if test="${empty selectedShift}">selected</c:if>>Select work shift</option>
@@ -62,31 +66,13 @@
                                         <option value="Night" <c:if test="${selectedShift eq 'Night'}">selected</c:if>>Night</option>
                                     </select>
                                     <div class="invalid-feedback" data-feedback-for="shift"><c:out value="${fieldErrors['shift']}" /></div>
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="phone" class="form-label fw-semibold">Phone Number *</label>
-                                    <input id="phone" type="tel" name="phone" class="form-control${not empty fieldErrors['phone'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.phone : employee.phone)}" maxlength="20" autocomplete="tel" required>
-                                    <div class="invalid-feedback" data-feedback-for="phone"><c:out value="${fieldErrors['phone']}" /></div>
-                                </div>
-                                <div class="col-12">
-                                    <label for="email" class="form-label fw-semibold">Email</label>
-                                    <input id="email" type="email" name="email" class="form-control${not empty fieldErrors['email'] ? ' is-invalid' : ''}" value="${fn:escapeXml(emailValue)}" placeholder="e.g. employee@gmail.com" maxlength="100" autocomplete="email">
-                                    <div class="invalid-feedback" data-feedback-for="email"><c:out value="${fieldErrors['email']}" /></div>
-                                </div>
-                                <div class="col-12">
-                                    <label for="address" class="form-label fw-semibold">Address</label>
-                                    <input id="address" type="text" name="address" class="form-control${not empty fieldErrors['address'] ? ' is-invalid' : ''}" value="${fn:escapeXml(isPost ? param.address : employee.address)}" maxlength="200" autocomplete="street-address">
-                                    <div class="invalid-feedback" data-feedback-for="address"><c:out value="${fieldErrors['address']}" /></div>
-                                </div>
+                                </div></div></div>
                             </div>
-                            <div class="d-flex justify-content-end gap-2 mt-4">
-                                <a href="${pageContext.request.contextPath}/employee?action=list" class="btn btn-secondary">Back</a>
-                                <button type="submit" class="btn btn-warning px-4 fw-semibold">Update Employee</button>
+                <div class="ui-panel-footer ui-form-actions">
+                                <a href="${pageContext.request.contextPath}/employee?action=list" class="ui-button ui-button-secondary">Back</a>
+                                <button type="submit" class="ui-button ui-button-primary">Update Employee</button>
                             </div>
                         </form>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
     </div>
 </layout:layout>
