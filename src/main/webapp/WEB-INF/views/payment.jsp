@@ -200,12 +200,18 @@
                                     </div>
 
                                     <div id="vietqr-container" class="mb-4 text-center d-none border rounded p-4 bg-white shadow-sm"
-                                         data-full-url="<c:out value='${vietQrUrl}' />"
-                                         data-wallet-url="<c:out value='${vietQrWalletUrl}' />">
+                                         data-full-url="<c:out value='${vietQrUrl}' />">
                                         <h5 class="fw-bold mb-3">Scan VietQR to transfer</h5>
-                                        <img id="vietqr-img" alt="VietQR payment" class="img-fluid border rounded" style="max-width:260px">
+                                        <c:choose>
+                                            <c:when test="${not empty vietQrUrl}">
+                                                <img id="vietqr-img" src="<c:out value='${vietQrUrl}' />" alt="VietQR payment" class="img-fluid border rounded" style="max-width:260px">
+                                            </c:when>
+                                            <c:otherwise>
+                                                <p class="text-danger small mb-0">Mã QR tạm thời không khả dụng. Bấm thanh toán để sang cổng PayOS.</p>
+                                            </c:otherwise>
+                                        </c:choose>
                                         <p class="mt-3 mb-1">Transfer reference: <strong><c:out value="${transferReference}" /></strong></p>
-                                        <p class="small text-muted mb-0">Keep the transfer reference unchanged. This page displays the QR only. Payment remains pending until the transfer is verified.</p>
+                                        <p class="small text-muted mb-0">Keep the transfer reference unchanged. Payment remains pending until the transfer is verified.</p>
                                     </div>
                                     <div id="walletPaymentNotice" class="alert alert-info d-none" role="status">Your wallet contribution is checked again when you pay. If the available balance has changed, reload this page to review the amounts.</div>
 

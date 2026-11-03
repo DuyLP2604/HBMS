@@ -1,5 +1,6 @@
 package controller;
 
+import dao.PayOsOrderDAO;
 import dao.PaymentmethodDAO;
 import dao.WalletDAO;
 import dto.WalletSummary;
@@ -99,14 +100,6 @@ public class PaymentServlet extends HttpServlet {
         request.setAttribute("paymentType", paymentRequest.getPaymentType());
         request.setAttribute("amountToPay", paymentRequest.getAmount());
         request.setAttribute("paymentRequestToken", token);
-        try {
-            PayOsService.Link payOsLink = service.createGatewayLink(paymentRequest, returnUrl, cancelUrl);
-            String vietQrUrl = service.getGatewayQrImageUrl(payOsLink, paymentRequest.getAmount());
-            request.setAttribute("vietQrUrl", vietQrUrl);
-            request.setAttribute("checkoutUrl", payOsLink.checkoutUrl);
-        } catch (Exception e) {
-            Flash.error(request, "Cannot connect payOS gateway");
-        }
         BigDecimal shortfall = paymentRequest.getAmount().subtract(paymentRequest.getOfferedWalletAmount());
 //        request.setAttribute("vietQrWalletUrl", shortfall.signum() > 0 ? service.getVietQR(shortfall, paymentRequest.getTransferReference()) : "");
         request.setAttribute("transferReference", paymentRequest.getTransferReference());
@@ -132,6 +125,50 @@ public class PaymentServlet extends HttpServlet {
         if (paymentRequest == null || paymentRequest.getUserID() != user.getUserID() || !paymentRequest.getBookingID().equals(bookingID)) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "The payment form is invalid or expired. Reload the payment page.");
             return;
+        }
+        if ("PT01".equals(methodID)) {
+            BigDecimal walletAmount = useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
+            BigDecimal shortfall = paymentRequest.getAmount().subtract(walletAmount);
+
+            if (shortfall.signum() <= 0) {
+                // Nếu ví đủ trả 100%, tự chuyển phương thức thành thanh toán ví (PT02)
+                methodID = "PT02";
+            } else {
+                try {
+                    // 1. Tạo orderCode duy nhất
+                    long orderCode = Long.parseLong(String.valueOf(System.currentTimeMillis()).substring(5) + user.getUserID());
+
+                    // 2. Chuẩn bị dữ liệu Order
+                    PayOsOrderDAO orderDao = new PayOsOrderDAO();
+                    PayOsOrderDAO.Order order = new PayOsOrderDAO.Order();
+                    order.orderCode = orderCode;
+                    order.bookingID = bookingID;
+                    order.userID = user.getUserID();
+                    order.paymentType = paymentRequest.getPaymentType();
+                    order.amount = paymentRequest.getAmount();
+                    order.walletAmount = walletAmount;
+                    order.externalAmount = shortfall;
+
+                    // 3. Gọi API tạo link của PayOS TRƯỚC để lấy link.paymentLinkId
+                    String baseUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+                    String returnUrl = baseUrl + "/my-bookings";
+                    String cancelUrl = baseUrl + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8);
+
+                    PayOsService.Link link = new PayOsService().createPaymentLink(orderCode, shortfall, "Thanh toan " + bookingID, returnUrl, cancelUrl);
+
+                    // 4. Insert vào DB với đầy đủ thông tin (truyền thêm link.paymentLinkId)
+                    orderDao.insert(order, link.paymentLinkId);
+
+                    // 5. Redirect thẳng sang trang Checkout của PayOS
+                    response.sendRedirect(link.checkoutUrl);
+                    return;
+                } catch (Exception e) {
+                    getServletContext().log("PayOS Gateway Init Error", e);
+                    session.setAttribute("paymentError", "Không thể khởi tạo cổng thanh toán PayOS: " + e.getMessage());
+                    response.sendRedirect(request.getContextPath() + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8));
+                    return;
+                }
+            }
         }
         String redirect;
         try {
