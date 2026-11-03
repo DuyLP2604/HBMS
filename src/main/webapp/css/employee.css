@@ -1,12 +1,48 @@
-.employee-header,
-.employee-btn {
-    background-color: #0d9488;
-}
+@import url("shared-ui.css");
 
-.employee-btn:hover {
-    background-color: #0f766e;
-}
+/* Keep the legacy classes available for any existing employee components. */
+.employee-header, .employee-btn { background-color: #0d9488; }
+.employee-btn:hover, .employee-detail-header { background-color: #0f766e; }
 
-.employee-detail-header {
-    background-color: #0f766e;
+/* Scoped directory, forms and profile styles. */
+.ui-employee-workspace .employee-search-layout { display: grid; grid-template-columns: minmax(160px, .65fr) minmax(0, 1.5fr) auto; align-items: end; gap: 14px; }
+.ui-employee-workspace .employee-search-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.ui-employee-workspace .employee-search-actions .ui-button { min-height: 45px; }
+.ui-employee-workspace .employee-search-label { display: block; margin-bottom: 8px; color: #435d4b; font-size: 13px; font-weight: 500; }
+.ui-employee-workspace .employee-directory-table { min-width: 1030px; }
+.ui-employee-workspace .employee-directory-table th, .ui-employee-workspace .employee-directory-table td { padding-left: 18px; padding-right: 18px; }
+.ui-employee-workspace .employee-directory-table td:nth-child(2) { min-width: 175px; font-weight: 500; }
+.ui-employee-workspace .employee-email-cell { min-width: 200px; max-width: 270px; overflow-wrap: anywhere; }
+.ui-employee-workspace .employee-action-cell { min-width: 200px; }
+.ui-employee-workspace .employee-action-cell .ui-button { margin: 3px 4px 3px 0; }
+.ui-employee-workspace .employee-position-badge, .ui-employee-workspace .employee-shift-badge { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 6px; font-size: 12px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.ui-employee-workspace .employee-position-badge { color: #426648; background: #edf4e9; }
+.ui-employee-workspace .employee-shift-badge { color: #526b73; background: #eef4f5; }
+.ui-employee-workspace .employee-form-section + .employee-form-section { margin-top: 27px; padding-top: 24px; border-top: 1px solid var(--ui-line); }
+.ui-employee-workspace .employee-section-title { display: flex; align-items: center; gap: 9px; margin: 0 0 21px; color: var(--ui-ink); font-size: 18px; font-weight: 600; line-height: 1.4; }
+.ui-employee-workspace .employee-section-title > i { color: #70886d; font-size: 15px; }
+.ui-employee-workspace .employee-control { min-width: 0; }
+.ui-employee-workspace .form-text { margin-top: 7px; color: var(--ui-muted); font-size: 12px; line-height: 1.6; }
+.ui-employee-workspace .employee-credentials-notice { min-height: 45px; padding: 13px 15px; border: 1px solid #dbe7d5; border-radius: 8px; background: #f2f7ed; color: #536e53; font-size: 13px; line-height: 1.7; }
+.ui-employee-workspace .invalid-feedback { margin-top: 7px; color: #a14432; font-size: 12px; line-height: 1.6; }
+.hbms-ui.ui-employee-workspace input.is-invalid:not([type="hidden"]), .hbms-ui.ui-employee-workspace select.is-invalid { border-color: #b74a38; background-color: #fffbf9; }
+.ui-employee-workspace .ui-notice.alert-dismissible { padding-right: 52px; }
+.ui-employee-workspace .employee-profile-layout { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.6fr); gap: 30px; }
+.ui-employee-workspace .employee-profile-identity { min-width: 0; padding-right: 27px; border-right: 1px solid var(--ui-line); }
+.ui-employee-workspace .employee-profile-identity h2 { margin: 0 0 9px; color: var(--ui-ink); font-size: 22px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.ui-employee-workspace .employee-profile-position { margin-top: 18px; }
+.ui-employee-workspace .employee-profile-information { min-width: 0; }
+.ui-employee-workspace .employee-profile-contact { margin-top: 27px; padding-top: 24px; border-top: 1px solid var(--ui-line); }
+.ui-employee-workspace .employee-salary { color: var(--ui-green); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ui-employee-workspace .employee-account-section { padding: 23px 26px; border-top: 1px solid var(--ui-line); }
+.ui-employee-workspace .employee-account-section .ui-notice { margin-top: 0; margin-bottom: 17px; }
+
+@media (max-width: 760px) {
+    .ui-employee-workspace .employee-search-layout { grid-template-columns: minmax(0, 1fr); gap: 17px; }
+    .ui-employee-workspace .employee-profile-layout { grid-template-columns: minmax(0, 1fr); }
+    .ui-employee-workspace .employee-profile-identity { padding: 0 0 24px; border-right: 0; border-bottom: 1px solid var(--ui-line); }
+    .ui-employee-workspace .employee-account-section { padding: 22px; }
+}
+@media (max-width: 480px) {
+    .ui-employee-workspace .employee-account-section { padding: 18px; }
 }

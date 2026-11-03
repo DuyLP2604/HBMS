@@ -3,58 +3,37 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 
-<layout:layout title="Room List" pageCss="room.css" useBootstrap="true" bodyClass="bg-light">
+<layout:layout title="Room List" pageCss="room.css" useBootstrap="true" bodyClass="hbms-ui-page room-management-page">
 
-    <style>
-        .hover-lift {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .hover-lift:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.15)!important;
-        }
-        .room-desc {
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-    </style>
-
-    <div class="container my-5">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3 rounded-top">
-                <h2 class="h4 mb-0">Room List</h2>
+    <div class="hbms-ui ui-shell room-workspace">
+        <div class="room-list">
+            <div class="room-page-header">
+                <h1>Room List</h1>
                 <%-- Nút Add New Room chỉ dành cho Admin --%>
                 <c:if test="${sessionScope.user.role eq 'Admin'}">
-                    <a href="${pageContext.request.contextPath}/room?action=create" class="btn btn-light btn-sm text-primary fw-bold shadow-sm">
+                    <a href="${pageContext.request.contextPath}/room?action=create" class="btn room-button-primary">
                         <i class="fa-solid fa-plus me-1"></i> Add New Room
                     </a>
                 </c:if>
             </div>
 
-            <div class="card-body bg-white p-4">
+            <div class="room-panel">
                 <!-- Search & Filter Bar -->
-                <div class="row mb-4">
-                    <div class="col-md-8 col-lg-6">
-                        <form onsubmit="event.preventDefault(); applyFilterAndSearch();" class="d-flex gap-2">
-                            <div class="input-group shadow-sm">
-                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="fa-solid fa-magnifying-glass"></i></span>
-                                <input type="text" id="searchInput" class="form-control border-start-0 ps-0" placeholder="Search (number, type, status)..." onkeyup="applyFilterAndSearch()">
-                                <button type="button" class="btn btn-primary px-4" onclick="applyFilterAndSearch()">Search</button>
-                                <button type="button" class="btn btn-outline-secondary ms-2 rounded" data-bs-toggle="modal" data-bs-target="#filterModal">
-                                    <i class="fa-solid fa-filter"></i> Filter
-                                </button>
-                            </div>
-                        </form>
+                <form onsubmit="event.preventDefault(); applyFilterAndSearch();" class="room-toolbar">
+                    <div class="room-search">
+                        <span class="room-search-icon" aria-hidden="true"><i class="fa-solid fa-magnifying-glass"></i></span>
+                        <input type="text" id="searchInput" class="form-control" aria-label="Search rooms" placeholder="Search (number, type, status)..." onkeyup="applyFilterAndSearch()">
+                        <button type="button" class="btn room-button-primary px-4" onclick="applyFilterAndSearch()">Search</button>
+                        <button type="button" class="btn room-button-secondary" data-bs-toggle="modal" data-bs-target="#filterModal">
+                            <i class="fa-solid fa-filter"></i> Filter
+                        </button>
                     </div>
-                </div>
+                </form>
 
                 <%-- ======================= GIAO DIỆN CHUNG (TABLE CHO CẢ ADMIN & STAFF) ======================= --%>
-                <div class="table-responsive shadow-sm rounded border">
-                    <table class="table table-hover align-middle mb-0 bg-white">
-                        <thead class="table-light border-bottom">
+                <div class="table-responsive room-table-scroll" role="region" aria-label="Rooms" tabindex="0">
+                    <table class="table table-hover align-middle mb-0 room-table">
+                        <thead>
                             <tr>
                                 <th class="ps-3">Room Number</th>
                                 <th>Room Type</th>
@@ -83,57 +62,25 @@
                                     <td>
                                         <c:choose>
                                             <c:when test="${c.status eq 'ACTIVE'}">
-                                                <span class="badge bg-success shadow-sm px-2 py-1">ACTIVE</span>
+                                                <span class="room-status room-status-active">ACTIVE</span>
                                             </c:when>
                                             <c:when test="${c.status eq 'MAINTENANCE'}">
-                                                <span class="badge bg-warning text-dark shadow-sm px-2 py-1">MAINTENANCE</span>
+                                                <span class="room-status room-status-warning">MAINTENANCE</span>
                                             </c:when>
                                             <c:otherwise>
-                                                <span class="badge bg-danger shadow-sm px-2 py-1"><c:out value="${c.status}" /></span>
+                                                <span class="room-status"><c:out value="${c.status}" /></span>
                                             </c:otherwise>
                                         </c:choose>
                                     </td>
                                     <td class="text-center pe-3">
-                                        <a href="${pageContext.request.contextPath}/room?action=viewDetail&id=${c.roomID}" class="btn btn-outline-info btn-sm me-1" title="View Details"><i class="fa-solid fa-eye"></i></a>
+                                        <a href="${pageContext.request.contextPath}/room?action=viewDetail&id=${c.roomID}" class="btn room-button-secondary btn-sm me-1" title="View Details"><i class="fa-solid fa-eye"></i></a>
 
                                         <c:if test="${sessionScope.user.role eq 'Admin'}">
-                                            <a href="${pageContext.request.contextPath}/room?action=update&id=${c.roomID}" class="btn btn-outline-warning btn-sm me-1" title="Edit"><i class="fa-solid fa-pen"></i></a>
+                                            <a href="${pageContext.request.contextPath}/room?action=update&id=${c.roomID}" class="btn room-button-secondary btn-sm me-1" title="Edit"><i class="fa-solid fa-pen"></i></a>
                                             <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal${c.roomID}" title="Delete"><i class="fa-solid fa-trash"></i></button>
                                             </c:if>
                                     </td>
                                 </tr>
-
-                                <%-- Pop-up delete room (Chỉ sinh ra nếu là Admin) --%>
-                                <c:if test="${sessionScope.user.role eq 'Admin'}">
-                                <div class="modal fade" id="deleteModal${c.roomID}" tabindex="-1" aria-hidden="true">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <div class="modal-content border-0 shadow">
-                                            <div class="modal-header bg-danger text-white">
-                                                <h5 class="modal-title">Confirm Delete</h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body text-center py-4">
-                                                <h5 class="mb-3">Are you sure to delete this room?</h5>
-                                                <h4 class="text-primary fw-bold mb-3">Room: ${c.roomNumber}</h4>
-                                                <c:choose>
-                                                    <c:when test="${not empty c.roomImage}">
-                                                        <img src="${pageContext.request.contextPath}/assets/images/room/${c.roomImage}" class="img-thumbnail shadow-sm mb-2" style="width: 150px; height: 100px; object-fit: cover;">
-                                                    </c:when>
-                                                    <c:otherwise>
-                                                        <div class="bg-secondary bg-opacity-10 rounded d-inline-flex align-items-center justify-content-center img-thumbnail mb-2" style="width: 150px; height: 100px;">
-                                                            <i class="fa-solid fa-image fa-2x text-secondary"></i>
-                                                        </div>
-                                                    </c:otherwise>
-                                                </c:choose>
-                                            </div>
-                                            <div class="modal-footer justify-content-center bg-light">
-                                                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
-                                                <a href="${pageContext.request.contextPath}/room?action=delete&id=${c.roomID}" class="btn btn-danger px-4">Delete</a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </c:if>
                         </c:forEach>
 
                         <c:if test="${empty roomList}">
@@ -151,6 +98,40 @@
             </div>
         </div>
     </div>
+
+    <c:forEach items="${roomList}" var="c">
+        <%-- Pop-up delete room (Chỉ sinh ra nếu là Admin) --%>
+        <c:if test="${sessionScope.user.role eq 'Admin'}">
+            <div class="modal fade" id="deleteModal${c.roomID}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">Confirm Delete</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center py-4">
+                            <h5 class="mb-3">Are you sure to delete this room?</h5>
+                            <h4 class="text-primary fw-bold mb-3">Room: ${c.roomNumber}</h4>
+                            <c:choose>
+                                <c:when test="${not empty c.roomImage}">
+                                    <img src="${pageContext.request.contextPath}/assets/images/room/${c.roomImage}" class="img-thumbnail shadow-sm mb-2" style="width: 150px; height: 100px; object-fit: cover;">
+                                </c:when>
+                                <c:otherwise>
+                                    <div class="bg-secondary bg-opacity-10 rounded d-inline-flex align-items-center justify-content-center img-thumbnail mb-2" style="width: 150px; height: 100px;">
+                                        <i class="fa-solid fa-image fa-2x text-secondary"></i>
+                                    </div>
+                                </c:otherwise>
+                            </c:choose>
+                        </div>
+                        <div class="modal-footer justify-content-center bg-light">
+                            <button type="button" class="btn room-button-secondary px-4" data-bs-dismiss="modal">Cancel</button>
+                            <a href="${pageContext.request.contextPath}/room?action=delete&id=${c.roomID}" class="btn btn-danger px-4">Delete</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </c:if>
+    </c:forEach>
 
     <!-- Pop-up Modal Lọc (Filter & Sort) chung -->
     <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
@@ -189,8 +170,8 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-outline-secondary px-4" onclick="clearFilter()">Clear</button>
-                    <button type="button" class="btn btn-primary px-4" onclick="applyFilterAndSearch(true)">Apply Filter</button>
+                    <button type="button" class="btn room-button-secondary px-4" onclick="clearFilter()">Clear</button>
+                    <button type="button" class="btn room-button-primary px-4" onclick="applyFilterAndSearch(true)">Apply Filter</button>
                 </div>
             </div>
         </div>

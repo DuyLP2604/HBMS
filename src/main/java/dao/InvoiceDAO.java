@@ -46,7 +46,11 @@ public class InvoiceDAO
     public Map<String, String> getInvoiceByBooking(String bookingID)
     {
         String id = requireBookingID(bookingID);
-        List<Map<String, String>> invoices = query("SELECT InvoiceID AS invoiceID, BookingID AS bookingID, TotalAmount AS totalAmount, CONVERT(VARCHAR(10), InvoiceDate, 23) AS invoiceDate, EmployeeID AS employeeID FROM dbo.INVOICE WHERE BookingID = ?", id);
+        String sql = "SELECT InvoiceID AS invoiceID, BookingID AS bookingID, TotalAmount AS totalAmount, "
+                + "CONVERT(VARCHAR(10), InvoiceDate, 23) AS invoiceDate, EmployeeID AS employeeID, "
+                + "(SELECT TOP (1) Address FROM dbo.HOTEL) AS hotelAddress "
+                + "FROM dbo.INVOICE WHERE BookingID = ?";
+        List<Map<String, String>> invoices = query(sql, id);
         return invoices.isEmpty() ? null : invoices.get(0);
     }
 
@@ -54,6 +58,18 @@ public class InvoiceDAO
     {
         Map<String, Object> summary = new BookingDAO().getPaymentSummary(requireBookingID(bookingID));
         return summary != null && "FULLY_PAID".equals(summary.get("paymentStatus")) && !"CANCELLED".equals(summary.get("bookingStatus"));
+    }
+
+    public List<Map<String, String>> getAccommodationLinesByBooking(String bookingID)
+    {
+        String sql = "SELECT rt.TypeName AS roomType, d.Quantity AS roomCount, "
+                + "d.Quantity * DATEDIFF(DAY, b.CheckInDate, b.CheckOutDate) AS roomNights, "
+                + "d.UnitPrice AS unitPrice, d.Subtotal AS subtotal "
+                + "FROM dbo.BOOKING_DETAIL d "
+                + "JOIN dbo.BOOKING b ON b.BookingID = d.BookingID "
+                + "JOIN dbo.ROOM_TYPE rt ON rt.RoomTypeID = d.RoomTypeID "
+                + "WHERE d.BookingID = ? ORDER BY d.BookingDetailID";
+        return query(sql, requireBookingID(bookingID));
     }
 
     public List<Map<String, String>> getServicesByBooking(String bookingID)

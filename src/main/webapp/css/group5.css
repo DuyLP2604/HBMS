@@ -1,0 +1,153 @@
+@import url("shared-ui.css");
+
+.group5-page {
+    --g5-ink: #243c2f;
+    --g5-muted: #52675a;
+    --g5-line: #dce5de;
+    --g5-surface: #f4f7f3;
+}
+
+.group5-page .g5-workspace { max-width: 1180px; }
+.group5-page .g5-form-workspace { max-width: 920px; }
+
+.group5-page .g5-heading,
+.group5-page .g5-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+}
+
+.group5-page .g5-heading { margin-bottom: 18px; }
+.group5-page .g5-heading h1 { margin: 0; font-size: clamp(24px, 4vw, 32px); }
+.group5-page .g5-heading p { margin-bottom: 0; }
+.group5-page .g5-panel,
+.group5-page .modal-content {
+    border: 1px solid var(--g5-line);
+    border-radius: 12px;
+    background: #fff;
+}
+.group5-page .g5-panel { min-width: 0; }
+.group5-page .g5-section-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--g5-line);
+    background: var(--g5-surface);
+    color: var(--g5-ink);
+}
+.group5-page .g5-header-status { margin-right: auto; }
+.group5-page .g5-form-panel { padding: clamp(14px, 3vw, 26px); }
+.group5-page .g5-subtitle { margin: 0 0 12px; font-size: 17px; }
+.group5-page .g5-status-select { max-width: 280px; }
+
+.group5-page .g5-primary {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #28533b;
+    --bs-btn-border-color: #28533b;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #1f4430;
+    --bs-btn-hover-border-color: #1f4430;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #1b3929;
+    --bs-btn-active-border-color: #1b3929;
+    --bs-btn-focus-shadow-rgb: 40, 83, 59;
+    --bs-btn-disabled-color: #3f5248;
+    --bs-btn-disabled-bg: #e8ede9;
+    --bs-btn-disabled-border-color: #dce5de;
+}
+.group5-page .g5-secondary {
+    --bs-btn-color: #28533b;
+    --bs-btn-bg: #fff;
+    --bs-btn-border-color: #c8d7cc;
+    --bs-btn-hover-color: #243c2f;
+    --bs-btn-hover-bg: #edf4ed;
+    --bs-btn-hover-border-color: #a8bfad;
+    --bs-btn-active-color: #243c2f;
+    --bs-btn-active-bg: #e1ede2;
+    --bs-btn-active-border-color: #a8bfad;
+    --bs-btn-focus-shadow-rgb: 40, 83, 59;
+}
+
+.group5-page .g5-status-success { color: #285336; background: #e3efe4; }
+.group5-page .g5-status-pending { color: #6d470f; background: #fff1d6; }
+.group5-page .g5-status-neutral { color: #42554a; background: #eef1ef; }
+
+.group5-page .g5-table-scroll:focus-visible {
+    outline: 2px solid #426648;
+    outline-offset: -2px;
+}
+.group5-page .g5-table-scroll table { min-width: 520px; }
+.group5-page .g5-table-scroll .g5-orders-table { min-width: 880px; }
+.group5-page .g5-table-scroll :is(th, td) {
+    padding: 12px;
+    border-color: var(--g5-line);
+    overflow-wrap: anywhere;
+}
+.group5-page .g5-table-scroll thead th {
+    background: var(--g5-surface);
+    color: var(--g5-muted);
+    font-size: 13px;
+}
+.group5-page .g5-table-scroll td.text-end { font-variant-numeric: tabular-nums; }
+
+.group5-page .g5-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.group5-page .g5-message {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--g5-surface);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.group5-page .g5-history-item {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--g5-line);
+}
+.group5-page .g5-history-item:last-child { border-bottom: 0; }
+.group5-page .g5-history-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-bottom: 10px;
+    overflow-wrap: anywhere;
+}
+.group5-page .g5-history-heading > div { min-width: 0; }
+.group5-page .g5-history-heading h3 { margin: 0; font-size: 16px; }
+.group5-page .g5-history-item h4 { margin: 12px 0 6px; font-size: 14px; }
+
+.group5-page .g5-image-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--g5-line);
+}
+.group5-page .g5-image-row {
+    display: grid;
+    grid-template-columns: minmax(0, 150px) minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid var(--g5-line);
+    border-radius: 8px;
+}
+.group5-page .g5-hotel-preview {
+    display: block;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    border-radius: 6px;
+    background: var(--g5-surface);
+}
+.group5-page .g5-image-row input { min-width: 0; }
+
+@media (max-width: 520px) {
+    .group5-page .g5-image-row { grid-template-columns: minmax(0, 1fr); }
+    .group5-page .g5-hotel-preview { max-width: 200px; }
+}

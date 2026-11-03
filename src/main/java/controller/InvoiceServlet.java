@@ -22,7 +22,9 @@ public class InvoiceServlet extends HttpServlet {
     private final BookingDAO bookingDAO = new BookingDAO();
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
         if (requireStaff(request, response) == null) {
             return;
         }
@@ -41,6 +43,7 @@ public class InvoiceServlet extends HttpServlet {
         if (bookingID != null && !bookingID.isEmpty()) {
             try {
                 Map<String, Object> summary = bookingDAO.getPaymentSummary(bookingID);
+
                 if (summary != null && !summary.isEmpty()) {
                     Map<String, String> roomDetail = invoiceDAO.getRoomDetailByBooking(bookingID);
                     List<Map<String, String>> services = invoiceDAO.getServicesByBooking(bookingID);
@@ -48,11 +51,10 @@ public class InvoiceServlet extends HttpServlet {
 
                     if (roomDetail != null && !roomDetail.isEmpty()) {
                         InvoiceDTO invoiceDTO = new InvoiceDTO(roomDetail, services, summary);
-                        
+
                         request.setAttribute("invoiceDTO", invoiceDTO);
                         request.setAttribute("roomDetail", roomDetail);
                         request.setAttribute("invoice", invoice);
-                        
                         request.setAttribute("selectedRoom", roomDetail);
                         request.setAttribute("bookingSummary", summary);
                         request.setAttribute("bookingServices", services);
@@ -62,9 +64,19 @@ public class InvoiceServlet extends HttpServlet {
                         request.setAttribute("hotelName", roomDetail.get("hotelName"));
 
                         if (invoice != null && !invoice.isEmpty()) {
+                            if (print) {
+                                request.setAttribute(
+                                        "accommodationLines",
+                                        invoiceDAO.getAccommodationLinesByBooking(bookingID)
+                                );
+                            }
+
                             request.setAttribute("invoiceID", invoice.get("invoiceID"));
                             request.setAttribute("invoiceDate", invoice.get("invoiceDate"));
-                            request.setAttribute("grandTotal", new BigDecimal(invoice.get("totalAmount")));
+                            request.setAttribute(
+                                    "grandTotal",
+                                    new BigDecimal(invoice.get("totalAmount"))
+                            );
                         }
                     }
                 }
@@ -73,7 +85,6 @@ public class InvoiceServlet extends HttpServlet {
             }
         }
 
-        // BƯỚC 2: LẤY DANH SÁCH HÓA ĐƠN CHO CỘT TRÁI
         try {
             request.setAttribute("paidInvoices", invoiceDAO.getPaidInvoices());
             request.setAttribute("occupiedRooms", invoiceDAO.getOccupiedRooms());
@@ -81,12 +92,16 @@ public class InvoiceServlet extends HttpServlet {
             throw new ServletException("Unable to load the invoice list.", ex);
         }
 
-        // BƯỚC 3: ĐIỀU HƯỚNG
-        request.getRequestDispatcher(print ? "/WEB-INF/views/invoice.jsp" : "/WEB-INF/views/checkout.jsp").forward(request, response);
+        String view = print
+                ? "/WEB-INF/views/invoice.jsp"
+                : "/WEB-INF/views/checkout.jsp";
+        request.getRequestDispatcher(view).forward(request, response);
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
         Users user = requireStaff(request, response);
         if (user == null) {
             return;
@@ -95,36 +110,48 @@ public class InvoiceServlet extends HttpServlet {
         String action = request.getParameter("action");
         if ("print".equals(action)) {
             String bookingID = request.getParameter("bookingID");
+
             try {
-                // Thực thi lưu CSDL khi bấm "Print Invoice"
                 invoiceDAO.processCheckout(bookingID, user.getUserID());
-            } catch (Exception e) {
-                log("Error saving invoice for booking " + bookingID, e);
+            } catch (Exception ex) {
+                log("Error saving invoice for booking " + bookingID, ex);
             }
 
-            // Xong xuôi thì tải lại trang Quản lý Hóa đơn
             response.sendRedirect(request.getContextPath() + "/invoice");
         } else {
             response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Invalid action.");
         }
     }
 
-    private Users requireStaff(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    private Users requireStaff(HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+
         HttpSession session = request.getSession(false);
         Object sessionUser = session == null ? null : session.getAttribute("user");
+
         if (!(sessionUser instanceof Users)) {
             response.sendRedirect(request.getContextPath() + "/login");
             return null;
         }
+
         Users user = (Users) sessionUser;
-        if (!"Staff".equalsIgnoreCase(user.getRole()) && !"Admin".equalsIgnoreCase(user.getRole())) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only staff or admin can access invoices.");
+        if (!"Staff".equalsIgnoreCase(user.getRole())
+                && !"Admin".equalsIgnoreCase(user.getRole())) {
+            response.sendError(
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Only staff or admin can access invoices."
+            );
             return null;
         }
+
         if (user.getUserID() == null || user.getUserID() <= 0) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Your login session is invalid. Please log in again.");
+            response.sendError(
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "Your login session is invalid. Please log in again."
+            );
             return null;
         }
+
         return user;
     }
 
