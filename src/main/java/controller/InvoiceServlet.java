@@ -76,6 +76,7 @@ public class InvoiceServlet extends HttpServlet {
                             request.setAttribute("remainingAmount", invoiceDTO.getRemainingAmount());
 
                             if (invoice != null && !invoice.isEmpty()) {
+                                request.setAttribute("accommodationLines", invoiceDAO.getAccommodationLinesByBooking(bookingID));
                                 request.setAttribute("invoiceID", invoice.get("invoiceID"));
                                 request.setAttribute("invoiceDate", invoice.get("invoiceDate"));
                                 request.setAttribute(

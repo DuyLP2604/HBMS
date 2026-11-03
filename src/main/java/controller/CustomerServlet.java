@@ -56,6 +56,23 @@ public class CustomerServlet extends HttpServlet {
         return value == null || value.trim().isEmpty() ? null : value.trim();
     }
 
+    private int positiveIntOrDefault(String value, int defaultValue) {
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            int number = Integer.parseInt(value.trim());
+            return number > 0 ? number : defaultValue;
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private int customerPageSize(String value) {
+        int size = positiveIntOrDefault(value, 10);
+        return size == 10 || size == 20 || size == 50 || size == 100 ? size : 10;
+    }
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!checkAccess(request, response)) {
@@ -77,8 +94,29 @@ public class CustomerServlet extends HttpServlet {
         NationalityDAO daoNat = new NationalityDAO();
         if ("list".equalsIgnoreCase(action)) {
             String keyword = trimToNull(request.getParameter("keyword"));
-            List<Customer> customerList = keyword == null ? daoCus.getAllCustomers() : daoCus.searchCustomerByKeyword(keyword);
+            int pageSize = customerPageSize(request.getParameter("pageSize"));
+            int requestedPage = positiveIntOrDefault(request.getParameter("page"), 1);
+
+            // Preserve the existing exact customer-ID search before name/phone matching.
+            Customer exactMatch = keyword == null ? null : daoCus.getCustomerById(keyword);
+            long totalCustomers = exactMatch == null ? daoCus.countCustomers(keyword) : 1;
+            int totalPages = (int) Math.max(1L, (totalCustomers + pageSize - 1L) / pageSize);
+            int currentPage = Math.min(requestedPage, totalPages);
+            int offset = (currentPage - 1) * pageSize;
+            List<Customer> customerList = exactMatch != null
+                    ? List.of(exactMatch)
+                    : totalCustomers == 0 ? List.of() : daoCus.getCustomersPage(keyword, offset, pageSize);
+
             request.setAttribute("customers", customerList);
+            request.setAttribute("keyword", keyword);
+            request.setAttribute("pageSize", pageSize);
+            request.setAttribute("currentPage", currentPage);
+            request.setAttribute("totalPages", totalPages);
+            request.setAttribute("totalCustomers", totalCustomers);
+            request.setAttribute("startIndex", customerList.isEmpty() ? 0 : offset + 1);
+            request.setAttribute("endIndex", customerList.isEmpty() ? 0 : offset + customerList.size());
+            request.setAttribute("pageStart", Math.max(1, currentPage - 2));
+            request.setAttribute("pageEnd", Math.min(totalPages, currentPage + 2));
             request.getRequestDispatcher("/WEB-INF/views/customers.jsp").forward(request, response);
         } else if ("add".equalsIgnoreCase(action)) {
             request.setAttribute("listNat", daoNat.getAll());

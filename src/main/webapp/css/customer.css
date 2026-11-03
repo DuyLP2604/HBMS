@@ -1,3 +1,21 @@
+@import url("shared-ui.css");
+
 .account-fields {
     display: none;
+}
+
+.hbms-ui .ui-customer-page-size { flex: 0 1 165px; }
+.hbms-ui .ui-customer-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.hbms-ui .ui-customer-count { margin: 0; color: var(--ui-muted); font-size: 13px; }
+.hbms-ui .ui-customer-count strong { color: var(--ui-ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.hbms-ui .ui-customer-pagination nav { min-width: 0; max-width: 100%; }
+.hbms-ui .ui-customer-pages { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.hbms-ui .ui-customer-pages .ui-button { min-width: 35px; }
+.hbms-ui .ui-page-current, .hbms-ui .ui-page-disabled { cursor: default; }
+.hbms-ui .ui-page-disabled { color: #718075; background: #f4f7f0; border-color: #e0e7db; }
+.hbms-ui .ui-page-gap { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; color: var(--ui-muted); }
+
+@media (max-width: 480px) {
+    .hbms-ui .ui-customer-page-size { flex: 1 1 145px; }
+    .hbms-ui .ui-customer-pagination { align-items: flex-start; }
 }

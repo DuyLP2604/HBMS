@@ -3,111 +3,128 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 <fmt:setLocale value="vi_VN" scope="page" />
-<jsp:useBean id="printedAt" class="java.util.Date" scope="request" />
-<layout:layout title="Booking Invoice" pageCss="invoice.css" pageJs="invoice.js" useBootstrap="true" showNavbar="false" bodyClass="invoice-page">
-    <div class="container">
+<layout:layout title="Hotel Invoice" pageCss="invoice.css" pageJs="invoice.js" useBootstrap="true" showNavbar="false" bodyClass="hbms-ui-page invoice-page">
+    <div class="hbms-ui ui-shell ui-invoice-workspace">
         <c:choose>
             <c:when test="${not empty invoiceDTO and not empty invoice}">
-                <div class="invoice-container shadow-sm p-4 p-md-5 border rounded bg-white my-4">
-                    <div class="print-controls d-flex flex-wrap justify-content-between gap-2 mb-4 d-print-none">
-                        <a href="${pageContext.request.contextPath}/invoice" class="btn btn-secondary">Back to Billing</a>
-                        <button type="button" id="printInvoiceButton" class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
-                    </div>
-                    <h1 class="text-center fs-4 mb-1 fw-bold"><c:out value="${hotelName}" /></h1>
-                    <h2 class="text-center text-uppercase fs-5 mb-4">Booking Invoice</h2>
-                    <div class="row border-bottom pb-3 mb-4 g-2">
-                        <div class="col-sm-6">Invoice ID: <strong><c:out value="${invoice.invoiceID}" /></strong></div>
-                        <div class="col-sm-6 text-sm-end">Booking ID: <strong><c:out value="${invoiceDTO.bookingID}" /></strong></div>
-                        <div class="col-sm-6">Invoice date: <strong><c:out value="${invoice.invoiceDate}" /></strong></div>
-                        <div class="col-sm-6 text-sm-end">Printed at: <strong><fmt:formatDate value="${printedAt}" pattern="dd/MM/yyyy HH:mm:ss" timeZone="Asia/Ho_Chi_Minh" /></strong></div>
-                    </div>
-                    <div class="row mb-4 g-3">
-                        <div class="col-md-6">
-                            <div class="mb-2"><span class="text-secondary">Customer:</span> <strong><c:out value="${invoiceDTO.customerName}" /></strong></div>
-                            <div class="mb-2"><span class="text-secondary">Check-in:</span> <strong><c:out value="${invoiceDTO.checkInDate}" /></strong></div>
-                            <div class="mb-2"><span class="text-secondary">Check-out:</span> <strong><c:out value="${invoiceDTO.checkOutDate}" /></strong></div>
+                <div class="print-controls">
+                    <a href="${pageContext.request.contextPath}/invoice" class="ui-button ui-button-secondary"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Billing</a>
+                    <button type="button" id="printInvoiceButton" class="ui-button ui-button-primary"><i class="fa-solid fa-print" aria-hidden="true"></i> Print / Save PDF</button>
+                </div>
+                <article class="invoice-container">
+                    <header class="invoice-heading">
+                        <img class="invoice-logo" src="${pageContext.request.contextPath}/assets/images/invoice/simple-bear-hotel-logo.png"
+                             width="812" height="812" alt="Simple Bear Hotel">
+                        <h1>Invoice</h1>
+                    </header>
+                    <div class="invoice-stay">
+                        <section>
+                            <h2>Customer Info</h2>
+                            <p class="invoice-guest-name"><c:out value="${invoiceDTO.customerName}" /></p>
+                            <dl class="invoice-facts">
+                                <div><dt>Booking</dt><dd><c:out value="${invoiceDTO.bookingID}" /></dd></div>
+                                <div><dt>Room(s)</dt><dd><c:out value="${invoiceDTO.roomNumber}" /></dd></div>
+                                <div><dt>Check-in</dt><dd><c:out value="${invoiceDTO.checkInDate}" /></dd></div>
+                                <div><dt>Check-out</dt><dd><c:out value="${invoiceDTO.checkOutDate}" /></dd></div>
+                                <div><dt>Nights</dt><dd><c:out value="${invoiceDTO.daysOfNight}" /></dd></div>
+                            </dl>
+                        </section>
+                        <div class="invoice-reference">
+                            <p>Invoice No. <strong><c:out value="${invoice.invoiceID}" /></strong></p>
+                            <p>Issued <c:out value="${invoice.invoiceDate}" /></p>
+                            <c:if test="${not empty invoice.employeeID}">
+                                <p>Issued by <c:out value="${invoice.employeeID}" /></p>
+                            </c:if>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-2"><span class="text-secondary">Room(s):</span> <strong><c:out value="${invoiceDTO.roomNumber}" /></strong></div>
-                            <div class="mb-2"><span class="text-secondary">Nights:</span> <strong><c:out value="${invoiceDTO.daysOfNight}" /></strong></div>
-                            <div class="mb-2"><span class="text-secondary">Issued by employee:</span> <strong><c:out value="${empty invoice.employeeID ? 'Not recorded' : invoice.employeeID}" /></strong></div>
-                        </div>
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle text-center mb-0">
-                            <thead class="table-light">
+                    <div class="invoice-table-scroll" role="region" aria-label="Invoice charges" tabindex="0">
+                        <table class="invoice-table">
+                            <colgroup>
+                                <col class="invoice-description">
+                                <col class="invoice-quantity">
+                                <col class="invoice-price">
+                                <col class="invoice-price">
+                            </colgroup>
+                            <thead>
                                 <tr>
-                                    <th scope="col">#</th>
-                                    <th scope="col" class="text-start">Description</th>
+                                    <th scope="col">Item</th>
                                     <th scope="col">Quantity</th>
-                                    <th scope="col">Unit price (VND)</th>
-                                    <th scope="col" class="text-end">Subtotal (VND)</th>
+                                    <th scope="col" class="invoice-amount">Unit price (VND)</th>
+                                    <th scope="col" class="invoice-amount">Total (VND)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>1</td>
-                                    <td class="text-start">Room charges for all booked rooms</td>
-                                    <td><c:out value="${invoiceDTO.daysOfNight}" /> night(s)</td>
-                                    <td>
-                                        <c:choose>
-                                            <c:when test="${invoiceDTO.daysOfNight > 0}">
-                                                <fmt:formatNumber value="${invoiceDTO.roomCharges / invoiceDTO.daysOfNight}" type="number" maxFractionDigits="2" />
-                                            </c:when>
-                                            <c:otherwise>
-                                                <fmt:formatNumber value="${invoiceDTO.roomCharges}" type="number" maxFractionDigits="2" />
-                                            </c:otherwise>
-                                        </c:choose>
-                                    </td>
-                                    <td class="text-end fw-bold"><fmt:formatNumber value="${invoiceDTO.roomCharges}" type="number" maxFractionDigits="2" /></td>
-                                </tr>
-                                <c:forEach var="srv" items="${services}" varStatus="row">
+                                <c:forEach var="roomLine" items="${accommodationLines}">
                                     <tr>
-                                        <td>${row.index + 2}</td>
-                                        <td class="text-start"><c:out value="${srv.serviceName}" /></td>
-                                        <td><c:out value="${srv.quantity}" /></td>
-                                        <td><fmt:formatNumber value="${srv.unitPrice}" type="number" maxFractionDigits="2" /></td>
-                                        <td class="text-end fw-bold"><fmt:formatNumber value="${srv.subtotal}" type="number" maxFractionDigits="2" /></td>
+                                        <td>Accommodation &ndash; <c:out value="${roomLine.roomType}" /></td>
+                                        <td>
+                                            <c:out value="${roomLine.roomNights}" />
+                                            <c:if test="${roomLine.roomCount gt 1}">
+                                                <div class="small"><c:out value="${roomLine.roomCount}" /> rooms &times; <c:out value="${invoiceDTO.daysOfNight}" /> nights</div>
+                                            </c:if>
+                                        </td>
+                                        <td class="invoice-amount"><fmt:formatNumber value="${roomLine.unitPrice}" type="number" maxFractionDigits="2" /></td>
+                                        <td class="invoice-amount"><fmt:formatNumber value="${roomLine.subtotal}" type="number" maxFractionDigits="2" /></td>
                                     </tr>
                                 </c:forEach>
-                                <tr>
-                                    <td colspan="4" class="text-end fw-bold">Invoice total</td>
-                                    <td class="text-end fw-bold fs-5"><fmt:formatNumber value="${invoiceDTO.grandTotal}" type="number" maxFractionDigits="2" /></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="4" class="text-end">Amount paid</td>
-                                    <td class="text-end"><fmt:formatNumber value="${invoiceDTO.paidAmount}" type="number" maxFractionDigits="2" /></td>
-                                </tr>
-                                <tr>
-                                    <td colspan="4" class="text-end fw-bold">Remaining balance</td>
-                                    <td class="text-end fw-bold"><fmt:formatNumber value="${invoiceDTO.remainingAmount}" type="number" maxFractionDigits="2" /></td>
-                                </tr>
+                                <c:forEach var="srv" items="${bookingServices}">
+                                    <tr>
+                                        <td><c:out value="${srv.serviceName}" /></td>
+                                        <td><c:out value="${srv.quantity}" /></td>
+                                        <td class="invoice-amount"><fmt:formatNumber value="${srv.unitPrice}" type="number" maxFractionDigits="2" /></td>
+                                        <td class="invoice-amount"><fmt:formatNumber value="${srv.subtotal}" type="number" maxFractionDigits="2" /></td>
+                                    </tr>
+                                </c:forEach>
                             </tbody>
                         </table>
                     </div>
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
-                        <div>
-                            Initial payment option: <strong><c:out value="${invoiceDTO.paymentStatus}" /></strong>
+                    <section class="invoice-payment-summary" aria-label="Payment summary">
+                        <c:set var="hasRemainingBalance" value="${invoiceDTO.remainingAmount gt 0 or invoiceDTO.remainingAmount lt 0}" />
+                        <c:set var="paidInFull" value="${not empty invoiceDTO.remainingAmount and not hasRemainingBalance and invoiceDTO.paidAmount ge invoiceDTO.grandTotal}" />
+                        <dl class="invoice-payment-amounts">
+                            <c:choose>
+                                <c:when test="${paidInFull and invoiceDTO.paidAmount le invoiceDTO.grandTotal}">
+                                    <div class="invoice-total">
+                                        <dt>Total paid (VND)</dt>
+                                        <dd><fmt:formatNumber value="${invoiceDTO.paidAmount}" type="number" maxFractionDigits="2" /></dd>
+                                    </div>
+                                </c:when>
+                                <c:otherwise>
+                                    <div class="invoice-total">
+                                        <dt>Invoice total (VND)</dt>
+                                        <dd><fmt:formatNumber value="${invoiceDTO.grandTotal}" type="number" maxFractionDigits="2" /></dd>
+                                    </div>
+                                    <div>
+                                        <dt>Amount paid (VND)</dt>
+                                        <dd><fmt:formatNumber value="${invoiceDTO.paidAmount}" type="number" maxFractionDigits="2" /></dd>
+                                    </div>
+                                </c:otherwise>
+                            </c:choose>
+                            <c:if test="${hasRemainingBalance}">
+                                <div>
+                                    <dt>Remaining balance (VND)</dt>
+                                    <dd><fmt:formatNumber value="${invoiceDTO.remainingAmount}" type="number" maxFractionDigits="2" /></dd>
+                                </div>
+                            </c:if>
+                        </dl>
+                        <c:if test="${paidInFull}">
+                            <p class="invoice-payment-status"><strong>Paid in full</strong></p>
+                        </c:if>
+                    </section>
+                    <footer class="invoice-footer">
+                        <p class="invoice-thanks">Thank you!</p>
+                        <div class="invoice-issuer">
+                            <p class="invoice-hotel"><c:out value="${empty hotelName ? selectedRoom.hotelName : hotelName}" /></p>
+                            <c:if test="${not empty invoice.hotelAddress}">
+                                <p><c:out value="${invoice.hotelAddress}" /></p>
+                            </c:if>
                         </div>
-                        <strong class="text-success">FULLY PAID</strong>
-                    </div>
-                    <div class="row text-center mt-5 invoice-signatures">
-                        <div class="col-6">
-                            <p class="fw-bold mb-0">Receptionist</p>
-                            <div class="signature-space" style="height: 100px;"></div>
-                            <p class="small text-secondary">Signature</p>
-                        </div>
-                        <div class="col-6">
-                            <p class="fw-bold mb-0">Customer</p>
-                            <div class="signature-space" style="height: 100px;"></div>
-                            <p class="fw-bold fst-italic"><c:out value="${invoiceDTO.customerName}" /></p>
-                        </div>
-                    </div>
-                </div>
+                    </footer>
+                </article>
             </c:when>
             <c:otherwise>
-                <div class="alert alert-warning mt-4">The invoice is unavailable. Open an issued invoice from Billing.</div>
-                <a href="${pageContext.request.contextPath}/invoice" class="btn btn-secondary">Back to Billing</a>
+                <div class="ui-notice ui-notice-warning">The invoice is unavailable. Open an issued invoice from Billing.</div>
+                <a href="${pageContext.request.contextPath}/invoice" class="ui-button ui-button-secondary">Back to Billing</a>
             </c:otherwise>
         </c:choose>
     </div>

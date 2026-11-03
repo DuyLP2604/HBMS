@@ -2,125 +2,75 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-<layout:layout title="Checkout Detail" pageCss="checkout.css" useBootstrap="true" bodyClass="bg-light">
-    <div class="container my-5">
-        <a href="${pageContext.request.contextPath}/CheckoutEmployee" class="btn btn-secondary mb-4"><i class="bi bi-arrow-left"></i> Back to Checkout Management</a>
-        <c:if test="${not empty successMessage}">
-            <div class="alert alert-success" role="alert"><c:out value="${successMessage}" /></div>
-        </c:if>
-        <c:if test="${not empty errorMessage}">
-            <div class="alert alert-danger" role="alert"><c:out value="${errorMessage}" /></div>
-        </c:if>
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white py-3">
-                <h3 class="h5 mb-0"><i class="bi bi-receipt me-2"></i> Payment &amp; Checkout Details</h3>
-            </div>
-            <div class="card-body p-4">
-                <div class="row mb-4 bg-light p-3 rounded border g-3">
-                    <div class="col-md-3">
-                        <p class="mb-1 text-muted">Customer name</p>
-                        <strong class="fs-5"><c:out value="${roomDetail.customerName}" /></strong>
-                    </div>
-                    <div class="col-md-3">
-                        <p class="mb-1 text-muted">Room(s)</p>
-                        <strong class="fs-5 text-info"><c:out value="${roomDetail.roomNumber}" /></strong>
-                    </div>
-                    <div class="col-md-3">
-                        <p class="mb-1 text-muted">Booking ID</p>
-                        <strong class="fs-5"><c:out value="${bookingID}" /></strong>
-                    </div>
-                    <div class="col-md-3">
-                        <p class="mb-1 text-muted">Length of stay</p>
-                        <strong><c:out value="${roomDetail.checkInDate}" /> <i class="bi bi-arrow-right mx-1"></i> <c:out value="${roomDetail.checkOutDate}" /></strong>
-                        <br><small>(<c:out value="${roomDetail.totalDays}" /> night(s))</small>
-                    </div>
-                </div>
-                <div class="mb-4">
-                    <strong>Initial payment option:</strong>
-                    <c:choose>
-                        <c:when test="${paymentOption eq 'DEPOSIT'}">30% deposit; room balance settled at check-in</c:when>
-                        <c:when test="${paymentOption eq 'FULL'}">Full payment</c:when>
-                        <c:otherwise><c:out value="${paymentOption}" /></c:otherwise>
-                    </c:choose>
-                    <span class="ms-3"><strong>Payment status:</strong> <c:out value="${bookingSummary.paymentStatus}" /></span>
-                </div>
-                <h5 class="fw-bold text-secondary mb-3">Booking charges</h5>
-                <div class="table-responsive mb-4">
-                    <table class="table table-bordered align-middle text-center">
-                        <thead class="table-secondary">
-                            <tr>
-                                <th>Number</th>
-                                <th class="text-start">Name</th>
-                                <th>Quantity</th>
-                                <th>Unit price</th>
-                                <th class="text-end">Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>1</td>
-                                <td class="text-start">Room charges for <c:out value="${roomDetail.totalDays}" /> night(s) (settled at check-in)</td>
-                                <td>—</td>
-                                <td>—</td>
-                                <td class="text-end fw-bold"><fmt:formatNumber value="${roomDetail.roomTotal}" type="number" maxFractionDigits="2" /> VND</td>
-                            </tr>
-                            <c:forEach var="svc" items="${services}" varStatus="row">
-                                <tr>
-                                    <td>${row.index + 2}</td>
-                                    <td class="text-start"><c:out value="${svc.serviceName}" /></td>
-                                    <td><c:out value="${svc.quantity}" /></td>
-                                    <td><fmt:formatNumber value="${svc.unitPrice}" type="number" maxFractionDigits="2" /> VND</td>
-                                    <td class="text-end fw-bold"><fmt:formatNumber value="${svc.subtotal}" type="number" maxFractionDigits="2" /> VND</td>
-                                </tr>
-                            </c:forEach>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="row justify-content-end mb-4">
-                    <div class="col-md-6 text-end border-start">
-                        <p class="mb-2 fs-5">Total: <strong><fmt:formatNumber value="${totalAmount}" type="number" maxFractionDigits="2" /> VND</strong></p>
-                        <p class="mb-2 text-muted">Amount paid: <strong><fmt:formatNumber value="${paidAmount}" type="number" maxFractionDigits="2" /> VND</strong></p>
-                        <hr>
-                        <h3 class="${bookingSummary.serviceRemainingAmount gt 0 ? 'text-danger' : 'text-success'} mb-0">Extra services due at checkout: <fmt:formatNumber value="${bookingSummary.serviceRemainingAmount}" type="number" maxFractionDigits="2" /> VND</h3>
-                        <c:if test="${bookingSummary.roomRemainingAmount gt 0}">
-                            <div class="alert alert-danger mt-3 text-start">This existing stay has unpaid room charges. Review and settle its payment history before checkout: <fmt:formatNumber value="${bookingSummary.roomRemainingAmount}" type="number" /> VND.</div>
-                        </c:if>
-                    </div>
-                </div>
-                <c:choose>
-                    <c:when test="${bookingSummary.bookingStatus eq 'CHECKED_OUT' and not empty issuedInvoice}">
-                        <c:url var="printInvoiceUrl" value="/invoice">
-                            <c:param name="action" value="print" />
-                            <c:param name="bookingId" value="${bookingID}" />
-                        </c:url>
-                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 bg-success-subtle p-3 rounded border border-success">
-                            <div>Checkout is complete. Invoice: <strong><c:out value="${issuedInvoice.invoiceID}" /></strong></div>
-                            <a href="<c:out value='${printInvoiceUrl}' />" class="btn btn-primary">View / Print Invoice</a>
+<fmt:setLocale value="vi_VN" scope="page" />
+<layout:layout title="Checkout Detail" pageCss="checkout.css" useBootstrap="true" bodyClass="hbms-ui-page">
+    <div class="hbms-ui ui-shell ui-checkout-workspace">
+        <header class="ui-page-heading">
+            <div><p class="ui-eyebrow">FRONT DESK / CHECKOUT</p><h1>Payment &amp; Checkout Details</h1><p class="ui-description">Review booking charges before completing checkout.</p></div>
+            <a href="${pageContext.request.contextPath}/CheckoutEmployee" class="ui-button ui-button-secondary"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to Checkout Management</a>
+        </header>
+        <c:if test="${not empty successMessage}"><div class="ui-notice ui-notice-success" role="alert"><c:out value="${successMessage}" /></div></c:if>
+        <c:if test="${not empty errorMessage}"><div class="ui-notice ui-notice-danger" role="alert"><c:out value="${errorMessage}" /></div></c:if>
+        <div class="checkout-detail-layout">
+            <div class="checkout-detail-main">
+                <section class="ui-panel" aria-label="Guest stay information">
+                    <div class="ui-panel-body">
+                        <div class="checkout-guest"><span class="ui-avatar" aria-hidden="true"><i class="fa-regular fa-user"></i></span><div><p class="checkout-label">Customer name</p><h2><c:out value="${roomDetail.customerName}" /></h2></div></div>
+                        <dl class="ui-facts">
+                            <div><dt>Room(s)</dt><dd><span class="checkout-room-chip"><c:out value="${roomDetail.roomNumber}" /></span></dd></div>
+                            <div><dt>Booking ID</dt><dd class="ui-id"><c:out value="${bookingID}" /></dd></div>
+                            <div><dt>Length of stay</dt><dd><c:out value="${roomDetail.checkInDate}" /> <span class="checkout-date-separator" aria-hidden="true">→</span> <c:out value="${roomDetail.checkOutDate}" /><span class="checkout-night-count">(<c:out value="${roomDetail.totalDays}" /> night(s))</span></dd></div>
+                        </dl>
+                        <div class="checkout-payment-option"><span class="checkout-label">Initial payment option</span>
+                            <c:choose><c:when test="${paymentOption eq 'DEPOSIT'}">30% deposit; room balance settled at check-in</c:when><c:when test="${paymentOption eq 'FULL'}">Full payment</c:when><c:otherwise><c:out value="${paymentOption}" /></c:otherwise></c:choose>
                         </div>
-                    </c:when>
-                    <c:when test="${canCheckout and (bookingSummary.bookingStatus eq 'CHECKED_IN' or bookingSummary.bookingStatus eq 'CHECKED_OUT')}">
-                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 bg-success-subtle p-3 rounded border border-success">
-                            <div><strong>Payment complete.</strong> You can confirm checkout and issue the invoice.</div>
-                            <form action="${pageContext.request.contextPath}/CheckoutEmployee" method="post" id="invoiceForm" class="m-0 d-flex align-items-center gap-3">
+                    </div>
+                </section>
+                <section class="ui-panel" aria-labelledby="bookingChargesTitle">
+                    <div class="ui-panel-body"><div class="ui-section-heading checkout-list-heading"><h2 id="bookingChargesTitle">Booking charges</h2></div></div>
+                    <div class="ui-table-scroll" role="region" aria-label="Booking charges">
+                        <table class="ui-table checkout-charges-table">
+                            <thead><tr><th scope="col">Number</th><th scope="col">Name</th><th scope="col">Quantity</th><th scope="col" class="checkout-amount">Unit price</th><th scope="col" class="checkout-amount">Subtotal</th></tr></thead>
+                            <tbody>
+                                <tr><td>1</td><td>Room charges for <c:out value="${roomDetail.totalDays}" /> night(s)<span class="checkout-charge-note">(settled at check-in)</span></td><td>—</td><td class="checkout-amount">—</td><td class="checkout-amount"><fmt:formatNumber value="${roomDetail.roomTotal}" type="number" maxFractionDigits="2" /> VND</td></tr>
+                                <c:forEach var="svc" items="${services}" varStatus="row">
+                                    <tr><td>${row.index + 2}</td><td><c:out value="${svc.serviceName}" /></td><td><c:out value="${svc.quantity}" /></td><td class="checkout-amount"><fmt:formatNumber value="${svc.unitPrice}" type="number" maxFractionDigits="2" /> VND</td><td class="checkout-amount"><fmt:formatNumber value="${svc.subtotal}" type="number" maxFractionDigits="2" /> VND</td></tr>
+                                </c:forEach>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+            <aside class="ui-panel checkout-summary" data-outstanding="${bookingSummary.serviceRemainingAmount gt 0 or bookingSummary.roomRemainingAmount gt 0}" aria-labelledby="checkoutSummaryTitle">
+                <div class="ui-panel-body">
+                    <div class="ui-section-heading"><h2 id="checkoutSummaryTitle">Payment summary</h2></div>
+                    <dl class="ui-money-lines checkout-money-lines">
+                        <div><dt>Total</dt><dd><fmt:formatNumber value="${totalAmount}" type="number" maxFractionDigits="2" /> VND</dd></div>
+                        <div><dt>Amount paid</dt><dd><fmt:formatNumber value="${paidAmount}" type="number" maxFractionDigits="2" /> VND</dd></div>
+                    </dl>
+                    <div class="checkout-due"><span class="checkout-label">Extra services due at checkout</span><strong class="checkout-due-value"><fmt:formatNumber value="${bookingSummary.serviceRemainingAmount}" type="number" maxFractionDigits="2" /> <small>VND</small></strong></div>
+                    <div class="checkout-payment-status"><span class="checkout-label">Payment status</span><span class="ui-status"><c:out value="${bookingSummary.paymentStatus}" /></span></div>
+                    <c:if test="${bookingSummary.roomRemainingAmount gt 0}"><div class="ui-notice ui-notice-danger">This existing stay has unpaid room charges. Review and settle its payment history before checkout: <fmt:formatNumber value="${bookingSummary.roomRemainingAmount}" type="number" /> VND.</div></c:if>
+                    <c:choose>
+                        <c:when test="${bookingSummary.bookingStatus eq 'CHECKED_OUT' and not empty issuedInvoice}">
+                            <c:url var="printInvoiceUrl" value="/invoice"><c:param name="action" value="print" /><c:param name="bookingId" value="${bookingID}" /></c:url>
+                            <div class="ui-notice ui-notice-success">Checkout is complete. Invoice: <strong><c:out value="${issuedInvoice.invoiceID}" /></strong></div>
+                            <a href="<c:out value='${printInvoiceUrl}' />" class="ui-button ui-button-primary ui-button-wide"><i class="fa-solid fa-print" aria-hidden="true"></i> View / Print Invoice</a>
+                        </c:when>
+                        <c:when test="${canCheckout and (bookingSummary.bookingStatus eq 'CHECKED_IN' or bookingSummary.bookingStatus eq 'CHECKED_OUT')}">
+                            <div class="ui-notice ui-notice-success"><span><strong>Payment complete.</strong> You can confirm checkout and issue the invoice.</span></div>
+                            <form action="${pageContext.request.contextPath}/CheckoutEmployee" method="post" id="invoiceForm">
                                 <input type="hidden" name="action" value="exportInvoice">
                                 <input type="hidden" name="bookingID" value="<c:out value='${bookingID}' />">
-
-                                <button type="submit" class="btn btn-success btn-lg fw-bold px-4 text-nowrap" id="btnInvoice">
-                                    <i class="bi bi-printer me-2"></i> <c:out value="${bookingSummary.bookingStatus eq 'CHECKED_OUT' ? 'Issue Invoice' : 'Checkout & Issue Invoice'}" />
-                                </button>
+                                <button type="submit" class="ui-button ui-button-primary ui-button-wide" id="btnInvoice"><i class="fa-solid fa-file-invoice" aria-hidden="true"></i> <c:out value="${bookingSummary.bookingStatus eq 'CHECKED_OUT' ? 'Issue Invoice' : 'Checkout & Issue Invoice'}" /></button>
                             </form>
-                        </div>
-                    </c:when>
-                    <c:otherwise>
-                        <div class="alert alert-warning mb-0" role="alert">
-                            <c:choose>
-                                <c:when test="${remainingAmount gt 0}">Extra services must be paid before checkout. The customer can complete this payment from My Bookings.</c:when>
-                                <c:otherwise>Checkout is unavailable. Reload this page and verify the booking payment status.</c:otherwise>
-                            </c:choose>
-                        </div>
-                    </c:otherwise>
-                </c:choose>
-            </div>
+                        </c:when>
+                        <c:otherwise>
+                            <div class="ui-notice ui-notice-warning checkout-unavailable" role="alert"><c:choose><c:when test="${remainingAmount gt 0}">Extra services must be paid before checkout. The customer can complete this payment from My Bookings.</c:when><c:otherwise>Checkout is unavailable. Reload this page and verify the booking payment status.</c:otherwise></c:choose></div>
+                        </c:otherwise>
+                    </c:choose>
+                </div>
+            </aside>
         </div>
     </div>
     <script>
