@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -59,6 +60,9 @@ public class Transaction implements Serializable {
     @NotNull
     @Column(name = "TransactionValue")
     private BigDecimal transactionValue;
+    @OneToOne(mappedBy = "transactionID")
+    private Payment payment;
+
     public Transaction() {
     }
 
@@ -111,6 +115,14 @@ public class Transaction implements Serializable {
 
     public void setTransactionValue(BigDecimal transactionValue) {
         this.transactionValue = transactionValue;
+    }
+
+    public Payment getPayment() {
+        return payment;
+    }
+
+    public void setPayment(Payment payment) {
+        this.payment = payment;
     }
 
     @Override
