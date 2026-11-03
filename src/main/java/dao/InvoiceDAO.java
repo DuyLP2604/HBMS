@@ -63,8 +63,7 @@ public class InvoiceDAO
 
     public Map<String, String> getRoomDetailByBooking(String bookingID)
     {
-        String sql = "SELECT b.BookingID AS bookingID, c.FullName AS customerName, " + HOTEL_NAME + " AS hotelName, CONVERT(VARCHAR(10), b.CheckInDate, 23) AS checkInDate, CONVERT(VARCHAR(10), b.CheckOutDate, 23) AS checkOutDate, DATEDIFF(DAY, b.CheckInDate, b.CheckOutDate) AS totalDays, COALESCE((SELECT SUM(d.Subtotal) FROM dbo.BOOKING_DETAIL d WHERE d.BookingID = b.BookingID), 0) AS roomTotal, COALESCE((SELECT SUM(s.Subtotal) FROM dbo.BOOKING_SERVICE s WHERE s.BookingID = b.BookingID), 0) AS serviceTotal, b.TotalAmount AS baseTotal FROM dbo.BOOKING b JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID WHERE b.BookingID = ?";
-        List<Map<String, String>> rooms = query(sql, requireBookingID(bookingID));
+        String sql = "SELECT b.BookingID AS bookingID, c.FullName AS customerName, c.Phone AS phone, c.Email AS email, " + HOTEL_NAME + " AS hotelName, CONVERT(VARCHAR(10), b.CheckInDate, 23) AS checkInDate, CONVERT(VARCHAR(10), b.CheckOutDate, 23) AS checkOutDate, DATEDIFF(DAY, b.CheckInDate, b.CheckOutDate) AS totalDays, COALESCE((SELECT SUM(d.Subtotal) FROM dbo.BOOKING_DETAIL d WHERE d.BookingID = b.BookingID), 0) AS roomTotal, COALESCE((SELECT SUM(s.Subtotal) FROM dbo.BOOKING_SERVICE s WHERE s.BookingID = b.BookingID), 0) AS serviceTotal, b.TotalAmount AS baseTotal FROM dbo.BOOKING b JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID WHERE b.BookingID = ?";List<Map<String, String>> rooms = query(sql, requireBookingID(bookingID));
         if (rooms.isEmpty())
         {
             return null;
