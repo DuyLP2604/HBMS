@@ -2,6 +2,7 @@
     'use strict';
     const form = document.getElementById('checkInForm');
     if (!form) return;
+    const checkInUrl = new URL(form.getAttribute('action'), document.baseURI).href;
     const method = document.getElementById('checkInMethod');
     const bankGroup = document.getElementById('checkInBankReferenceGroup');
     const bankReference = document.getElementById('checkInBankReference');
@@ -65,7 +66,7 @@
     }
 
     async function pollPayOs() {
-        const url = new URL(form.action);
+        const url = new URL(checkInUrl);
         url.searchParams.set('bookingID', form.elements.bookingID.value);
         url.searchParams.set('action', 'payOsStatus');
         if (payOsCode.value) url.searchParams.set('orderCode', payOsCode.value);
@@ -89,7 +90,7 @@
             csrfToken: form.elements.csrfToken.value
         });
         try {
-            const response = await fetch(form.action, {method: 'POST', body});
+            const response = await fetch(checkInUrl, {method: 'POST', body});
             if (response.status === 409) {
                 const result = await response.json();
                 throw new Error(result.message);
