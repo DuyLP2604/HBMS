@@ -16,12 +16,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import service.PayOsService;
 import service.PaymentService;
 import service.PaymentService.PaymentRequest;
@@ -52,29 +54,23 @@ public class PaymentServlet extends HttpServlet {
             return;
         }
         HttpSession session = request.getSession(false);
-        // 1. Kiểm tra nếu khách thanh toán PayOS xong và được Redirect về
         if (handlePayOsReturn(request, response, session, user)) {
             return;
         }
-        // 2. Kiểm tra nếu có cờ thông báo thành công
         if ("true".equals(request.getParameter("success"))) {
             showSuccess(request, response, session, user);
             return;
         }
-        // 3. Kiểm tra tham số bookingID
         String bookingID = trim(request.getParameter("bookingID"));
         if (bookingID.isEmpty()) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Booking ID is required.");
             return;
         }
-        // 4. Nạp toàn bộ dữ liệu đơn đặt phòng & phương thức thanh toán
         PaymentPageData data = loadPaymentPageData(bookingID, user.getUserID(), response);
         if (data == null) {
-            return; // Đã xử lý sendError trong hàm load nếu có lỗi
+            return;
         }
-        // 5. Lưu PaymentRequest vào Session và lấy Flash Error (nếu có)
         String token = setupPaymentSession(session, request, data.paymentRequest);
-        // 6. Đưa dữ liệu vào Request attributes và forward sang payment.jsp
         setupPaymentAttributes(request, data, token);
         request.getRequestDispatcher("/WEB-INF/views/payment.jsp").forward(request, response);
     }
@@ -159,25 +155,21 @@ public class PaymentServlet extends HttpServlet {
         boolean useWallet = "true".equals(request.getParameter("useWallet"));
         String token = trim(request.getParameter("paymentRequestToken"));
 
-        // 1. Kiểm tra tính hợp lệ của Form và Token thanh toán trong Session
         PaymentRequest paymentRequest = getValidPaymentRequest(session, token, user.getUserID(), bookingID);
         if (paymentRequest == null) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "The payment form is invalid or expired. Reload the payment page.");
             return;
         }
 
-        // 2. Xử lý cổng PayOS nếu khách chọn VietQR (PT01)
         if ("PT01".equals(methodID)) {
             if (handlePayOsCheckout(request, response, session, user, bookingID, paymentRequest, useWallet)) {
-                return; // Đã Redirect sang PayOS hoặc trang lỗi
+                return;
             }
-            methodID = "PT02"; // Ví đủ trả 100%, tự chuyển phương thức thành Ví nội bộ
+            methodID = "PT02";
         }
 
-        // 3. Thực hiện thanh toán trực tiếp (Ví nội bộ) và lấy đường dẫn Redirect
         String redirectPath = processDirectPayment(session, paymentRequest, methodID, user.getUserID(), useWallet, bookingID);
 
-        // 4. Chuyển hướng người dùng sang trang kết quả hoặc trang danh sách đơn
         response.sendRedirect(request.getContextPath() + redirectPath);
     }
 
@@ -267,19 +259,15 @@ public class PaymentServlet extends HttpServlet {
     }
 
     private void showSuccess(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user) throws ServletException, IOException {
-        // 1. Trích xuất thông tin thanh toán từ Session sang Request (Nếu không có -> Về trang danh sách đơn)
         if (!extractSessionPaymentData(session, request, user)) {
             response.sendRedirect(request.getContextPath() + "/my-bookings");
             return;
         }
 
-        // 2. Nạp số dư ví mới nhất (Nếu giao dịch có dùng ví)
         populateWalletSummaryIfUsed(request, user.getUserID());
 
-        // 3. Truy vấn thông tin và tóm tắt Booking vừa thanh toán thành công
         populateSuccessBookingSummary(request, user.getUserID());
 
-        // 4. Chuyển hướng sang trang giao diện thông báo thành công
         request.getRequestDispatcher("/WEB-INF/views/payment-success.jsp").forward(request, response);
     }
 
@@ -300,52 +288,82 @@ public class PaymentServlet extends HttpServlet {
         return "Customer deposit, full payment and balance payment servlet";
     }
 
-    private boolean handlePayOsReturn(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user) {
+    private boolean handlePayOsReturn(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user)
+            throws ServletException, IOException {
         String orderCodeParam = request.getParameter("orderCode");
         if (orderCodeParam == null || orderCodeParam.isBlank()) {
             return false;
         }
 
+        PayOsOrderDAO.Order order;
         try {
-            long orderCode = Long.parseLong(orderCodeParam);
-            PayOsOrderDAO orderDao = new PayOsOrderDAO();
-            PayOsOrderDAO.Order order = orderDao.find(orderCode);
-
-            if (order != null && "PAID".equals(order.status)) {
-                // Đã được Webhook xử lý thành công -> Giả lập dữ liệu thành công cho Session
-                synchronized (session) {
-                    session.setAttribute("successfulPaymentID", "PM-PAYOS");
-                    session.setAttribute("successfulBookingID", order.bookingID);
-                    session.setAttribute("successfulTransactionCode", order.reference);
-                    session.setAttribute("successfulPaymentType", order.paymentType);
-                    session.setAttribute("successfulPaymentAmount", order.amount);
-                    session.setAttribute("successfulWalletAmount", order.walletAmount);
-                    session.setAttribute("successfulExternalAmount", order.externalAmount);
-                    session.setAttribute("successfulExternalMethodName", "VietQR (PayOS)");
-                    session.setAttribute("successfulPaymentMethodID", "PT01");
-                    session.setAttribute("successfulPaymentUserID", user.getUserID());
-                }
-                showSuccess(request, response, session, user);
-                return true;
-            }
-        } catch (Exception e) {
-            getServletContext().log("Unable to check PayOS return status", e);
+            order = new PayOsOrderDAO().find(Long.parseLong(orderCodeParam));
+        } catch (NumberFormatException exception) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+            return true;
+        } catch (java.sql.SQLException exception) {
+            log("Unable to load the PayOS return order.", exception);
+            response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            return true;
         }
 
-        return false;
+        if (order == null || !Integer.valueOf(order.userID).equals(user.getUserID())) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return true;
+        }
+        String bookingQuery = "bookingID=" + URLEncoder.encode(order.bookingID, StandardCharsets.UTF_8);
+        if ("PAID".equals(order.status)) {
+            if (order.paymentID == null) {
+                response.sendRedirect(request.getContextPath() + "/my-bookings?" + bookingQuery);
+                return true;
+            }
+            synchronized (session) {
+                session.setAttribute("successfulPaymentID", order.paymentID.trim());
+                session.setAttribute("successfulBookingID", order.bookingID);
+                session.setAttribute("successfulTransactionCode", order.reference);
+                session.setAttribute("successfulPaymentType", order.paymentType);
+                session.setAttribute("successfulPaymentAmount", order.amount);
+                session.setAttribute("successfulWalletAmount", order.walletAmount);
+                session.setAttribute("successfulExternalAmount", order.externalAmount);
+                session.setAttribute("successfulExternalMethodName", "VietQR (PayOS)");
+                session.setAttribute("successfulPaymentMethodID", "PT01");
+                session.setAttribute("successfulPaymentUserID", user.getUserID());
+                if (order.bookingID.equals(session.getAttribute("pendingBookingID"))) {
+                    session.removeAttribute("pendingBookingID");
+                }
+            }
+            showSuccess(request, response, session, user);
+            return true;
+        }
+        if ("true".equals(request.getParameter("payosCancelled")) && !"FAILED".equals(order.status)) {
+            response.sendRedirect(request.getContextPath() + "/payment?" + bookingQuery);
+            return true;
+        }
+
+        request.setAttribute("payOsBookingID", order.bookingID);
+        request.setAttribute("payOsOrderCode", order.orderCode);
+        request.setAttribute("payOsReview", "FAILED".equals(order.status));
+        request.getRequestDispatcher("/WEB-INF/views/payos-pending.jsp").forward(request, response);
+        return true;
     }
 
     private boolean handlePayOsCheckout(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user, String bookingID, PaymentRequest paymentRequest, boolean useWallet) throws IOException {
         BigDecimal walletAmount = useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
         BigDecimal shortfall = paymentRequest.getAmount().subtract(walletAmount);
 
-        // Nếu ví đủ thanh toán 100%, trả về false để doPost chuyển phương thức sang PT02
+        // Use the wallet flow if it covers the full amount.
         if (shortfall.signum() <= 0) {
             return false;
         }
 
         try {
-            long orderCode = Long.parseLong(String.valueOf(System.currentTimeMillis()).substring(5) + user.getUserID());
+            PaymentRequest current = createPaymentService().createPaymentRequest(bookingID, user.getUserID());
+            if (!current.getPaymentType().equals(paymentRequest.getPaymentType())
+                    || current.getAmount().compareTo(paymentRequest.getAmount()) != 0
+                    || (useWallet && current.getOfferedWalletAmount().compareTo(walletAmount) != 0)) {
+                throw new IllegalStateException("The payment amount or wallet balance has changed. Reload and try again.");
+            }
+            long orderCode = ThreadLocalRandom.current().nextLong(1_000_000_000_000L, 10_000_000_000_000L);
 
             PayOsOrderDAO orderDao = new PayOsOrderDAO();
             PayOsOrderDAO.Order order = new PayOsOrderDAO.Order();
@@ -357,11 +375,11 @@ public class PaymentServlet extends HttpServlet {
             order.walletAmount = walletAmount;
             order.externalAmount = shortfall;
 
-            String baseUrl = request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+            String baseUrl = payOsBaseUrl(request);
             String returnUrl = baseUrl + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8) + "&orderCode=" + orderCode;
-            String cancelUrl = baseUrl + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8);
+            String cancelUrl = returnUrl + "&payosCancelled=true";
 
-            // Tính toán đồng bộ thời gian hết hạn với Booking Deadline
+            // Use the booking deadline for the PayOS link.
             Booking booking = createPaymentService().getBookingForPayment(bookingID, user.getUserID());
             long expiredAtEpochSeconds = 0;
             if (booking != null && booking.getPaymentDeadline() != null) {
@@ -371,18 +389,34 @@ public class PaymentServlet extends HttpServlet {
             }
 
             PayOsService.Link link = new PayOsService().createPaymentLink(
-                    orderCode, shortfall, "Thanh toan " + bookingID, returnUrl, cancelUrl, expiredAtEpochSeconds);
+                    orderCode, shortfall, bookingID, returnUrl, cancelUrl, expiredAtEpochSeconds);
 
             orderDao.insert(order, link.paymentLinkId);
 
             response.sendRedirect(link.checkoutUrl);
         } catch (Exception e) {
             getServletContext().log("PayOS Gateway Init Error", e);
-            session.setAttribute("paymentError", "Không thể khởi tạo cổng thanh toán PayOS: " + e.getMessage());
+            session.setAttribute("paymentError", "Unable to start PayOS checkout. Check your booking before trying again.");
             response.sendRedirect(request.getContextPath() + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8));
         }
 
-        return true; // Đã thực hiện sendRedirect
+        return true;
+    }
+
+    private String payOsBaseUrl(HttpServletRequest request) {
+        String configured = System.getProperty("PAYOS_PUBLIC_BASE_URL");
+        if (configured == null || configured.isBlank()) {
+            configured = System.getenv("PAYOS_PUBLIC_BASE_URL");
+        }
+        if (configured == null || configured.isBlank()) {
+            return request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
+        }
+        URI base = URI.create(configured.trim());
+        if (!"https".equalsIgnoreCase(base.getScheme()) || base.getHost() == null
+                || base.getRawUserInfo() != null || base.getRawQuery() != null || base.getRawFragment() != null) {
+            throw new IllegalStateException("PAYOS_PUBLIC_BASE_URL must be an HTTPS application URL.");
+        }
+        return base.toString().replaceFirst("/+$", "");
     }
 
     private boolean extractSessionPaymentData(HttpSession session, HttpServletRequest request, Users user) {
@@ -447,7 +481,7 @@ public class PaymentServlet extends HttpServlet {
                 }
             }
         } catch (RuntimeException exception) {
-            // Lỗi đọc dữ liệu hiển thị không được làm gián đoạn việc ghi nhận thanh toán thành công
+            // The payment is saved even if its summary cannot load.
             getServletContext().log("Payment succeeded, but the latest booking summary is unavailable.", exception);
         }
     }

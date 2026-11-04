@@ -1,4 +1,42 @@
 document.addEventListener("DOMContentLoaded", function () {
+    const pending = document.getElementById("payos-pending");
+    if (pending) {
+        const stopAt = Date.now() + 120000;
+        let timer;
+        let stopped = false;
+        async function checkPayment() {
+            try {
+                const response = await fetch(pending.dataset.statusUrl, { cache: "no-store", credentials: "same-origin" });
+                if (stopped) return;
+                if ([401, 404].includes(response.status)) {
+                    pending.textContent = "This payment status is unavailable. Sign in and check your booking.";
+                    return;
+                }
+                if (!response.ok) throw new Error("Payment status unavailable");
+                const result = await response.json();
+                if (stopped) return;
+                if (result.status === "PAID" || result.status === "FAILED") {
+                    window.location.replace(pending.dataset.returnUrl);
+                    return;
+                }
+            } catch {
+                if (!stopped) pending.textContent = "Unable to check payment status right now. Trying again...";
+            }
+            if (stopped) return;
+            if (Date.now() < stopAt) {
+                timer = setTimeout(checkPayment, 4000);
+            } else {
+                pending.textContent = "Confirmation is taking longer than usual. Use Check again or view your booking.";
+            }
+        }
+        window.addEventListener("pagehide", () => {
+            stopped = true;
+            clearTimeout(timer);
+        });
+        checkPayment();
+        return;
+    }
+
     const form = document.getElementById("paymentForm");
     const paymentButton = document.getElementById("paymentButton");
     const paymentMethod = document.getElementById("methodID");
@@ -54,7 +92,6 @@ document.addEventListener("DOMContentLoaded", function () {
             walletNotice.classList.toggle("d-none", walletAmount <= 0);
         }
 
-        // Cập nhật nút bấm khi chọn PayOS (PT01)
         const isPayOs = paymentMethod && paymentMethod.value === "PT01" && !expired;
         if (paymentButton) {
             paymentButton.disabled = expired || submitted;
@@ -153,7 +190,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            // Đã bỏ đoạn event.preventDefault() ở PT01 để cho phép form submit sang Servlet
             submitted = true;
             if (paymentButton) {
                 paymentButton.disabled = true;

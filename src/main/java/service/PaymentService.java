@@ -29,30 +29,7 @@ import util.PersistenceManager;
 public class PaymentService {
 
     private static final Logger LOGGER = Logger.getLogger(PaymentService.class.getName());
-    private static final int SYSTEM_ACTOR_ID = Integer.getInteger("HBMS_SYSTEM_USER_ID",
-            Integer.parseInt(System.getenv().getOrDefault("HBMS_SYSTEM_USER_ID", "0")));
     private final PayOsService payOsService = new PayOsService();
-
-    /**
-     * Called by the PayOS webhook after the signature and amount were verified.
-     *
-     * @param bookingID
-     * @param userID
-     * @param paymentType
-     * @param walletAmount
-     * @param amount
-     * @param bankReference
-     * @return
-     */
-    public Payment confirmGatewayPayment(String bookingID, int userID, String paymentType,
-            BigDecimal amount, BigDecimal walletAmount, String bankReference) {
-        // Rebuild the request because the webhook has no HTTP session.
-        PaymentRequest request = new PaymentRequest(bookingID, userID, paymentType, amount, walletAmount);
-        request.transactionCode = bankReference;
-        request.transactionID = bankReference;
-        boolean useWallet = walletAmount != null && walletAmount.signum() > 0;
-        return processPayment(request, "PT01", userID, useWallet, SYSTEM_ACTOR_ID, useWallet);
-    }
 
     public Booking getBookingForPayment(String bookingID, int userID) {
         if (bookingID == null || bookingID.isBlank() || userID <= 0) {
@@ -121,7 +98,7 @@ public class PaymentService {
         return processPayment(paymentRequest, methodID, userID);
     }
 
-    // Customer VietQR only displays a QR. Recording a transfer requires staff verification.
+    // The PayOS webhook confirms online QR payments.
     public Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID) {
         return processPayment(paymentRequest, methodID, userID, false);
     }

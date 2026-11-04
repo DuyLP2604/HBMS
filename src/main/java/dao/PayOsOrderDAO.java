@@ -9,7 +9,7 @@ public class PayOsOrderDAO {
     public static final class Order {
 
         public long orderCode;
-        public String bookingID, paymentType, status, reference;
+        public String bookingID, paymentType, status, reference, paymentID;
         public int userID;
         public BigDecimal amount, walletAmount, externalAmount;
     }
@@ -29,7 +29,7 @@ public class PayOsOrderDAO {
     }
 
     public Order find(long orderCode) throws SQLException {
-        try (Connection c = PersistenceManager.openConnection(); PreparedStatement ps = c.prepareStatement("SELECT * FROM dbo.PAYOS_ORDER WHERE OrderCode = ?")) {
+        try (Connection c = PersistenceManager.openConnection(); PreparedStatement ps = c.prepareStatement("SELECT BookingID, UserID, PaymentType, Amount, WalletAmount, ExternalAmount, Status, Reference, PaymentID FROM dbo.PAYOS_ORDER WHERE OrderCode = ?")) {
             ps.setLong(1, orderCode);
             try (ResultSet r = ps.executeQuery()) {
                 if (!r.next()) {
@@ -44,52 +44,24 @@ public class PayOsOrderDAO {
                 o.walletAmount = r.getBigDecimal("WalletAmount");
                 o.externalAmount = r.getBigDecimal("ExternalAmount");
                 o.status = r.getString("Status");
+                o.reference = r.getString("Reference");
+                o.paymentID = r.getString("PaymentID");
                 return o;
             }
         }
     }
 
-    /**
-     * Atomic claim -> guarantees a retried webhook is processed only once.
-     *
-     * @param orderCode
-     * @return
-     * @throws java.sql.SQLException
-     */
-    public boolean claim(long orderCode) throws SQLException {
-        return update("UPDATE dbo.PAYOS_ORDER SET Status='PROCESSING' WHERE OrderCode=? AND Status='PENDING'", orderCode, null) == 1;
-    }
-
-    public void markPaid(long orderCode, String reference) throws SQLException {
-        update("UPDATE dbo.PAYOS_ORDER SET Status='PAID', PaidAt=SYSDATETIME(), Reference=? WHERE OrderCode=?", orderCode, reference);
-    }
-
-    public void markFailed(long orderCode, String message) throws SQLException {
-        update("UPDATE dbo.PAYOS_ORDER SET Status='FAILED', ErrorMessage=? WHERE OrderCode=?", orderCode,
-                message == null ? null : message.substring(0, Math.min(300, message.length())));
-    }
-
-    /**
-     * Latest order status of a booking for this user (used by polling).
-     */
-    public String latestStatus(String bookingID, int userID) throws SQLException {
-        try (Connection c = PersistenceManager.openConnection(); PreparedStatement ps = c.prepareStatement("SELECT TOP 1 Status FROM dbo.PAYOS_ORDER WHERE BookingID=? AND UserID=? ORDER BY CreatedAt DESC")) {
-            ps.setString(1, bookingID);
-            ps.setInt(2, userID);
-            try (ResultSet r = ps.executeQuery()) {
-                return r.next() ? r.getString(1) : "NONE";
+    public void confirm(long orderCode, String paymentLinkId, BigDecimal externalAmount, String reference) throws SQLException {
+        try (Connection c = PersistenceManager.openConnection();
+                PreparedStatement ps = c.prepareStatement("EXEC dbo.SP_CONFIRM_PAYOS_ORDER ?, ?, ?, ?;")) {
+            ps.setLong(1, orderCode);
+            ps.setString(2, paymentLinkId);
+            ps.setBigDecimal(3, externalAmount);
+            ps.setString(4, reference);
+            boolean rows = ps.execute();
+            while (rows || ps.getUpdateCount() != -1) {
+                rows = ps.getMoreResults(Statement.CLOSE_CURRENT_RESULT);
             }
-        }
-    }
-
-    private int update(String sql, long orderCode, String param) throws SQLException {
-        try (Connection c = PersistenceManager.openConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
-            int i = 1;
-            if (sql.contains("Reference=?") || sql.contains("ErrorMessage=?")) {
-                ps.setString(i++, param);
-            }
-            ps.setLong(i, orderCode);
-            return ps.executeUpdate();
         }
     }
 }

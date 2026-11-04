@@ -12,7 +12,7 @@
             </goals>
             <properties>
                 <netbeans.deploy>true</netbeans.deploy>
-                <exec.args>-DPAYOS_CLIENT_ID=b151740f-b377-4825-a160-c69113f13848 -DPAYOS_API_KEY=9fde2996-20cd-4a3f-b32c-487a6b60bdbf -DPAYOS_CHECKSUM_KEY=549fbc69e0659721e9043e1d3d6dc1c36c89ecd3935a5444222b43351b87c296</exec.args>
+                <exec.args>-DPAYOS_CLIENT_ID=af6611b3-7da0-4c67-8785-aa36ea017f63-DPAYOS_API_KEY= -77c8fc0b-0afb-45be-b0f1-edc4570e17c3DPAYOS_CHECKSUM_KEY=6845a4fd422eeec308304c0bffe24fb755e5230eb2815ee01748a3969f34805e</exec.args>
             </properties>
         </action>
     </actions>

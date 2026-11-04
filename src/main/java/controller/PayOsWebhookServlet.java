@@ -1,140 +1,92 @@
 package controller;
 
-import com.google.gson.*;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import dao.PayOsOrderDAO;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import java.util.logging.*;
 import service.PayOsService;
-import service.PaymentService;
+import util.PersistenceManager;
 
 @WebServlet("/payos-webhook")
 public class PayOsWebhookServlet extends HttpServlet {
-
-    private static final Logger LOG = Logger.getLogger(PayOsWebhookServlet.class.getName());
+    private static final int MAX_BODY_BYTES = 32 * 1024;
     private final PayOsService payOsService = new PayOsService();
-    private final PaymentService paymentService = new PaymentService();
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        // 1. Parse JSON from request body
-        JsonObject root = parseRequestBody(req);
-        if (root == null || !isValidSignature(root)) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST); // 400
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        byte[] body = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);
+        if (body.length > MAX_BODY_BYTES) {
+            response.setStatus(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
             return;
         }
-        // 2. Check signature
-        resp.setStatus(HttpServletResponse.SC_OK); // 200
-        // 3. Check payload for success payment
-        if (!isSuccessfulPaymentEvent(root)) {
+
+        JsonObject root;
+        try {
+            root = JsonParser.parseString(new String(body, StandardCharsets.UTF_8)).getAsJsonObject();
+        } catch (JsonParseException | IllegalStateException exception) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             return;
         }
-        // 4. Write to DB
-        processPaymentWebhook(root.getAsJsonObject("data"));
-    }
-
-    /**
-     * Đọc và parse JSON từ Request Input Stream.
-     */
-    private JsonObject parseRequestBody(HttpServletRequest req) throws IOException {
-        String body = new String(req.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        try {
-            return JsonParser.parseString(body).getAsJsonObject();
-        } catch (JsonSyntaxException e) {
-            LOG.warning("PayOS webhook error: Invalid JSON format");
-            return null;
-        }
-    }
-
-    /**
-     * Xác thực chữ ký HMAC từ PayOS.
-     */
-    private boolean isValidSignature(JsonObject root) {
-        boolean valid = payOsService.verifyWebhook(root);
-        if (!valid) {
-            LOG.warning("PayOS webhook rejected: Bad signature");
-        }
-        return valid;
-    }
-
-    /**
-     * Kiểm tra sự kiện thanh toán có thành công (code = "00", success = true).
-     */
-    private boolean isSuccessfulPaymentEvent(JsonObject root) {
-        return root.has("success") && root.get("success").getAsBoolean()
-                && root.has("code") && "00".equals(root.get("code").getAsString())
-                && root.has("data") && !root.get("data").isJsonNull();
-    }
-
-    /**
-     * Luồng xử lý dữ liệu thanh toán từ Webhook PayOS.
-     */
-    private void processPaymentWebhook(JsonObject data) {
-        long orderCode = data.get("orderCode").getAsLong();
-        PayOsOrderDAO dao = new PayOsOrderDAO();
 
         try {
-            PayOsOrderDAO.Order order = dao.find(orderCode);
-            if (order == null) {
-                return; // Payload thử nghiệm (Test Webhook) khi cài đặt URL trên PayOS
-            }
-
-            BigDecimal paidAmount = data.get("amount").getAsBigDecimal();
-            if (!isAmountMatching(dao, orderCode, paidAmount, order.externalAmount)) {
+            if (!payOsService.verifyWebhook(root)) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
-
-            if (!dao.claim(orderCode)) {
-                return; // Đơn hàng đã được thread/process khác xử lý trước đó
-            }
-
-            String reference = extractReference(data, orderCode);
-            executePaymentTransaction(dao, order, reference);
-
-        } catch (SQLException e) {
-            LOG.log(Level.SEVERE, "Database error processing PayOS webhook", e);
+        } catch (IllegalStateException exception) {
+            log("PayOS webhook verification is unavailable.", exception);
+            response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            return;
         }
-    }
 
-    /**
-     * Kiểm tra số tiền chuyển khớp với số tiền chờ thanh toán.
-     */
-    private boolean isAmountMatching(PayOsOrderDAO dao, long orderCode, BigDecimal paid, BigDecimal expected) throws SQLException {
-        if (paid.compareTo(expected) != 0) {
-            //TODO: nếu dư thì cho vào ví, nếu thiếu dưới 30% thì nuốt tiền, nếu trên thì coi như book 30%
-            dao.markFailed(orderCode, "Amount mismatch: paid " + paid + ", expected " + expected);
-            return false;
+        // PayOS signs the data object.
+        JsonObject data = root.getAsJsonObject("data");
+        if (!"00".equals(value(data, "code"))) {
+            response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+            return;
         }
-        return true;
-    }
 
-    /**
-     * Trích xuất mã giao dịch ngân hàng (reference).
-     */
-    private String extractReference(JsonObject data, long orderCode) {
-        return data.has("reference") && !data.get("reference").isJsonNull()
-                ? data.get("reference").getAsString()
-                : String.valueOf(orderCode);
-    }
-
-    /**
-     * Thực thi Stored Procedure ghi nhận thanh toán và cập nhật trạng thái đơn
-     * PayOS.
-     */
-    private void executePaymentTransaction(PayOsOrderDAO dao, PayOsOrderDAO.Order order, String reference) throws SQLException {
         try {
-            paymentService.confirmGatewayPayment(
-                    order.bookingID, order.userID, order.paymentType,
-                    order.amount, order.walletAmount, reference
-            );
-            dao.markPaid(order.orderCode, reference);
-        } catch (Exception ex) {
-            LOG.log(Level.SEVERE, "Paid on PayOS but failed to record in DB, orderCode=" + order.orderCode, ex);
-            dao.markFailed(order.orderCode, ex.getMessage());
+            long orderCode = new BigDecimal(value(data, "orderCode")).longValueExact();
+            BigDecimal amount = new BigDecimal(value(data, "amount"));
+            String linkID = value(data, "paymentLinkId");
+            String reference = value(data, "reference");
+            if (orderCode <= 0 || amount.signum() <= 0 || amount.stripTrailingZeros().scale() > 0
+                    || amount.compareTo(new BigDecimal("9999999999")) > 0 || !"VND".equals(value(data, "currency"))
+                    || !linkID.matches("[A-Za-z0-9_-]{1,100}") || reference.isEmpty() || reference.length() > 100) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                return;
+            }
+            new PayOsOrderDAO().confirm(orderCode, linkID, amount, reference);
+        } catch (ArithmeticException | IllegalArgumentException exception) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        } catch (SQLException | IllegalStateException exception) {
+            // Let PayOS retry if the database write fails.
+            log("Unable to record the PayOS webhook.", exception);
+            response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            return;
         }
+
+        try {
+            PersistenceManager.getEMF().getCache().evictAll();
+        } catch (RuntimeException exception) {
+            log("Unable to refresh the booking cache after PayOS confirmation.", exception);
+        }
+        response.setStatus(HttpServletResponse.SC_OK);
+    }
+
+    private String value(JsonObject object, String key) {
+        JsonElement value = object.get(key);
+        return value != null && value.isJsonPrimitive() ? value.getAsString().trim() : "";
     }
 }

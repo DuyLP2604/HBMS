@@ -54,12 +54,11 @@ function fixture(wallet = 300) {
 }
 const qr = fixture();
 qr.choose('PT01');
-check(!qr.ids['vietqr-container'].classList.contains('d-none'), 'VietQR becomes visible');
-check(qr.ids['vietqr-img'].getAttribute('src').endsWith('amount=1000'), 'QR starts with the full amount');
-check(qr.ids.paymentButton.disabled && qr.submit(), 'QR does not allow a direct payment POST');
+check(qr.ids.paymentButton.textContent === 'Continue payment in PayOS gateway', 'VietQR opens PayOS checkout');
+check(!qr.ids.paymentButton.disabled, 'PayOS checkout is available before the deadline');
 qr.wallet(true);
-check(qr.ids['vietqr-img'].getAttribute('src').endsWith('amount=700'), 'Wallet contribution updates the QR shortfall');
-check(qr.ids.externalContributionDisplay.textContent === '700 VND', 'Displayed shortfall matches the QR');
+check(qr.ids.externalContributionDisplay.textContent === '700 VND', 'PayOS checkout displays the external amount due');
+check(!qr.submit() && qr.submit(), 'PayOS creation accepts one submit and prevents duplicate submits');
 qr.expire();
 check(qr.ids['vietqr-container'].classList.contains('d-none') && qr.ids.paymentButton.disabled && qr.timers.size === 0, 'Expiry hides QR and disables payment');
 const fullWallet = fixture(1000);
@@ -69,4 +68,30 @@ check(fullWallet.ids['vietqr-container'].classList.contains('d-none') && !fullWa
 check(!fullWallet.submit(), 'A valid wallet submission remains available');
 const insufficient = fixture(300); insufficient.choose('PT02');
 check(insufficient.submit(), 'An insufficient wallet cannot be submitted');
-console.log('PASS: ' + checks + ' payment UI state checks');
+async function checkPayOsReturn() {
+    const pending = { dataset: { statusUrl: '/payment-status?orderCode=123', returnUrl: '/payment?orderCode=123' } };
+    const timers = [];
+    let status = 'PENDING';
+    let navigation;
+    vm.runInNewContext(code, {
+        document: { getElementById: id => id === 'payos-pending' ? pending : null, addEventListener: (name, callback) => callback() },
+        window: { addEventListener() {}, location: { replace: url => { navigation = url; } } },
+        fetch: async url => {
+            assert.equal(url, pending.dataset.statusUrl);
+            return { ok: true, status: 200, json: async () => ({ status }) };
+        },
+        setTimeout: callback => timers.push(callback),
+        clearTimeout() {}
+    });
+
+    await new Promise(resolve => setImmediate(resolve));
+    check(!navigation && timers.length === 1, 'A pending PayOS return waits for a webhook');
+    status = 'PAID';
+    await timers.shift()();
+    check(navigation === pending.dataset.returnUrl, 'A paid PayOS order opens the receipt');
+    console.log('PASS: ' + checks + ' payment UI state checks');
+}
+checkPayOsReturn().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+});

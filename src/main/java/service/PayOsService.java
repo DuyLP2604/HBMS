@@ -14,7 +14,8 @@ import javax.crypto.spec.SecretKeySpec;
 
 public class PayOsService {
 
-    private static final HttpClient HTTP = HttpClient.newHttpClient();
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(5)).build();
     private static final String API = "https://api-merchant.payos.vn/v2/payment-requests";
 
     public static final class Link {
@@ -27,11 +28,10 @@ public class PayOsService {
 
         long amt = amount.setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
 
-        // 1. Đóng gói Request Body kèm chữ ký HMAC
         JsonObject body = buildRequestBody(orderCode, amt, description, returnUrl, cancelUrl, expiredAtEpochSeconds);
 
-        // 2. Gửi HTTP Request tới cổng PayOS
         HttpRequest req = HttpRequest.newBuilder(URI.create(API))
+                .timeout(java.time.Duration.ofSeconds(12))
                 .header("Content-Type", "application/json")
                 .header("x-client-id", cfg("PAYOS_CLIENT_ID"))
                 .header("x-api-key", cfg("PAYOS_API_KEY"))
@@ -40,33 +40,17 @@ public class PayOsService {
 
         HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
 
-        // 3. Trích xuất và parse kết quả trả về
+        if (res.statusCode() < 200 || res.statusCode() >= 300) {
+            throw new IllegalStateException("PayOS HTTP error " + res.statusCode());
+        }
         return parsePaymentLinkResponse(res.body());
     }
 
-    /**
-     * Overload khởi tạo link PayOS không truyền thời hạn custom (mặc định = 0).
-     *
-     * @param orderCode
-     * @param amount
-     * @param description
-     * @param returnUrl
-     * @param cancelUrl
-     * @return
-     * @throws java.lang.Exception
-     */
     public Link createPaymentLink(long orderCode, BigDecimal amount, String description,
             String returnUrl, String cancelUrl) throws Exception {
         return createPaymentLink(orderCode, amount, description, returnUrl, cancelUrl, 0);
     }
 
-    /**
-     * Tạo URL ảnh VietQR tĩnh từ thông tin Link PayOS trả về.
-     *
-     * @param link
-     * @param amount
-     * @return
-     */
     public String qrImageUrl(Link link, BigDecimal amount) {
         String cleanAmount = amount.stripTrailingZeros().toPlainString();
         String encodedDesc = java.net.URLEncoder.encode(link.description, StandardCharsets.UTF_8);
@@ -76,35 +60,32 @@ public class PayOsService {
                 link.bin, link.accountNumber, cleanAmount, encodedDesc, encodedName);
     }
 
-    /**
-     * Xác thực chữ ký Webhook HMAC-SHA256 từ PayOS gửi về.
-     *
-     * @param root
-     * @return
-     */
     public boolean verifyWebhook(JsonObject root) {
         if (!isValidWebhookPayload(root)) {
             return false;
         }
 
         JsonObject data = root.getAsJsonObject("data");
-        String sortedDataString = buildSortedDataString(data);
-        String expectedSignature = hmac(cfg("PAYOS_CHECKSUM_KEY"), sortedDataString);
+        if (data.entrySet().stream().anyMatch(field -> field.getValue().isJsonObject()
+                || field.getValue().isJsonArray())) {
+            return false;
+        }
         String receivedSignature = root.get("signature").getAsString();
+        if (!receivedSignature.matches("[0-9a-fA-F]{64}")) {
+            return false;
+        }
+        String expectedSignature = hmac(cfg("PAYOS_CHECKSUM_KEY"), buildSortedDataString(data));
 
         return MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.UTF_8),
-                receivedSignature.getBytes(StandardCharsets.UTF_8)
+                receivedSignature.toLowerCase(Locale.ROOT).getBytes(StandardCharsets.UTF_8)
         );
     }
 
-    /**
-     * Tạo JsonObject request body và tính chữ ký HMAC theo thứ tự tham số PayOS
-     * quy định.
-     */
     private JsonObject buildRequestBody(long orderCode, long amt, String description,
             String returnUrl, String cancelUrl, long expiredAtEpochSeconds) {
 
+        // PayOS signs these fields in this order.
         String toSign = "amount=" + amt
                 + "&cancelUrl=" + cancelUrl
                 + "&description=" + description
@@ -125,9 +106,6 @@ public class PayOsService {
         return body;
     }
 
-    /**
-     * Parse kết quả trả về từ API PayOS thành đối tượng Link.
-     */
     private Link parsePaymentLinkResponse(String responseBody) {
         JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
 
@@ -149,27 +127,20 @@ public class PayOsService {
         return link;
     }
 
-    /**
-     * Kiểm tra cấu trúc Webhook payload từ PayOS có đầy đủ thuộc tính bắt buộc
-     * không.
-     */
     private boolean isValidWebhookPayload(JsonObject root) {
         return root != null
                 && root.has("data")
                 && root.get("data").isJsonObject()
                 && root.has("signature")
-                && !root.get("signature").isJsonNull();
+                && root.get("signature").isJsonPrimitive();
     }
 
-    /**
-     * Sắp xếp các key trong JsonObject `data` theo thứ tự Alphabet và ghép
-     * thành chuỗi `k1=v1&k2=v2...`
-     */
     private String buildSortedDataString(JsonObject data) {
         TreeMap<String, String> sortedMap = new TreeMap<>();
         for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
             JsonElement val = entry.getValue();
-            sortedMap.put(entry.getKey(), val.isJsonNull() ? "" : val.getAsString());
+            String value = val.isJsonNull() ? "" : val.getAsString();
+            sortedMap.put(entry.getKey(), "null".equals(value) || "undefined".equals(value) ? "" : value);
         }
 
         StringJoiner sj = new StringJoiner("&");
@@ -177,9 +148,6 @@ public class PayOsService {
         return sj.toString();
     }
 
-    /**
-     * Tính toán mã HMAC-SHA256 dạng chuỗi Hex lower-case.
-     */
     public static String hmac(String key, String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -194,9 +162,6 @@ public class PayOsService {
         }
     }
 
-    /**
-     * Đọc giá trị cấu hình từ System Property hoặc Environment Variable.
-     */
     private static String cfg(String key) {
         String val = System.getProperty(key);
         if (val == null || val.isBlank()) {
