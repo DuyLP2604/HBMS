@@ -164,22 +164,59 @@ public class PaymentService {
 
     private Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID,
             boolean useWallet, int actorUserID, boolean walletAuthorized) {
+
+        // 1. Kiểm tra đầu vào và xác định phương thức thanh toán
+        String selectedMethod = validateAndResolveMethod(paymentRequest, methodID, userID, useWallet, actorUserID);
+        BigDecimal walletAmount = calculateWalletAmount(paymentRequest, selectedMethod, useWallet);
+
+        synchronized (paymentRequest) {
+            // 2. Kiểm tra tính đồng nhất của request và trạng thái booking
+            if (paymentRequest.methodID != null && (!paymentRequest.methodID.equals(selectedMethod) || paymentRequest.walletAmount.compareTo(walletAmount) != 0)) {
+                throw new IllegalStateException("This request already uses another payment method. Reload the payment page to change it.");
+            }
+
+            Booking booking = getBookingForPayment(paymentRequest.getBookingID(), userID);
+            if (booking == null) {
+                throw new IllegalArgumentException("The requested booking was not found.");
+            }
+            if ("PENDING_PAYMENT".equals(booking.getBookingStatus())) {
+                new BookingDAO().expirePendingBookings(booking.getCustomerID().getCustomerID());
+            }
+
+            Paymentmethod method = findMethod(selectedMethod);
+            if (method == null) {
+                throw new IllegalArgumentException("The selected payment method does not exist.");
+            }
+
+            // 3. Ghi nhận dữ liệu vào request object
+            paymentRequest.actorUserID = actorUserID;
+            paymentRequest.walletAuthorizedBy = walletAuthorized ? userID : null;
+            paymentRequest.methodID = selectedMethod;
+            paymentRequest.walletAmount = walletAmount;
+
+            // 4. Thực thi transaction trong cơ sở dữ liệu
+            return executePaymentTransaction(paymentRequest, booking, method);
+        }
+    }
+
+    private String validateAndResolveMethod(PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet, int actorUserID) {
         if (paymentRequest == null || paymentRequest.getUserID() != userID || userID <= 0) {
             throw new IllegalArgumentException("The payment request is invalid. Reload the payment page.");
         }
+
         String selectedMethod = methodID == null ? "" : methodID.trim();
         BigDecimal walletAmount = useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
+
         if (useWallet && walletAmount.signum() <= 0) {
             throw new IllegalArgumentException("No wallet balance is available. Reload the page or pay using an external method.");
         }
-        if (useWallet && walletAmount.compareTo(paymentRequest.amount) == 0) {
+        if (useWallet && walletAmount.compareTo(paymentRequest.getAmount()) == 0) {
             selectedMethod = "PT02";
         }
         if ("PT02".equals(selectedMethod)) {
-            if (paymentRequest.getOfferedWalletAmount().compareTo(paymentRequest.amount) < 0) {
+            if (paymentRequest.getOfferedWalletAmount().compareTo(paymentRequest.getAmount()) < 0) {
                 throw new IllegalArgumentException("Your wallet cannot cover the full payment. Select an external method and use your wallet for part of it.");
             }
-            walletAmount = paymentRequest.amount;
         }
         if (!Set.of("PT01", "PT02", "PT03").contains(selectedMethod)) {
             throw new IllegalArgumentException("Please select a valid payment method.");
@@ -190,53 +227,48 @@ public class PaymentService {
         if ("PT03".equals(selectedMethod) && actorUserID == userID) {
             throw new IllegalArgumentException("Cash payments must be recorded by staff.");
         }
-        synchronized (paymentRequest) {
-            if (paymentRequest.methodID != null && (!paymentRequest.methodID.equals(selectedMethod) || paymentRequest.walletAmount.compareTo(walletAmount) != 0)) {
-                throw new IllegalStateException("This request already uses another payment method. Reload the payment page to change it.");
-            }
-            Booking booking = getBookingForPayment(paymentRequest.getBookingID(), userID);
-            if (booking == null) {
-                throw new IllegalArgumentException("The requested booking was not found.");
-            }
-            if ("PENDING_PAYMENT".equals(booking.getBookingStatus())) {
-                new BookingDAO().expirePendingBookings(booking.getCustomerID().getCustomerID());
-            }
-            Paymentmethod method = findMethod(selectedMethod);
-            if (method == null) {
-                throw new IllegalArgumentException("The selected payment method does not exist.");
-            }
-            paymentRequest.actorUserID = actorUserID;
-            paymentRequest.walletAuthorizedBy = walletAuthorized ? userID : null;
-            paymentRequest.methodID = selectedMethod;
-            paymentRequest.walletAmount = walletAmount;
-            try (Connection connection = openConnection()) {
-                connection.setAutoCommit(false);
-                try {
-                    // Hold the SAME SQL application lock as all booking/wallet procedures while allocating PMxxxx.
-                    execute(connection, "SELECT TOP (1) UserID FROM dbo.USERS; DECLARE @LockResult int; EXEC @LockResult = sys.sp_getapplock @Resource = N'HBMS:booking-wallet-write', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000; IF @LockResult < 0 THROW 51000, 'System busy. Please retry the request.', 1;", null);
-                    if (paymentRequest.paymentID == null || isIDUsedByAnotherRequest(connection, paymentRequest)) {
-                        paymentRequest.paymentID = generatePaymentID(connection);
-                    }
-                    execute(connection, "EXEC dbo.SP_RECORD_PAYMENT @PaymentID = ?, @BookingID = ?, @ActorUserID = ?, @PaymentType = ?, @Amount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAmount = ?, @WalletAuthorizedBy = ?, @TransactionID = ?;", paymentRequest);
-                    Payment payment = readPayment(connection, paymentRequest, booking, method);
-                    connection.commit();
-                    return payment;
-                } catch (SQLException | RuntimeException exception) {
-                    try {
-                        connection.rollback();
-                    } catch (SQLException rollbackError) {
-                        exception.addSuppressed(rollbackError);
-                    }
-                    throw exception;
+
+        return selectedMethod;
+    }
+
+    private BigDecimal calculateWalletAmount(PaymentRequest paymentRequest, String selectedMethod, boolean useWallet) {
+        if ("PT02".equals(selectedMethod)) {
+            return paymentRequest.getAmount();
+        }
+        return useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
+    }
+
+    private Payment executePaymentTransaction(PaymentRequest paymentRequest, Booking booking, Paymentmethod method) {
+        try (Connection connection = openConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                // Xin khóa Application Lock tránh xung đột thanh toán song song
+                execute(connection, "SELECT TOP (1) UserID FROM dbo.USERS; DECLARE @LockResult int; EXEC @LockResult = sys.sp_getapplock @Resource = N'HBMS:booking-wallet-write', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000; IF @LockResult < 0 THROW 51000, 'System busy. Please retry the request.', 1;", null);
+
+                if (paymentRequest.paymentID == null || isIDUsedByAnotherRequest(connection, paymentRequest)) {
+                    paymentRequest.paymentID = generatePaymentID(connection);
                 }
-            } catch (SQLException exception) {
-                throw new IllegalStateException(paymentError(exception), exception);
-            } finally {
+
+                execute(connection, "EXEC dbo.SP_RECORD_PAYMENT @PaymentID = ?, @BookingID = ?, @ActorUserID = ?, @PaymentType = ?, @Amount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAmount = ?, @WalletAuthorizedBy = ?, @TransactionID = ?;", paymentRequest);
+                Payment payment = readPayment(connection, paymentRequest, booking, method);
+
+                connection.commit();
+                return payment;
+            } catch (SQLException | RuntimeException exception) {
                 try {
-                    clearCache();
-                } catch (RuntimeException exception) {
-                    LOGGER.log(Level.WARNING, "Unable to clear the payment cache.", exception);
+                    connection.rollback();
+                } catch (SQLException rollbackError) {
+                    exception.addSuppressed(rollbackError);
                 }
+                throw exception;
+            }
+        } catch (SQLException exception) {
+            throw new IllegalStateException(paymentError(exception), exception);
+        } finally {
+            try {
+                clearCache();
+            } catch (RuntimeException exception) {
+                LOGGER.log(Level.WARNING, "Unable to clear the payment cache.", exception);
             }
         }
     }
@@ -347,31 +379,32 @@ public class PaymentService {
         }
     }
 
-    public PayOsService.Link createGatewayLink(PaymentRequest request, String returnUrl, String cancelUrl) throws Exception {
+    public PayOsService.Link createGatewayLink(long orderCode, PaymentRequest request, String returnUrl, String cancelUrl) throws Exception {
         if (request == null || request.getAmount().signum() <= 0) {
-            throw new IllegalArgumentException("Yêu cầu thanh toán không hợp lệ hoặc số tiền phải lớn hơn 0.");
+            throw new IllegalArgumentException("Pay request invalid or pay amount must greater than 0.");
         }
 
-        // Tạo orderCode duy nhất (dưới 53-bit theo quy định PayOS).
-        // Sử dụng timestamp kết hợp UserID để tránh trùng lặp đơn.
-        long orderCode = Long.parseLong(String.valueOf(System.currentTimeMillis()).substring(5) + request.getUserID());
+        Booking booking = getBookingForPayment(request.getBookingID(), request.getUserID());
+        long expiredAtEpochSeconds = (booking != null && booking.getPaymentDeadline() != null)
+                ? booking.getPaymentDeadline().getTime() / 1000
+                : (System.currentTimeMillis() / 1000) + (15 * 60);
 
-        // Đưa BookingID trực tiếp vào description (giới hạn 25 ký tự) để tự động xử lý khi Webhook trả về
-        String description = "Thanh toan " + request.getBookingID();
-
-        return payOsService.createPaymentLink(orderCode, request.getAmount(), description, returnUrl, cancelUrl);
+        String description = "Pay for " + request.getBookingID();
+        return payOsService.createPaymentLink(orderCode, request.getAmount(), description, returnUrl, cancelUrl, expiredAtEpochSeconds);
     }
 
     /**
-     * Trích xuất link ảnh QR tĩnh từ PayOsService (dùng khi cần render trực
-     * tiếp mã trên giao diện).
+     * Overload khởi tạo link PayOS tự sinh orderCode nếu không truyền sẵn.
      *
-     * @param link
-     * @param amount
+     * @param request
+     * @param returnUrl
+     * @param cancelUrl
      * @return
+     * @throws java.lang.Exception
      */
-    public String getGatewayQrImageUrl(PayOsService.Link link, BigDecimal amount) {
-        return payOsService.qrImageUrl(link, amount);
+    public PayOsService.Link createGatewayLink(PaymentRequest request, String returnUrl, String cancelUrl) throws Exception {
+        long orderCode = Long.parseLong(String.valueOf(System.currentTimeMillis()).substring(5) + request.getUserID());
+        return createGatewayLink(orderCode, request, returnUrl, cancelUrl);
     }
 
     /**

@@ -51,6 +51,10 @@ public class PayOsOrderDAO {
 
     /**
      * Atomic claim -> guarantees a retried webhook is processed only once.
+     *
+     * @param orderCode
+     * @return
+     * @throws java.sql.SQLException
      */
     public boolean claim(long orderCode) throws SQLException {
         return update("UPDATE dbo.PAYOS_ORDER SET Status='PROCESSING' WHERE OrderCode=? AND Status='PENDING'", orderCode, null) == 1;

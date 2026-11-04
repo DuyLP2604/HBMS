@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.http.*;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import javax.crypto.Mac;
@@ -22,84 +23,163 @@ public class PayOsService {
     }
 
     public Link createPaymentLink(long orderCode, BigDecimal amount, String description,
-            String returnUrl, String cancelUrl) throws Exception {
-        long amt = amount.setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
-        String toSign = "amount=" + amt + "&cancelUrl=" + cancelUrl + "&description=" + description
-                + "&orderCode=" + orderCode + "&returnUrl=" + returnUrl;
-        JsonObject body = new JsonObject();
-        body.addProperty("orderCode", orderCode);
-        body.addProperty("amount", amt);
-        body.addProperty("description", description);          // max 25 chars
-        body.addProperty("returnUrl", returnUrl);
-        body.addProperty("cancelUrl", cancelUrl);
-        body.addProperty("expiredAt", System.currentTimeMillis() / 1000 + 15 * 60);
-        body.addProperty("signature", hmac(cfg("PAYOS_CHECKSUM_KEY"), toSign));
-        // NOTE: if PayOS rejects expiredAt in the signature check, remove it from the body.
+            String returnUrl, String cancelUrl, long expiredAtEpochSeconds) throws Exception {
 
+        long amt = amount.setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
+
+        // 1. Đóng gói Request Body kèm chữ ký HMAC
+        JsonObject body = buildRequestBody(orderCode, amt, description, returnUrl, cancelUrl, expiredAtEpochSeconds);
+
+        // 2. Gửi HTTP Request tới cổng PayOS
         HttpRequest req = HttpRequest.newBuilder(URI.create(API))
                 .header("Content-Type", "application/json")
                 .header("x-client-id", cfg("PAYOS_CLIENT_ID"))
                 .header("x-api-key", cfg("PAYOS_API_KEY"))
-                .POST(HttpRequest.BodyPublishers.ofString(body.toString())).build();
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+                .build();
+
         HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
-        JsonObject json = JsonParser.parseString(res.body()).getAsJsonObject();
-        if (!"00".equals(json.get("code").getAsString()) || json.get("data").isJsonNull()) {
-            throw new IllegalStateException("PayOS error: " + json.get("desc").getAsString());
-        }
-        JsonObject d = json.getAsJsonObject("data");
 
-        Link l = new Link();
-        l.paymentLinkId = d.get("paymentLinkId").getAsString();
-        l.bin = d.get("bin").getAsString();
-        l.accountNumber = d.get("accountNumber").getAsString();
-        l.accountName = d.get("accountName").getAsString();
-        l.checkoutUrl = d.get("checkoutUrl").getAsString();
-        l.qrCode = d.get("qrCode").getAsString();
-        l.description = d.get("description").getAsString();
-
-        return l;
+        // 3. Trích xuất và parse kết quả trả về
+        return parsePaymentLinkResponse(res.body());
     }
 
     /**
-     * Image URL for the QR generated from the PayOS link (same image host you
-     * already use).
+     * Overload khởi tạo link PayOS không truyền thời hạn custom (mặc định = 0).
      *
-     * @param l
+     * @param orderCode
+     * @param amount
+     * @param description
+     * @param returnUrl
+     * @param cancelUrl
+     * @return
+     * @throws java.lang.Exception
+     */
+    public Link createPaymentLink(long orderCode, BigDecimal amount, String description,
+            String returnUrl, String cancelUrl) throws Exception {
+        return createPaymentLink(orderCode, amount, description, returnUrl, cancelUrl, 0);
+    }
+
+    /**
+     * Tạo URL ảnh VietQR tĩnh từ thông tin Link PayOS trả về.
+     *
+     * @param link
      * @param amount
      * @return
      */
-    public String qrImageUrl(Link l, BigDecimal amount) {
-        return "https://img.vietqr.io/image/" + l.bin + "-" + l.accountNumber + "-compact2.png?amount="
-                + amount.stripTrailingZeros().toPlainString()
-                + "&addInfo=" + java.net.URLEncoder.encode(l.description, StandardCharsets.UTF_8)
-                + "&accountName=" + java.net.URLEncoder.encode(l.accountName, StandardCharsets.UTF_8);
+    public String qrImageUrl(Link link, BigDecimal amount) {
+        String cleanAmount = amount.stripTrailingZeros().toPlainString();
+        String encodedDesc = java.net.URLEncoder.encode(link.description, StandardCharsets.UTF_8);
+        String encodedName = java.net.URLEncoder.encode(link.accountName, StandardCharsets.UTF_8);
+
+        return String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%s&addInfo=%s&accountName=%s",
+                link.bin, link.accountNumber, cleanAmount, encodedDesc, encodedName);
     }
 
     /**
-     * Verify the webhook signature: sort data keys A-Z, join key=value with &,
-     * HMAC-SHA256.
+     * Xác thực chữ ký Webhook HMAC-SHA256 từ PayOS gửi về.
      *
      * @param root
      * @return
      */
     public boolean verifyWebhook(JsonObject root) {
-        if (!root.has("data") || !root.has("signature") || !root.get("data").isJsonObject()) {
+        if (!isValidWebhookPayload(root)) {
             return false;
         }
+
         JsonObject data = root.getAsJsonObject("data");
-        TreeMap<String, String> sorted = new TreeMap<>();
-        for (Map.Entry<String, JsonElement> e : data.entrySet()) {
-            JsonElement v = e.getValue();
-            sorted.put(e.getKey(), v.isJsonNull() ? "" : v.getAsString());
-        }
-        StringJoiner sj = new StringJoiner("&");
-        sorted.forEach((k, v) -> sj.add(k + "=" + v));
-        String expected = hmac(cfg("PAYOS_CHECKSUM_KEY"), sj.toString());
-        return java.security.MessageDigest.isEqual(
-                expected.getBytes(StandardCharsets.UTF_8),
-                root.get("signature").getAsString().getBytes(StandardCharsets.UTF_8));
+        String sortedDataString = buildSortedDataString(data);
+        String expectedSignature = hmac(cfg("PAYOS_CHECKSUM_KEY"), sortedDataString);
+        String receivedSignature = root.get("signature").getAsString();
+
+        return MessageDigest.isEqual(
+                expectedSignature.getBytes(StandardCharsets.UTF_8),
+                receivedSignature.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
+    /**
+     * Tạo JsonObject request body và tính chữ ký HMAC theo thứ tự tham số PayOS
+     * quy định.
+     */
+    private JsonObject buildRequestBody(long orderCode, long amt, String description,
+            String returnUrl, String cancelUrl, long expiredAtEpochSeconds) {
+
+        String toSign = "amount=" + amt
+                + "&cancelUrl=" + cancelUrl
+                + "&description=" + description
+                + "&orderCode=" + orderCode
+                + "&returnUrl=" + returnUrl;
+
+        JsonObject body = new JsonObject();
+        body.addProperty("orderCode", orderCode);
+        body.addProperty("amount", amt);
+        body.addProperty("description", description);
+        body.addProperty("returnUrl", returnUrl);
+        body.addProperty("cancelUrl", cancelUrl);
+        if (expiredAtEpochSeconds > 0) {
+            body.addProperty("expiredAt", expiredAtEpochSeconds);
+        }
+        body.addProperty("signature", hmac(cfg("PAYOS_CHECKSUM_KEY"), toSign));
+
+        return body;
+    }
+
+    /**
+     * Parse kết quả trả về từ API PayOS thành đối tượng Link.
+     */
+    private Link parsePaymentLinkResponse(String responseBody) {
+        JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
+
+        if (!json.has("code") || !"00".equals(json.get("code").getAsString()) || !json.has("data") || json.get("data").isJsonNull()) {
+            String desc = json.has("desc") ? json.get("desc").getAsString() : "Unknown error";
+            throw new IllegalStateException("PayOS error: " + desc);
+        }
+
+        JsonObject data = json.getAsJsonObject("data");
+        Link link = new Link();
+        link.paymentLinkId = data.get("paymentLinkId").getAsString();
+        link.bin = data.get("bin").getAsString();
+        link.accountNumber = data.get("accountNumber").getAsString();
+        link.accountName = data.get("accountName").getAsString();
+        link.checkoutUrl = data.get("checkoutUrl").getAsString();
+        link.qrCode = data.get("qrCode").getAsString();
+        link.description = data.get("description").getAsString();
+
+        return link;
+    }
+
+    /**
+     * Kiểm tra cấu trúc Webhook payload từ PayOS có đầy đủ thuộc tính bắt buộc
+     * không.
+     */
+    private boolean isValidWebhookPayload(JsonObject root) {
+        return root != null
+                && root.has("data")
+                && root.get("data").isJsonObject()
+                && root.has("signature")
+                && !root.get("signature").isJsonNull();
+    }
+
+    /**
+     * Sắp xếp các key trong JsonObject `data` theo thứ tự Alphabet và ghép
+     * thành chuỗi `k1=v1&k2=v2...`
+     */
+    private String buildSortedDataString(JsonObject data) {
+        TreeMap<String, String> sortedMap = new TreeMap<>();
+        for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
+            JsonElement val = entry.getValue();
+            sortedMap.put(entry.getKey(), val.isJsonNull() ? "" : val.getAsString());
+        }
+
+        StringJoiner sj = new StringJoiner("&");
+        sortedMap.forEach((key, value) -> sj.add(key + "=" + value));
+        return sj.toString();
+    }
+
+    /**
+     * Tính toán mã HMAC-SHA256 dạng chuỗi Hex lower-case.
+     */
     public static String hmac(String key, String data) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -110,18 +190,21 @@ public class PayOsService {
             }
             return sb.toString();
         } catch (IllegalStateException | InvalidKeyException | NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
+            throw new IllegalStateException("Failed to calculate HMAC-SHA256", e);
         }
     }
 
-    private static String cfg(String k) {
-        String v = System.getProperty(k);
-        if (v == null || v.isBlank()) {
-            v = System.getenv(k);
+    /**
+     * Đọc giá trị cấu hình từ System Property hoặc Environment Variable.
+     */
+    private static String cfg(String key) {
+        String val = System.getProperty(key);
+        if (val == null || val.isBlank()) {
+            val = System.getenv(key);
         }
-        if (v == null || v.isBlank()) {
-            throw new IllegalStateException("Missing config: " + k);
+        if (val == null || val.isBlank()) {
+            throw new IllegalStateException("Missing config: " + key);
         }
-        return v.trim();
+        return val.trim();
     }
 }
