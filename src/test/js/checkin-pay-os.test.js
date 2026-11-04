@@ -29,8 +29,12 @@ function fixture(activeOrder = false) {
     const method = ids.checkInMethod;
     method.options = [{value: 'PT01'}, {value: 'PT02'}, {value: 'PT03'}];
     form.dataset = {requiredRooms: '1'};
-    form.action = 'http://localhost:8080/HBMS/process-checkin';
-    form.elements = {bookingID: {value: 'BK0041'}, csrfToken: {value: 'csrf'}, checkInToken: {value: 'checkin'}};
+    const baseURI = 'https://hbms.example.test/HBMS/process-checkin?bookingID=BK0041';
+    const actionPath = '/HBMS/process-checkin';
+    // The hidden input named action shadows the form property in the browser.
+    form.action = {...node('confirmCheckIn'), toString: () => '[object HTMLInputElement]'};
+    form.getAttribute = name => name === 'action' ? actionPath : null;
+    form.elements = {action: form.action, bookingID: {value: 'BK0041'}, csrfToken: {value: 'csrf'}, checkInToken: {value: 'checkin'}};
     form.reportValidity = () => true;
     form.querySelectorAll = selector => selector === '.checkin-room' ? [] : [{checkValidity: () => true, removeAttribute() {}}];
 
@@ -43,19 +47,23 @@ function fixture(activeOrder = false) {
     let created = 0;
 
     vm.runInNewContext(source, {
-        document: {getElementById: id => ids[id] || null}, window: node(),
+        document: {baseURI, getElementById: id => ids[id] || null}, window: node(),
         URL, URLSearchParams, clearTimeout() {},
         setTimeout(callback) { scheduled = callback; },
         fetch: async (url, options = {}) => {
+            const requestUrl = new URL(url, baseURI);
+            assert.equal(requestUrl.origin, new URL(baseURI).origin);
+            assert.equal(requestUrl.pathname, actionPath);
             if (options.method === 'POST') {
                 created++;
-                assert.equal(url, form.action);
+                assert.equal(requestUrl.search, '');
                 assert.deepEqual(Object.fromEntries(options.body), {
                     action: 'createPayOs', bookingID: 'BK0041', checkInToken: 'checkin', csrfToken: 'csrf'
                 });
                 current = order;
             } else {
-                assert.equal(url.searchParams.get('action'), 'payOsStatus');
+                assert.equal(requestUrl.searchParams.get('action'), 'payOsStatus');
+                assert.equal(requestUrl.searchParams.get('bookingID'), 'BK0041');
             }
             return {ok: true, json: async () => current};
         }
