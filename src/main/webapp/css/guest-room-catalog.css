@@ -1,0 +1,227 @@
+@import url("shared-ui.css");
+
+.hbms-ui.ui-shell.room-catalog {
+    width: min(1180px, calc(100% - clamp(24px, 5vw, 48px)));
+}
+
+.room-catalog .room-catalog-panel {
+    padding: clamp(16px, 3vw, 26px);
+}
+
+.room-catalog-search {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+    align-items: end;
+    gap: 14px;
+}
+
+.room-catalog-search > .ui-button {
+    min-height: 44px;
+}
+
+.room-catalog-note {
+    margin: 12px 0 0;
+    color: var(--ui-muted);
+    font-size: .875rem;
+}
+
+.room-catalog-results {
+    margin-top: 28px;
+}
+
+.room-catalog-grid,
+.room-catalog-detail {
+    display: grid;
+    gap: 20px;
+}
+
+.room-catalog-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+}
+
+.room-catalog-card,
+.room-catalog-overview {
+    min-width: 0;
+}
+
+.room-catalog-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.room-catalog-photo {
+    display: block;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border-radius: 13px 13px 0 0;
+    background: var(--ui-soft);
+}
+
+.room-catalog-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.room-catalog-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100%;
+    color: var(--ui-muted);
+}
+
+.room-catalog-photo.room-catalog-placeholder {
+    height: auto;
+}
+
+.room-catalog-card-body,
+.room-catalog-card-actions {
+    padding: 16px 18px;
+}
+
+.room-catalog-card-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.room-catalog-card h3,
+.room-catalog-detail h2,
+.room-catalog-results .ui-empty-state h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+}
+
+.room-catalog-status {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: #eef1ef;
+    color: #42554a;
+    font-size: .8125rem;
+    font-weight: 600;
+}
+
+.room-catalog-status.is-available {
+    background: #e3efe4;
+    color: #285336;
+}
+
+.room-catalog-status.is-sold-out {
+    background: #f7ebe6;
+    color: #873d31;
+}
+
+.room-catalog-capacity,
+.room-catalog-rate {
+    margin: 10px 0;
+    color: var(--ui-muted);
+    font-size: .9375rem;
+}
+
+.room-catalog-capacity i,
+.room-catalog-highlights i {
+    margin-inline-end: 4px;
+    color: var(--ui-green);
+}
+
+.room-catalog-rate strong {
+    color: var(--ui-green);
+    font-size: 1.25rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.room-catalog-link {
+    color: var(--ui-green);
+    font-size: .875rem;
+    font-weight: 600;
+    text-underline-offset: 3px;
+}
+
+.room-catalog-card-actions {
+    margin-top: auto;
+    border-top: 1px solid var(--ui-line);
+}
+
+.room-catalog-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.room-catalog-card-actions .room-catalog-fields {
+    margin-bottom: 12px;
+}
+
+.room-catalog .ui-field input {
+    width: 100%;
+    min-width: 0;
+}
+
+.room-catalog-detail {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 370px);
+    align-items: start;
+}
+
+.room-catalog-detail .room-catalog-photo {
+    aspect-ratio: 16 / 9;
+}
+
+.room-catalog-highlights {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--ui-line);
+    font-size: .9375rem;
+}
+
+.room-catalog-description {
+    margin: 10px 0 0;
+    color: var(--ui-muted);
+    line-height: 1.7;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.room-catalog-booking .room-catalog-rate strong {
+    font-size: 1.5rem;
+}
+
+.room-catalog-availability {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 16px 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--ui-line);
+}
+
+.room-catalog-booking-form {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--ui-line);
+}
+
+@media (max-width: 800px) {
+    .room-catalog-detail {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .room-catalog-search {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
