@@ -1,10 +1,6 @@
 package controller;
 
-import com.google.gson.JsonObject;
-import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
 import dao.BookingDAO;
 import dao.PayOsOrderDAO;
 import dao.PayOsOrderDAO.Order;
@@ -12,10 +8,8 @@ import dao.PaymentmethodDAO;
 import dao.UserDAO;
 import entity.Booking;
 import entity.Users;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.sql.SQLException;
-import javax.imageio.ImageIO;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import jakarta.servlet.ServletException;
@@ -24,7 +18,7 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import service.CheckInPayOsService;
+import service.CounterPaymentService;
 import service.CheckInService;
 import service.PayOsService;
 import service.CheckInService.CheckInRequest;
@@ -127,7 +121,7 @@ public class ProcessCheckInServlet extends HttpServlet {
             if (payment.isPayOsRoomBalance() && "PT01".equals(method)) {
                 completePaidCheckIn(request, payment);
             } else if (payment.isPayOsRoomBalance()) {
-                payOsOrders.withCheckInLock(bookingID, connection -> {
+                payOsOrders.withCounterPaymentLock(bookingID, connection -> {
                     if (payOsOrders.findCheckInOrder(connection, bookingID, null) != null) {
                         throw new IllegalStateException("Check the active VietQR payment before collecting by another method.");
                     }
@@ -164,7 +158,7 @@ public class ProcessCheckInServlet extends HttpServlet {
 
     private void completePaidCheckIn(HttpServletRequest request, CheckInRequest payment) throws SQLException {
         String bookingID = payment.getBookingID();
-        Order order = payOsOrders.findCheckInOrder(bookingID, parseOrderCode(request.getParameter("payOsOrderCode")));
+        Order order = payOsOrders.findCheckInOrder(bookingID, CounterPaymentSupport.parseOrderCode(request.getParameter("payOsOrderCode")));
         if (order == null || !"PAID".equals(order.status) || order.paymentID == null) {
             throw new IllegalArgumentException("Wait until PayOS confirms the room payment.");
         }
@@ -186,75 +180,33 @@ public class ProcessCheckInServlet extends HttpServlet {
         try {
             String baseUrl = PayOsService.publicBaseUrl(request.getScheme() + "://" + request.getServerName()
                     + ":" + request.getServerPort() + request.getContextPath());
-            order = new CheckInPayOsService().openOrder(payment,
+            order = new CounterPaymentService().openCheckInOrder(payment,
                     baseUrl + "/process-checkin?bookingID=" + payment.getBookingID());
         } catch (Exception exception) {
             log("Unable to open a PayOS check-in order.", exception);
-            writePayOsError(response, HttpServletResponse.SC_CONFLICT,
+            CounterPaymentSupport.writeError(response, HttpServletResponse.SC_CONFLICT,
                     "Unable to open VietQR. Reload check-in and review the room balance before trying again.");
             return;
         }
-        writePayOsOrder(request, response, order);
+        CounterPaymentSupport.writeOrder(request, response, order, "/process-checkin");
     }
 
     private void showPayOsOrder(HttpServletRequest request, HttpServletResponse response, String bookingID, boolean image)
             throws IOException {
         try {
             String code = request.getParameter("orderCode");
-            Order order = payOsOrders.findCheckInOrder(bookingID, code == null && !image ? null : parseOrderCode(code));
-            if (!image) {
-                writePayOsOrder(request, response, order);
-                return;
+            Order order = payOsOrders.findCheckInOrder(bookingID, code == null && !image ? null : CounterPaymentSupport.parseOrderCode(code));
+            if (image) {
+                CounterPaymentSupport.writeQrImage(response, order);
+            } else {
+                CounterPaymentSupport.writeOrder(request, response, order, "/process-checkin");
             }
-            if (order == null || !"PENDING".equals(CheckInPayOsService.status(order))) {
-                response.sendError(HttpServletResponse.SC_NOT_FOUND);
-                return;
-            }
-            BitMatrix qr = new QRCodeWriter().encode(order.checkInQrCode, BarcodeFormat.QR_CODE, 240, 240);
-            BufferedImage png = new BufferedImage(qr.getWidth(), qr.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
-            for (int y = 0; y < qr.getHeight(); y++) {
-                for (int x = 0; x < qr.getWidth(); x++) {
-                    png.setRGB(x, y, qr.get(x, y) ? 0xFF000000 : 0xFFFFFFFF);
-                }
-            }
-            response.setContentType("image/png");
-            ImageIO.write(png, "png", response.getOutputStream());
         } catch (IllegalArgumentException exception) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST);
         } catch (SQLException | WriterException exception) {
             log("Unable to load the PayOS check-in order.", exception);
             response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
         }
-    }
-
-    private void writePayOsOrder(HttpServletRequest request, HttpServletResponse response, Order order) throws IOException {
-        JsonObject body = new JsonObject();
-        String status = CheckInPayOsService.status(order);
-        body.addProperty("status", status);
-        if (order != null) {
-            body.addProperty("orderCode", Long.toString(order.orderCode));
-            if ("PENDING".equals(status)) {
-                body.addProperty("imageUrl", request.getContextPath() + "/process-checkin?action=payOsImage"
-                        + "&bookingID=" + order.bookingID + "&orderCode=" + order.orderCode);
-                body.addProperty("checkoutUrl", order.checkInCheckoutUrl);
-            }
-        }
-        response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write(body.toString());
-    }
-
-    private void writePayOsError(HttpServletResponse response, int status, String message) throws IOException {
-        response.setStatus(status);
-        JsonObject body = new JsonObject();
-        body.addProperty("message", message);
-        response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write(body.toString());
-    }
-
-    private long parseOrderCode(String value) {
-        long code = Long.parseLong(value);
-        if (code <= 0) throw new IllegalArgumentException("Invalid PayOS order.");
-        return code;
     }
 
     private int authorizeWallet(HttpServletRequest request, CheckInRequest payment) {

@@ -1,6 +1,8 @@
 package controller;
 
+import com.google.zxing.WriterException;
 import dao.*;
+import dao.PayOsOrderDAO.Order;
 import dto.*;
 import entity.*;
 import jakarta.servlet.ServletException;
@@ -8,15 +10,21 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
 import service.BookingCheckoutService;
+import service.CounterPaymentService;
+import service.PayOsService;
 import service.PaymentService;
 import service.PaymentService.PaymentRequest;
 import util.BookingTimePolicy;
 
 @WebServlet(name = "CounterBookingServlet", urlPatterns = {"/staff/counter-booking"})
 public class CounterBookingServlet extends HttpServlet {
+    private static final String PATH = "/staff/counter-booking";
+    private final PayOsOrderDAO orders = new PayOsOrderDAO();
+    private final CounterPaymentService counterPayments = new CounterPaymentService();
 
     private Users receptionist(HttpServletRequest req, HttpServletResponse res) throws IOException {
         HttpSession session = req.getSession(false);
@@ -40,14 +48,20 @@ public class CounterBookingServlet extends HttpServlet {
         if (receptionist(req, res) == null) {
             return;
         }
+        String action = req.getParameter("action");
+        if ("payOsStatus".equals(action) || "payOsImage".equals(action)) {
+            showPayOsOrder(req, res, "payOsImage".equals(action));
+            return;
+        }
         HttpSession session = req.getSession(false);
         synchronized (session) {
             if (session.getAttribute("counterCsrf") == null) {
                 session.setAttribute("counterCsrf", UUID.randomUUID().toString());
             }
         }
-        req.setAttribute("today", BookingTimePolicy.now().toLocalDate());
-        req.setAttribute("tomorrow", BookingTimePolicy.now().toLocalDate().plusDays(1));
+        LocalDate today = BookingTimePolicy.now().toLocalDate();
+        req.setAttribute("today", today);
+        req.setAttribute("tomorrow", today.plusDays(1));
         req.setAttribute("message", session.getAttribute("counterMessage"));
         session.removeAttribute("counterMessage");
         try {
@@ -130,8 +144,12 @@ public class CounterBookingServlet extends HttpServlet {
             return;
         }
         String bookingID = trim(req.getParameter("bookingID"));
+        if ("createPayOs".equals(req.getParameter("action"))) {
+            createPayOsOrder(req, res, bookingID);
+            return;
+        }
         String customerID = trim(req.getParameter("customerID"));
-        String redirect = "/staff/counter-booking";
+        String redirect = PATH;
         try {
             if ("create".equals(req.getParameter("action"))) {
                 String selectedPaymentOption = trim(req.getParameter("paymentOption"))
@@ -142,10 +160,6 @@ public class CounterBookingServlet extends HttpServlet {
                             "Please select 30% deposit or full payment.");
                 }
 
-                session.setAttribute(
-                        "counterFormPaymentOption",
-                        selectedPaymentOption
-                );
                 redirect += "?customerID=" + encode(customerID);
                 synchronized (session) {
                     String token = req.getParameter("createToken");
@@ -198,51 +212,24 @@ public class CounterBookingServlet extends HttpServlet {
                                     type.getCapacity(), type.getPrice(), quantity, guestCount));
                         }
                         Booking booking = new BookingCheckoutService().createForReceptionist(cart,
-                                customer.getUserID().getUserID(), req.getParameter("paymentOption"), actor.getUserID());
+                                customer.getUserID().getUserID(), selectedPaymentOption, actor.getUserID());
                         bookingID = booking.getBookingID().trim();
                         session.setAttribute("counterLastCreateToken", token);
                         session.setAttribute("counterLastBookingID", bookingID);
                         session.removeAttribute("counterCreateToken");
                     }
                 }
-                redirect = "/staff/counter-booking?bookingID=" + encode(bookingID);
+                redirect = PATH + "?bookingID=" + encode(bookingID);
             } else if ("pay".equals(req.getParameter("action"))) {
                 redirect += "?bookingID=" + encode(bookingID);
-                PaymentRequest payment;
-                synchronized (session) {
-                    payment = payments(session).get(req.getParameter("paymentToken"));
+                PaymentRequest payment = requirePaymentRequest(req, bookingID);
+                if (!"PT03".equals(req.getParameter("methodID"))) {
+                    throw new IllegalArgumentException("Select Cash, or generate VietQR to pay by bank transfer.");
                 }
-                if (payment == null || !payment.getBookingID().equals(bookingID)) {
-                    throw new IllegalArgumentException("Reload the payment page.");
-                }
-                String method = trim(req.getParameter("methodID"));
-
-                if (!Set.of("PT03", "PT01").contains(method)
-                        || req.getParameter("useWallet") != null) {
-                    throw new IllegalArgumentException(
-                            "Counter payments only support Cash or VietQR.");
-                }
-
                 if (!"true".equals(req.getParameter("collectionConfirmed"))) {
-                    throw new IllegalArgumentException(
-                            "Confirm that the cash or bank transfer was received.");
+                    throw new IllegalArgumentException("Confirm that the cash was received.");
                 }
-
-                String bankReference = trim(req.getParameter("bankReference"));
-
-                if ("PT01".equals(method) && bankReference.isEmpty()) {
-                    throw new IllegalArgumentException(
-                            "Enter the bank transaction reference for VietQR.");
-                }
-
-                Payment result = new PaymentService().collectAtCounter(
-                        payment,
-                        method,
-                        actor.getUserID(),
-                        false,
-                        false,
-                        "PT01".equals(method) ? bankReference : ""
-                );
+                Payment result = counterPayments.collectInitialCash(payment, actor.getUserID());
                 session.setAttribute("counterMessage", "PAID".equals(result.getStatus())
                         ? "Payment recorded successfully. You can assign rooms now."
                         : "Payment has already been refunded. Review the booking status.");
@@ -256,6 +243,59 @@ public class CounterBookingServlet extends HttpServlet {
             session.setAttribute("counterMessage", "The operation could not be confirmed. Review the booking before retrying.");
         }
         res.sendRedirect(req.getContextPath() + redirect);
+    }
+
+    private PaymentRequest requirePaymentRequest(HttpServletRequest req, String bookingID) {
+        HttpSession session = req.getSession(false);
+        synchronized (session) {
+            PaymentRequest payment = payments(session).get(req.getParameter("paymentToken"));
+            if (payment == null || !payment.getBookingID().equals(bookingID)) {
+                throw new IllegalArgumentException("Reload the payment page.");
+            }
+            return payment;
+        }
+    }
+
+    private void createPayOsOrder(HttpServletRequest req, HttpServletResponse res, String bookingID) throws IOException {
+        Order order;
+        try {
+            PaymentRequest payment = requirePaymentRequest(req, bookingID);
+            String baseUrl = PayOsService.publicBaseUrl(req.getScheme() + "://" + req.getServerName()
+                    + ":" + req.getServerPort() + req.getContextPath());
+            order = counterPayments.openInitialOrder(payment, baseUrl + PATH + "?bookingID=" + encode(bookingID));
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            CounterPaymentSupport.writeError(res, HttpServletResponse.SC_CONFLICT, ex.getMessage());
+            return;
+        } catch (Exception ex) {
+            log("Unable to generate VietQR for counter booking.", ex);
+            CounterPaymentSupport.writeError(res, HttpServletResponse.SC_CONFLICT,
+                    "Unable to generate VietQR. Check the booking before trying again.");
+            return;
+        }
+        CounterPaymentSupport.writeOrder(req, res, order, PATH);
+    }
+
+    private void showPayOsOrder(HttpServletRequest req, HttpServletResponse res, boolean image) throws IOException {
+        String bookingID = trim(req.getParameter("bookingID"));
+        if (!bookingID.matches("[A-Za-z0-9]{1,6}")) {
+            res.sendError(HttpServletResponse.SC_BAD_REQUEST, "A valid booking ID is required.");
+            return;
+        }
+        try {
+            String code = req.getParameter("orderCode");
+            Order order = orders.findInitialCounterOrder(bookingID,
+                    code == null && !image ? null : CounterPaymentSupport.parseOrderCode(code));
+            if (image) {
+                CounterPaymentSupport.writeQrImage(res, order);
+            } else {
+                CounterPaymentSupport.writeOrder(req, res, order, PATH);
+            }
+        } catch (IllegalArgumentException ex) {
+            res.sendError(HttpServletResponse.SC_BAD_REQUEST);
+        } catch (SQLException | WriterException ex) {
+            log("Unable to read VietQR for counter booking.", ex);
+            res.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+        }
     }
 
     @SuppressWarnings("unchecked")

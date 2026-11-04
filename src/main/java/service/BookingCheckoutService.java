@@ -14,6 +14,7 @@ import jakarta.persistence.TypedQuery;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -35,21 +36,23 @@ public class BookingCheckoutService
 
     public Booking createPendingBooking(BookingWishList cart, int userID, String paymentOption)
     {
-        return createPendingBooking(cart, userID, paymentOption, userID);
+        return createPendingBooking(cart, userID, paymentOption, userID, false);
     }
 
     public Booking createForReceptionist(BookingWishList cart, int customerUserID, String option, int actorUserID) {
         if (!new dao.EmployeeDAO().isReceptionistByUserId(actorUserID)) {
             throw new SecurityException("Only receptionists can book for customers.");
         }
-        return createPendingBooking(cart, customerUserID, option, actorUserID);
+        return createPendingBooking(cart, customerUserID, option, actorUserID, true);
     }
 
-    private Booking createPendingBooking(BookingWishList cart, int userID, String paymentOption, int actorUserID) {
+    private Booking createPendingBooking(BookingWishList cart, int userID, String paymentOption, int actorUserID,
+            boolean counterBooking) {
         validateCart(cart);
+        LocalDateTime now = BookingTimePolicy.now();
         if (actorUserID == userID) {
-            BookingTimePolicy.validateStayDates(cart.getCheckInDate(), cart.getCheckOutDate());
-        } else if (cart.getCheckInDate().isBefore(BookingTimePolicy.now().toLocalDate())) {
+            BookingTimePolicy.validateStayDates(cart.getCheckInDate(), cart.getCheckOutDate(), now);
+        } else if (cart.getCheckInDate().isBefore(now.toLocalDate())) {
             throw new IllegalArgumentException("Check-in cannot be in the past.");
         }
         if (userID <= 0)
@@ -57,6 +60,9 @@ public class BookingCheckoutService
             throw new IllegalArgumentException("A valid authenticated account is required.");
         }
         String option = validatePaymentOption(paymentOption);
+        if (counterBooking && cart.getCheckInDate().equals(now.toLocalDate()) && "DEPOSIT".equals(option)) {
+            throw new IllegalArgumentException("Same-day counter bookings require full payment.");
+        }
         Date checkInDate = Date.valueOf(cart.getCheckInDate());
         Date checkOutDate = Date.valueOf(cart.getCheckOutDate());
         Customer customer;
