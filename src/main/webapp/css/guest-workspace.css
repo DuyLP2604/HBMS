@@ -114,3 +114,23 @@
     .guest-workspace .guest-progress { white-space: normal; }
 }
 @media (prefers-reduced-motion: reduce) { .guest-workspace * { scroll-behavior: auto !important; } }
+
+.checkin-pay-os {
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid #d8e2df;
+    border-radius: 10px;
+    text-align: center;
+}
+.checkin-pay-os img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 12px auto 8px;
+    background: #fff;
+}
+.checkin-pay-os[hidden],
+.checkin-pay-os [hidden],
+#checkInCollectionGroup[hidden] {
+    display: none;
+}

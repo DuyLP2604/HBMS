@@ -356,6 +356,10 @@ CREATE TABLE dbo.PAYOS_ORDER (
     CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
     PaidAt DATETIME2 NULL,
     PaymentID CHAR(6) NULL REFERENCES dbo.PAYMENT(PaymentID),
+    CheckInStaffUserID INT NULL REFERENCES dbo.USERS(UserID),
+    CheckInExpiresAt BIGINT NULL,
+    CheckInQrCode VARCHAR(2000) NULL,
+    CheckInCheckoutUrl VARCHAR(500) NULL,
     CONSTRAINT CK_PAYOS_ORDER_Amount CHECK (WalletAmount >= 0 AND ExternalAmount > 0
         AND Amount = WalletAmount + ExternalAmount)
 );
@@ -3107,7 +3111,7 @@ BEGIN
     DECLARE @BookingID CHAR(6), @UserID INT, @Status VARCHAR(20), @PaymentType VARCHAR(10),
         @Amount DECIMAL(12,2), @WalletAmount DECIMAL(12,2), @ExpectedExternal DECIMAL(12,2),
         @PaymentID CHAR(6), @TransactionID VARCHAR(100) = CONCAT('PAYOS-', @OrderCode),
-        @BookingStatus VARCHAR(30), @Deadline DATETIME, @Required DECIMAL(12,2),
+        @BookingStatus VARCHAR(30), @Deadline DATETIME, @Required DECIMAL(12,2), @CheckInStaffUserID INT,
         @WalletBalance DECIMAL(12,2), @Reason VARCHAR(300), @NextID INT;
 
     BEGIN TRY
@@ -3115,7 +3119,7 @@ BEGIN
         EXEC dbo.SP_HBMS_ACQUIRE_WRITE_LOCK;
         SELECT @BookingID = o.BookingID, @UserID = o.UserID, @Status = o.Status,
             @PaymentType = o.PaymentType, @Amount = o.Amount, @WalletAmount = o.WalletAmount,
-            @ExpectedExternal = o.ExternalAmount
+            @ExpectedExternal = o.ExternalAmount, @CheckInStaffUserID = o.CheckInStaffUserID
         FROM dbo.PAYOS_ORDER o WITH (UPDLOCK, HOLDLOCK)
         WHERE o.OrderCode = @OrderCode
           AND o.PaymentLinkId COLLATE Latin1_General_100_BIN2 = @PaymentLinkId;
@@ -3144,9 +3148,12 @@ BEGIN
                     @Required = CASE WHEN b.FirstPaidAt IS NULL AND b.PaymentOption = @PaymentType
                             AND b.BookingStatus = 'PENDING_PAYMENT' THEN s.InitialRequiredAmount
                         WHEN b.FirstPaidAt IS NOT NULL AND @PaymentType = 'BALANCE'
-                            AND b.BookingStatus IN ('CONFIRMED','ASSIGNED') THEN r.RoomRemainingAmount
+                            AND b.BookingStatus IN ('CONFIRMED','ASSIGNED')
+                            AND (@CheckInStaffUserID IS NULL OR (b.BookingStatus = 'ASSIGNED' AND b.PaymentOption = 'DEPOSIT'))
+                            THEN r.RoomRemainingAmount
                         WHEN b.FirstPaidAt IS NOT NULL AND @PaymentType = 'BALANCE'
-                            AND b.BookingStatus = 'CHECKED_IN' THEN s.RemainingAmount END,
+                            AND b.BookingStatus = 'CHECKED_IN' AND @CheckInStaffUserID IS NULL
+                            THEN s.RemainingAmount END,
                     @WalletBalance = w.Balance
                 FROM dbo.BOOKING b
                 JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID

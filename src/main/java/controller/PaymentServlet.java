@@ -16,14 +16,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import service.PayOsService;
 import service.PaymentService;
 import service.PaymentService.PaymentRequest;
@@ -363,7 +361,7 @@ public class PaymentServlet extends HttpServlet {
                     || (useWallet && current.getOfferedWalletAmount().compareTo(walletAmount) != 0)) {
                 throw new IllegalStateException("The payment amount or wallet balance has changed. Reload and try again.");
             }
-            long orderCode = ThreadLocalRandom.current().nextLong(1_000_000_000_000L, 10_000_000_000_000L);
+            long orderCode = PayOsService.newOrderCode();
 
             PayOsOrderDAO orderDao = new PayOsOrderDAO();
             PayOsOrderDAO.Order order = new PayOsOrderDAO.Order();
@@ -375,7 +373,8 @@ public class PaymentServlet extends HttpServlet {
             order.walletAmount = walletAmount;
             order.externalAmount = shortfall;
 
-            String baseUrl = payOsBaseUrl(request);
+            String baseUrl = PayOsService.publicBaseUrl(request.getScheme() + "://" + request.getServerName()
+                    + ":" + request.getServerPort() + request.getContextPath());
             String returnUrl = baseUrl + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8) + "&orderCode=" + orderCode;
             String cancelUrl = returnUrl + "&payosCancelled=true";
 
@@ -401,22 +400,6 @@ public class PaymentServlet extends HttpServlet {
         }
 
         return true;
-    }
-
-    private String payOsBaseUrl(HttpServletRequest request) {
-        String configured = System.getProperty("PAYOS_PUBLIC_BASE_URL");
-        if (configured == null || configured.isBlank()) {
-            configured = System.getenv("PAYOS_PUBLIC_BASE_URL");
-        }
-        if (configured == null || configured.isBlank()) {
-            return request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort() + request.getContextPath();
-        }
-        URI base = URI.create(configured.trim());
-        if (!"https".equalsIgnoreCase(base.getScheme()) || base.getHost() == null
-                || base.getRawUserInfo() != null || base.getRawQuery() != null || base.getRawFragment() != null) {
-            throw new IllegalStateException("PAYOS_PUBLIC_BASE_URL must be an HTTPS application URL.");
-        }
-        return base.toString().replaceFirst("/+$", "");
     }
 
     private boolean extractSessionPaymentData(HttpSession session, HttpServletRequest request, Users user) {

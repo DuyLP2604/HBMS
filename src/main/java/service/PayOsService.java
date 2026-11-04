@@ -9,6 +9,7 @@ import java.security.InvalidKeyException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -17,6 +18,26 @@ public class PayOsService {
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(java.time.Duration.ofSeconds(5)).build();
     private static final String API = "https://api-merchant.payos.vn/v2/payment-requests";
+
+    public static long newOrderCode() {
+        return ThreadLocalRandom.current().nextLong(1_000_000_000_000L, 10_000_000_000_000L);
+    }
+
+    public static String publicBaseUrl(String localBaseUrl) {
+        String configured = System.getProperty("PAYOS_PUBLIC_BASE_URL");
+        if (configured == null || configured.isBlank()) {
+            configured = System.getenv("PAYOS_PUBLIC_BASE_URL");
+        }
+        if (configured == null || configured.isBlank()) {
+            return localBaseUrl;
+        }
+        URI base = URI.create(configured.trim());
+        if (!"https".equalsIgnoreCase(base.getScheme()) || base.getHost() == null
+                || base.getRawUserInfo() != null || base.getRawQuery() != null || base.getRawFragment() != null) {
+            throw new IllegalStateException("PAYOS_PUBLIC_BASE_URL must be an HTTPS application URL.");
+        }
+        return base.toString().replaceFirst("/+$", "");
+    }
 
     public static final class Link {
 

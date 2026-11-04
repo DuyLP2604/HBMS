@@ -35,7 +35,8 @@ public class CheckInService {
         if (!(owner instanceof Number) || ((Number) owner).intValue() <= 0) {
             throw new IllegalStateException("The booking customer account is unavailable. Reload check-in.");
         }
-        return new CheckInRequest(bookingID.trim(), actorUserID, ((Number) owner).intValue(), (BigDecimal) amount);
+        boolean deposit = "DEPOSIT".equals(summary.get("paymentOption")) && summary.get("firstPaidAt") != null;
+        return new CheckInRequest(bookingID.trim(), actorUserID, ((Number) owner).intValue(), (BigDecimal) amount, deposit);
     }
 
     public void confirm(CheckInRequest request, int actorUserID, String[] documents,
@@ -183,16 +184,19 @@ public class CheckInService {
         private final int actorUserID;
         private final int customerUserID;
         private final BigDecimal roomAmount;
-        private CheckInRequest(String bookingID, int actorUserID, int customerUserID, BigDecimal roomAmount) {
+        private final boolean deposit;
+        private CheckInRequest(String bookingID, int actorUserID, int customerUserID, BigDecimal roomAmount, boolean deposit) {
             this.bookingID = bookingID;
             this.actorUserID = actorUserID;
             this.customerUserID = customerUserID;
             this.roomAmount = roomAmount;
+            this.deposit = deposit;
         }
         public String getToken() { return token; }
         public String getBookingID() { return bookingID; }
         public int getActorUserID() { return actorUserID; }
         public int getCustomerUserID() { return customerUserID; }
         public BigDecimal getRoomAmount() { return roomAmount; }
+        public boolean isPayOsRoomBalance() { return deposit && roomAmount.signum() > 0; }
     }
 }

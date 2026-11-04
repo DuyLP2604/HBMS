@@ -459,3 +459,13 @@ Nếu PayOS đã báo thành công mà HBMS chưa cập nhật, kiểm tra lịc
 
 - [Webhook PayOS](https://payos.vn/docs/du-lieu-tra-ve/webhook/)
 - [Kiểm tra chữ ký](https://payos.vn/docs/tich-hop-webhook/kiem-tra-du-lieu-voi-signature/)
+
+### VietQR tại quầy khi nhận phòng
+
+Sau khi cập nhật code, chạy lại `db/HBMS_PayOS_Migration.sql` trên DB v6 đang dùng để thêm các trường cho QR tại quầy. DB mới đã có các trường này trong script v6. Dùng cùng kênh PayOS, các biến môi trường và webhook `/payos-webhook` đang chạy.
+
+1. Mở check-in của booking đã đặt cọc và đã gán phòng. Chọn **VietQR** rồi bấm **Generate VietQR**.
+2. Cho khách quét mã để trả phần tiền phòng còn thiếu. Webhook PayOS cập nhật số tiền đã trả.
+3. Kiểm tra CCCD và bấm **Complete check-in**. Phí dịch vụ còn lại thu lúc checkout.
+
+Mã có hạn 15 phút. Tải lại trang sẽ hiện mã đang hoạt động của booking. Nếu khách đã chuyển tiền mà trạng thái cần đối soát hoặc mã hết hạn, kiểm tra giao dịch PayOS trước khi thu lại.
