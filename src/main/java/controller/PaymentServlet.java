@@ -1,5 +1,6 @@
 package controller;
 
+import dao.PayOsOrderDAO;
 import dao.PaymentmethodDAO;
 import dao.WalletDAO;
 import dto.WalletSummary;
@@ -14,192 +15,230 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import service.PayOsService;
 import service.PaymentService;
 import service.PaymentService.PaymentRequest;
 
 @WebServlet(name = "PaymentServlet", urlPatterns = {"/payment"})
-public class PaymentServlet extends HttpServlet
-{
+public class PaymentServlet extends HttpServlet {
+
+    private static final class PaymentPageData {
+
+        final Booking booking;
+        final PaymentRequest paymentRequest;
+        final Map<String, Object> summary;
+        final List<Paymentmethod> methods;
+
+        PaymentPageData(Booking booking, PaymentRequest paymentRequest, Map<String, Object> summary, List<Paymentmethod> methods) {
+            this.booking = booking;
+            this.paymentRequest = paymentRequest;
+            this.summary = summary;
+            this.methods = methods;
+        }
+    }
+
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
-    {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setHeader("Cache-Control", "no-store");
         Users user = requireCustomer(request, response);
-        if (user == null)
-        {
+        if (user == null) {
             return;
         }
         HttpSession session = request.getSession(false);
-        if ("true".equals(request.getParameter("success")))
-        {
+        if (handlePayOsReturn(request, response, session, user)) {
+            return;
+        }
+        if ("true".equals(request.getParameter("success"))) {
             showSuccess(request, response, session, user);
             return;
         }
         String bookingID = trim(request.getParameter("bookingID"));
-        if (bookingID.isEmpty())
-        {
+        if (bookingID.isEmpty()) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Booking ID is required.");
             return;
         }
-        PaymentService service = createPaymentService();
-        Booking booking;
-        PaymentRequest paymentRequest;
-        Map<String, Object> summary;
-        List<Paymentmethod> methods;
-        try
-        {
-            booking = service.getBookingForPayment(bookingID, user.getUserID());
-            if (booking == null)
-            {
-                response.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested booking was not found.");
-                return;
-            }
-            paymentRequest = service.createPaymentRequest(bookingID, user.getUserID());
-            booking = service.getBookingForPayment(bookingID, user.getUserID());
-            summary = service.getPaymentSummary(bookingID, user.getUserID());
-            methods = new PaymentmethodDAO().getBookingMethods();
-        }
-        catch (IllegalArgumentException exception)
-        {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
+        PaymentPageData data = loadPaymentPageData(bookingID, user.getUserID(), response);
+        if (data == null) {
             return;
         }
-        catch (IllegalStateException exception)
-        {
+        String token = setupPaymentSession(session, request, data.paymentRequest);
+        setupPaymentAttributes(request, data, token);
+        request.getRequestDispatcher("/WEB-INF/views/payment.jsp").forward(request, response);
+    }
+
+    private PaymentPageData loadPaymentPageData(String bookingID, int userID, HttpServletResponse response) throws ServletException, IOException {
+        PaymentService service = createPaymentService();
+        try {
+            Booking booking = service.getBookingForPayment(bookingID, userID);
+            if (booking == null) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested booking was not found.");
+                return null;
+            }
+
+            PaymentRequest paymentRequest = service.createPaymentRequest(bookingID, userID);
+            Map<String, Object> summary = service.getPaymentSummary(bookingID, userID);
+            List<Paymentmethod> methods = new PaymentmethodDAO().getBookingMethods();
+
+            return new PaymentPageData(booking, paymentRequest, summary, methods);
+
+        } catch (IllegalArgumentException exception) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
+            return null;
+        } catch (IllegalStateException exception) {
             getServletContext().log("Unable to prepare the booking payment.", exception);
             response.sendError(HttpServletResponse.SC_CONFLICT, "This booking is expired, fully paid, unavailable, or cannot currently be paid. Check your bookings.");
-            return;
-        }
-        catch (Exception exception)
-        {
+            return null;
+        } catch (IOException exception) {
             throw new ServletException("Unable to load the payment page.", exception);
         }
+    }
+
+    private String setupPaymentSession(HttpSession session, HttpServletRequest request, PaymentRequest paymentRequest) {
         String token = UUID.randomUUID().toString();
-        synchronized (session)
-        {
+        synchronized (session) {
             Map<String, PaymentRequest> requests = paymentRequests(session);
-            while (requests.size() >= 20)
-            {
+            while (requests.size() >= 20) {
                 requests.remove(requests.keySet().iterator().next());
             }
             requests.put(token, paymentRequest);
+
             Object error = session.getAttribute("paymentError");
-            if (error != null)
-            {
+            if (error != null) {
                 request.setAttribute("errorMessage", error.toString());
                 session.removeAttribute("paymentError");
             }
         }
-        request.setAttribute("booking", booking);
-        request.setAttribute("walletBalance", paymentRequest.getWalletBalance());
-        request.setAttribute("walletAvailable", paymentRequest.getWalletBalance() != null);
-        request.setAttribute("walletCanPay", paymentRequest.getOfferedWalletAmount().compareTo(paymentRequest.getAmount()) >= 0);
-        request.setAttribute("walletContribution", paymentRequest.getOfferedWalletAmount());
-        request.setAttribute("externalContribution", paymentRequest.getAmount().subtract(paymentRequest.getOfferedWalletAmount()));
-        request.setAttribute("bookingSummary", summary);
-        request.setAttribute("paymentMethods", methods);
-        request.setAttribute("paymentOption", summary.get("paymentOption"));
+        return token;
+    }
+
+    private void setupPaymentAttributes(HttpServletRequest request, PaymentPageData data, String token) {
+        PaymentRequest paymentRequest = data.paymentRequest;
+        BigDecimal walletBalance = paymentRequest.getWalletBalance();
+        BigDecimal offeredWallet = paymentRequest.getOfferedWalletAmount();
+        BigDecimal amountToPay = paymentRequest.getAmount();
+
+        request.setAttribute("booking", data.booking);
+        request.setAttribute("walletBalance", walletBalance);
+        request.setAttribute("walletAvailable", walletBalance != null);
+        request.setAttribute("walletCanPay", offeredWallet.compareTo(amountToPay) >= 0);
+        request.setAttribute("walletContribution", offeredWallet);
+        request.setAttribute("externalContribution", amountToPay.subtract(offeredWallet));
+        request.setAttribute("bookingSummary", data.summary);
+        request.setAttribute("paymentMethods", data.methods);
+        request.setAttribute("paymentOption", data.summary.get("paymentOption"));
         request.setAttribute("paymentType", paymentRequest.getPaymentType());
-        request.setAttribute("amountToPay", paymentRequest.getAmount());
+        request.setAttribute("amountToPay", amountToPay);
         request.setAttribute("paymentRequestToken", token);
-        request.getRequestDispatcher("/WEB-INF/views/payment.jsp").forward(request, response);
+        request.setAttribute("transferReference", paymentRequest.getTransferReference());
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
-    {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
         Users user = requireCustomer(request, response);
-        if (user == null)
-        {
+        if (user == null) {
             return;
         }
+
         HttpSession session = request.getSession(false);
         String bookingID = trim(request.getParameter("bookingID"));
         String methodID = trim(request.getParameter("methodID"));
         boolean useWallet = "true".equals(request.getParameter("useWallet"));
         String token = trim(request.getParameter("paymentRequestToken"));
-        PaymentRequest paymentRequest;
-        synchronized (session)
-        {
-            paymentRequest = paymentRequests(session).get(token);
-        }
-        if (paymentRequest == null || paymentRequest.getUserID() != user.getUserID() || !paymentRequest.getBookingID().equals(bookingID))
-        {
+
+        PaymentRequest paymentRequest = getValidPaymentRequest(session, token, user.getUserID(), bookingID);
+        if (paymentRequest == null) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "The payment form is invalid or expired. Reload the payment page.");
             return;
         }
-        String redirect;
-        try
-        {
-            Payment payment = createPaymentService().processPayment(paymentRequest, methodID, user.getUserID(), useWallet);
-            if ("REFUNDED".equals(payment.getStatus()))
-            {
-                session.setAttribute("paymentError", "This payment has already been refunded to your wallet.");
-                redirect = "/my-bookings";
+
+        if ("PT01".equals(methodID)) {
+            if (handlePayOsCheckout(request, response, session, user, bookingID, paymentRequest, useWallet)) {
+                return;
             }
-            else
-            {
-                synchronized (session)
-                {
-                    session.setAttribute("successfulPaymentID", payment.getPaymentID());
-                    session.setAttribute("successfulBookingID", payment.getBookingID().getBookingID().trim());
-                    session.setAttribute("successfulTransactionCode", payment.getTransactionCode());
-                    session.setAttribute("successfulPaymentType", paymentRequest.getPaymentType());
-                    session.setAttribute("successfulPaymentAmount", payment.getAmount());
-                    session.setAttribute("successfulWalletAmount", payment.getWalletAmount());
-                    session.setAttribute("successfulExternalAmount", payment.getExternalAmount());
-                    session.setAttribute("successfulExternalMethodName", payment.getMethodID().getMethodName());
-                    session.setAttribute("successfulPaymentMethodID", payment.getMethodID().getMethodID().trim());
-                    session.setAttribute("successfulPaymentUserID", user.getUserID());
-                    session.removeAttribute("paymentError");
-                    if (bookingID.equals(session.getAttribute("pendingBookingID")))
-                    {
-                        session.removeAttribute("pendingBookingID");
-                    }
-                }
-                redirect = "/payment?success=true";
-            }
+            methodID = "PT02";
         }
-        catch (IllegalArgumentException | IllegalStateException exception)
-        {
-            session.setAttribute("paymentError", exception.getMessage() == null ? "Payment could not be completed." : exception.getMessage());
-            redirect = "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8);
-        }
-        catch (Exception exception)
-        {
-            getServletContext().log("Unable to confirm the payment.", exception);
-            session.setAttribute("paymentError", "Payment could not be confirmed. Check your booking before trying again.");
-            redirect = "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8);
-        }
-        // Redirect errors must not be treated as a failed payment after the database committed.
-        response.sendRedirect(request.getContextPath() + redirect);
+
+        String redirectPath = processDirectPayment(session, paymentRequest, methodID, user.getUserID(), useWallet, bookingID);
+
+        response.sendRedirect(request.getContextPath() + redirectPath);
     }
 
-    private Users requireCustomer(HttpServletRequest request, HttpServletResponse response) throws IOException
-    {
+    private PaymentRequest getValidPaymentRequest(HttpSession session, String token, int userID, String bookingID) {
+        PaymentRequest paymentRequest;
+        synchronized (session) {
+            paymentRequest = paymentRequests(session).get(token);
+        }
+
+        if (paymentRequest == null || paymentRequest.getUserID() != userID || !paymentRequest.getBookingID().equals(bookingID)) {
+            return null;
+        }
+        return paymentRequest;
+    }
+
+    private String processDirectPayment(HttpSession session, PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet, String bookingID) {
+        try {
+            Payment payment = createPaymentService().processPayment(paymentRequest, methodID, userID, useWallet);
+
+            if ("REFUNDED".equals(payment.getStatus())) {
+                session.setAttribute("paymentError", "This payment has already been refunded to your wallet.");
+                return "/my-bookings";
+            }
+
+            storeSuccessfulPaymentInSession(session, payment, paymentRequest, userID, bookingID);
+            return "/payment?success=true";
+
+        } catch (IllegalArgumentException | IllegalStateException exception) {
+            session.setAttribute("paymentError", exception.getMessage() == null ? "Payment could not be completed." : exception.getMessage());
+            return "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8);
+        } catch (Exception exception) {
+            getServletContext().log("Unable to confirm the payment.", exception);
+            session.setAttribute("paymentError", "Payment could not be confirmed. Check your booking before trying again.");
+            return "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8);
+        }
+    }
+
+    private void storeSuccessfulPaymentInSession(HttpSession session, Payment payment, PaymentRequest paymentRequest, int userID, String bookingID) {
+        synchronized (session) {
+            session.setAttribute("successfulPaymentID", payment.getPaymentID());
+            session.setAttribute("successfulBookingID", payment.getBookingID().getBookingID().trim());
+            session.setAttribute("successfulTransactionCode", payment.getTransactionID() == null ? null : payment.getTransactionID().getTransactionCode());
+            session.setAttribute("successfulPaymentType", paymentRequest.getPaymentType());
+            session.setAttribute("successfulPaymentAmount", payment.getAmount());
+            session.setAttribute("successfulWalletAmount", payment.getWalletAmount());
+            session.setAttribute("successfulExternalAmount", payment.getExternalAmount());
+            session.setAttribute("successfulExternalMethodName", payment.getMethodID().getMethodName());
+            session.setAttribute("successfulPaymentMethodID", payment.getMethodID().getMethodID().trim());
+            session.setAttribute("successfulPaymentUserID", userID);
+            session.removeAttribute("paymentError");
+
+            if (bookingID.equals(session.getAttribute("pendingBookingID"))) {
+                session.removeAttribute("pendingBookingID");
+            }
+        }
+    }
+
+    private Users requireCustomer(HttpServletRequest request, HttpServletResponse response) throws IOException {
         HttpSession session = request.getSession(false);
         Object value = session == null ? null : session.getAttribute("user");
-        if (!(value instanceof Users))
-        {
+        if (!(value instanceof Users)) {
             response.sendRedirect(request.getContextPath() + "/login");
             return null;
         }
         Users user = (Users) value;
-        if (!"Customer".equalsIgnoreCase(user.getRole()))
-        {
+        if (!"Customer".equalsIgnoreCase(user.getRole())) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only customers can make payments.");
             return null;
         }
         Integer userID = user.getUserID();
-        if (userID == null || userID <= 0)
-        {
+        if (userID == null || userID <= 0) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "The login session is invalid.");
             return null;
         }
@@ -207,11 +246,9 @@ public class PaymentServlet extends HttpServlet
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, PaymentRequest> paymentRequests(HttpSession session)
-    {
+    private Map<String, PaymentRequest> paymentRequests(HttpSession session) {
         Object value = session.getAttribute("paymentRequests");
-        if (value instanceof Map)
-        {
+        if (value instanceof Map) {
             return (Map<String, PaymentRequest>) value;
         }
         Map<String, PaymentRequest> requests = new LinkedHashMap<>();
@@ -219,17 +256,162 @@ public class PaymentServlet extends HttpServlet
         return requests;
     }
 
-    private void showSuccess(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user) throws ServletException, IOException
-    {
-        synchronized (session)
-        {
+    private void showSuccess(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user) throws ServletException, IOException {
+        if (!extractSessionPaymentData(session, request, user)) {
+            response.sendRedirect(request.getContextPath() + "/my-bookings");
+            return;
+        }
+
+        populateWalletSummaryIfUsed(request, user.getUserID());
+
+        populateSuccessBookingSummary(request, user.getUserID());
+
+        request.getRequestDispatcher("/WEB-INF/views/payment-success.jsp").forward(request, response);
+    }
+
+    protected PaymentService createPaymentService() {
+        return new PaymentService();
+    }
+
+    protected WalletSummary loadWalletSummary(int userID) {
+        return new WalletDAO().getWalletByUserID(userID);
+    }
+
+    private String trim(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    @Override
+    public String getServletInfo() {
+        return "Customer deposit, full payment and balance payment servlet";
+    }
+
+    private boolean handlePayOsReturn(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user)
+            throws ServletException, IOException {
+        String orderCodeParam = request.getParameter("orderCode");
+        if (orderCodeParam == null || orderCodeParam.isBlank()) {
+            return false;
+        }
+
+        PayOsOrderDAO.Order order;
+        try {
+            order = new PayOsOrderDAO().find(Long.parseLong(orderCodeParam));
+        } catch (NumberFormatException exception) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+            return true;
+        } catch (java.sql.SQLException exception) {
+            log("Unable to load the PayOS return order.", exception);
+            response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            return true;
+        }
+
+        if (order == null || !Integer.valueOf(order.userID).equals(user.getUserID())) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return true;
+        }
+        String bookingQuery = "bookingID=" + URLEncoder.encode(order.bookingID, StandardCharsets.UTF_8);
+        if ("PAID".equals(order.status)) {
+            if (order.paymentID == null) {
+                response.sendRedirect(request.getContextPath() + "/my-bookings?" + bookingQuery);
+                return true;
+            }
+            synchronized (session) {
+                session.setAttribute("successfulPaymentID", order.paymentID.trim());
+                session.setAttribute("successfulBookingID", order.bookingID);
+                session.setAttribute("successfulTransactionCode", order.reference);
+                session.setAttribute("successfulPaymentType", order.paymentType);
+                session.setAttribute("successfulPaymentAmount", order.amount);
+                session.setAttribute("successfulWalletAmount", order.walletAmount);
+                session.setAttribute("successfulExternalAmount", order.externalAmount);
+                session.setAttribute("successfulExternalMethodName", "VietQR (PayOS)");
+                session.setAttribute("successfulPaymentMethodID", "PT01");
+                session.setAttribute("successfulPaymentUserID", user.getUserID());
+                if (order.bookingID.equals(session.getAttribute("pendingBookingID"))) {
+                    session.removeAttribute("pendingBookingID");
+                }
+            }
+            showSuccess(request, response, session, user);
+            return true;
+        }
+        if ("true".equals(request.getParameter("payosCancelled")) && !"FAILED".equals(order.status)) {
+            response.sendRedirect(request.getContextPath() + "/payment?" + bookingQuery);
+            return true;
+        }
+
+        request.setAttribute("payOsBookingID", order.bookingID);
+        request.setAttribute("payOsOrderCode", order.orderCode);
+        request.setAttribute("payOsReview", "FAILED".equals(order.status));
+        request.getRequestDispatcher("/WEB-INF/views/payos-pending.jsp").forward(request, response);
+        return true;
+    }
+
+    private boolean handlePayOsCheckout(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user, String bookingID, PaymentRequest paymentRequest, boolean useWallet) throws IOException {
+        BigDecimal walletAmount = useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
+        BigDecimal shortfall = paymentRequest.getAmount().subtract(walletAmount);
+
+        // Use the wallet flow if it covers the full amount.
+        if (shortfall.signum() <= 0) {
+            return false;
+        }
+
+        try {
+            PaymentRequest current = createPaymentService().createPaymentRequest(bookingID, user.getUserID());
+            if (!current.getPaymentType().equals(paymentRequest.getPaymentType())
+                    || current.getAmount().compareTo(paymentRequest.getAmount()) != 0
+                    || (useWallet && current.getOfferedWalletAmount().compareTo(walletAmount) != 0)) {
+                throw new IllegalStateException("The payment amount or wallet balance has changed. Reload and try again.");
+            }
+            long orderCode = PayOsService.newOrderCode();
+
+            PayOsOrderDAO orderDao = new PayOsOrderDAO();
+            PayOsOrderDAO.Order order = new PayOsOrderDAO.Order();
+            order.orderCode = orderCode;
+            order.bookingID = bookingID;
+            order.userID = user.getUserID();
+            order.paymentType = paymentRequest.getPaymentType();
+            order.amount = paymentRequest.getAmount();
+            order.walletAmount = walletAmount;
+            order.externalAmount = shortfall;
+
+            String baseUrl = PayOsService.publicBaseUrl(request.getScheme() + "://" + request.getServerName()
+                    + ":" + request.getServerPort() + request.getContextPath());
+            String returnUrl = baseUrl + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8) + "&orderCode=" + orderCode;
+            String cancelUrl = returnUrl + "&payosCancelled=true";
+
+            // Use the booking deadline for the PayOS link.
+            Booking booking = createPaymentService().getBookingForPayment(bookingID, user.getUserID());
+            long expiredAtEpochSeconds = 0;
+            if (booking != null && booking.getPaymentDeadline() != null) {
+                expiredAtEpochSeconds = booking.getPaymentDeadline().getTime() / 1000;
+            } else {
+                expiredAtEpochSeconds = (System.currentTimeMillis() / 1000) + (15 * 60);
+            }
+
+            PayOsService.Link link = new PayOsService().createPaymentLink(
+                    orderCode, shortfall, bookingID, returnUrl, cancelUrl, expiredAtEpochSeconds);
+
+            orderDao.insert(order, link.paymentLinkId);
+
+            response.sendRedirect(link.checkoutUrl);
+        } catch (Exception e) {
+            getServletContext().log("PayOS Gateway Init Error", e);
+            session.setAttribute("paymentError", "Unable to start PayOS checkout. Check your booking before trying again.");
+            response.sendRedirect(request.getContextPath() + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8));
+        }
+
+        return true;
+    }
+
+    private boolean extractSessionPaymentData(HttpSession session, HttpServletRequest request, Users user) {
+        synchronized (session) {
             Object paymentID = session.getAttribute("successfulPaymentID");
             Object bookingID = session.getAttribute("successfulBookingID");
-            if (paymentID == null || bookingID == null || !user.getUserID().equals(session.getAttribute("successfulPaymentUserID")))
-            {
-                response.sendRedirect(request.getContextPath() + "/my-bookings");
-                return;
+            Object paymentUserID = session.getAttribute("successfulPaymentUserID");
+
+            if (paymentID == null || bookingID == null || !user.getUserID().equals(paymentUserID)) {
+                return false;
             }
+
             request.setAttribute("paymentID", paymentID);
             request.setAttribute("bookingID", bookingID);
             request.setAttribute("transactionCode", session.getAttribute("successfulTransactionCode"));
@@ -239,63 +421,51 @@ public class PaymentServlet extends HttpServlet
             request.setAttribute("externalAmount", session.getAttribute("successfulExternalAmount"));
             request.setAttribute("externalMethodName", session.getAttribute("successfulExternalMethodName"));
             request.setAttribute("paymentMethodID", session.getAttribute("successfulPaymentMethodID"));
-            session.removeAttribute("successfulPaymentID");
-            session.removeAttribute("successfulBookingID");
-            session.removeAttribute("successfulTransactionCode");
-            session.removeAttribute("successfulPaymentType");
-            session.removeAttribute("successfulPaymentAmount");
-            session.removeAttribute("successfulWalletAmount");
-            session.removeAttribute("successfulExternalAmount");
-            session.removeAttribute("successfulExternalMethodName");
-            session.removeAttribute("successfulPaymentMethodID");
-            session.removeAttribute("successfulPaymentUserID");
+
+            clearSessionPaymentAttributes(session);
+            return true;
         }
-        if (request.getAttribute("walletAmount") instanceof java.math.BigDecimal && ((java.math.BigDecimal) request.getAttribute("walletAmount")).signum() > 0)
-        {
-            try { request.setAttribute("wallet", loadWalletSummary(user.getUserID())); }
-            catch (IllegalStateException exception) { getServletContext().log("Payment succeeded, but the updated wallet balance is unavailable.", exception); }
+    }
+
+    private void clearSessionPaymentAttributes(HttpSession session) {
+        session.removeAttribute("successfulPaymentID");
+        session.removeAttribute("successfulBookingID");
+        session.removeAttribute("successfulTransactionCode");
+        session.removeAttribute("successfulPaymentType");
+        session.removeAttribute("successfulPaymentAmount");
+        session.removeAttribute("successfulWalletAmount");
+        session.removeAttribute("successfulExternalAmount");
+        session.removeAttribute("successfulExternalMethodName");
+        session.removeAttribute("successfulPaymentMethodID");
+        session.removeAttribute("successfulPaymentUserID");
+    }
+
+    private void populateWalletSummaryIfUsed(HttpServletRequest request, int userID) {
+        Object walletAmount = request.getAttribute("walletAmount");
+        if (walletAmount instanceof java.math.BigDecimal && ((java.math.BigDecimal) walletAmount).signum() > 0) {
+            try {
+                request.setAttribute("wallet", loadWalletSummary(userID));
+            } catch (IllegalStateException exception) {
+                getServletContext().log("Payment succeeded, but the updated wallet balance is unavailable.", exception);
+            }
         }
-        try
-        {
+    }
+
+    private void populateSuccessBookingSummary(HttpServletRequest request, int userID) {
+        try {
             PaymentService service = createPaymentService();
-            String id = String.valueOf(request.getAttribute("bookingID"));
-            Booking booking = service.getBookingForPayment(id, user.getUserID());
-            if (booking != null)
-            {
-                Map<String, Object> summary = service.getPaymentSummary(id, user.getUserID());
-                if (summary != null && !summary.isEmpty())
-                {
+            String bookingID = String.valueOf(request.getAttribute("bookingID"));
+            Booking booking = service.getBookingForPayment(bookingID, userID);
+            if (booking != null) {
+                Map<String, Object> summary = service.getPaymentSummary(bookingID, userID);
+                if (summary != null && !summary.isEmpty()) {
                     request.setAttribute("successBooking", booking);
                     request.setAttribute("successBookingSummary", summary);
                 }
             }
-        }
-        catch (RuntimeException exception)
-        {
-            // A read failure must not make a recorded payment look unsuccessful.
+        } catch (RuntimeException exception) {
+            // The payment is saved even if its summary cannot load.
             getServletContext().log("Payment succeeded, but the latest booking summary is unavailable.", exception);
         }
-        request.getRequestDispatcher("/WEB-INF/views/payment-success.jsp").forward(request, response);
-    }
-
-    protected PaymentService createPaymentService()
-    {
-        return new PaymentService();
-    }
-
-    protected WalletSummary loadWalletSummary(int userID)
-    {
-        return new WalletDAO().getWalletByUserID(userID);
-    }
-
-    private String trim(String value)
-    {
-        return value == null ? "" : value.trim();
-    }
-
-    @Override
-    public String getServletInfo()
-    {
-        return "Customer deposit, full payment and balance payment servlet";
     }
 }

@@ -54,13 +54,28 @@
             <aside class="guest-panel guest-payment-panel" aria-labelledby="checkin-payment-title">
                 <div class="guest-panel-heading"><div><p class="stay-eyebrow">BEFORE CHECK-IN</p><h2 id="checkin-payment-title">Room payment</h2></div><i class="fa-solid fa-receipt" aria-hidden="true"></i></div>
                 <div class="guest-panel-body">
-                    <dl class="guest-payment-lines"><div><dt>Room charges</dt><dd><fmt:formatNumber value="${paymentSummary.roomTotal}" pattern="#,##0.##" /> VND</dd></div><div><dt>Already paid toward rooms</dt><dd><fmt:formatNumber value="${paymentSummary.roomPaidAmount}" pattern="#,##0.##" /> VND</dd></div></dl>
-                    <div class="guest-payment-due"><span>Room balance due now</span><div class="guest-payment-amount"><fmt:formatNumber value="${checkInRequest.roomAmount}" pattern="#,##0.##" /> <small>VND</small></div></div>
+                    <dl class="guest-payment-lines"><div><dt>Room charges</dt><dd data-checkin-room-total><fmt:formatNumber value="${paymentSummary.roomTotal}" pattern="#,##0.##" /> VND</dd></div><div><dt>Already paid toward rooms</dt><dd data-checkin-room-paid><fmt:formatNumber value="${paymentSummary.roomPaidAmount}" pattern="#,##0.##" /> VND</dd></div></dl>
+                    <div class="guest-payment-due"><span>Room balance due now</span><div class="guest-payment-amount" data-checkin-room-balance><fmt:formatNumber value="${checkInRequest.roomAmount}" pattern="#,##0.##" /> <small>VND</small></div></div>
                     <c:choose>
                         <c:when test="${checkInRequest.roomAmount gt 0}">
                             <label class="guest-field" for="checkInMethod"><span>Payment method <em class="guest-required">*</em></span><select name="methodID" id="checkInMethod" required><option value="">Select a method</option><c:forEach var="method" items="${paymentMethods}"><option value="<c:out value='${method.methodID}' />"><c:out value="${method.methodName}" /></option></c:forEach></select></label>
+                            <c:choose>
+                                <c:when test="${checkInRequest.payOsRoomBalance}">
+                                    <section id="checkInPayOs" class="checkin-pay-os" aria-label="VietQR via PayOS" hidden>
+                                        <input type="hidden" name="payOsOrderCode" id="checkInPayOsOrderCode">
+                                        <p class="guest-help">Scan the QR to pay the room balance. PayOS confirms the transfer automatically.</p>
+                                        <button type="button" class="stay-button stay-button-secondary" id="checkInPayOsCreate">Generate VietQR</button>
+                                        <img id="checkInPayOsImage" width="240" height="240" alt="VietQR for the room balance" hidden>
+                                        <a id="checkInPayOsCheckout" class="guest-inline-action" target="_blank" rel="noopener noreferrer" hidden>Open PayOS</a>
+                                        <p id="checkInPayOsStatus" class="guest-help" role="status" aria-live="polite"></p>
+                                    </section>
+                                </c:when>
+                                <c:otherwise>
+                            <label id="checkInBankReferenceGroup" class="guest-field" for="checkInBankReference" hidden><span>Verified bank transaction reference <em class="guest-required">*</em></span><input type="text" name="bankReference" id="checkInBankReference" maxlength="100" autocomplete="off" disabled><small>Confirm receipt in the bank account before recording a VietQR payment.</small></label>
+                                </c:otherwise>
+                            </c:choose>
                             <div id="checkInWalletAuthorization" class="guest-wallet" hidden><h3>Customer wallet authorization</h3><p class="guest-help">The booking customer must authorize their own wallet. Its balance must cover the room amount due.</p><label class="guest-field" for="walletUsername"><span>Customer username</span><input type="text" name="walletUsername" id="walletUsername" maxlength="50" autocomplete="off" disabled></label><label class="guest-field" for="walletPassword"><span>Customer password</span><input type="password" name="walletPassword" id="walletPassword" autocomplete="off" disabled></label></div>
-                            <label class="guest-payment-confirm" for="collectionConfirmed"><input type="checkbox" id="collectionConfirmed" name="collectionConfirmed" value="true" required><span>I confirm payment of the outstanding room balance.</span></label>
+                            <label class="guest-payment-confirm" id="checkInCollectionGroup" for="collectionConfirmed"><input type="checkbox" id="collectionConfirmed" name="collectionConfirmed" value="true" required><span>I confirm payment of the outstanding room balance.</span></label>
                             <c:if test="${empty paymentMethods}"><p class="guest-field-error" role="alert">No payment methods are currently available. Reload this page or contact the administrator.</p></c:if>
                         </c:when>
                         <c:otherwise><div class="guest-paid"><i class="fa-solid fa-circle-check" aria-hidden="true"></i><span>Room charges are fully paid. No additional room payment is required.</span></div></c:otherwise>

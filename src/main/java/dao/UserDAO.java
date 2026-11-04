@@ -39,7 +39,7 @@ public class UserDAO {
             List<Users> users = query.setMaxResults(1).getResultList();
             return users.isEmpty() ? null : users.get(0);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
         return null;
     }
@@ -151,6 +151,7 @@ public class UserDAO {
         }
         return false;
     }
+
     /* Conditional updates make a temporary credential single-use across sessions.
      * Bulk updates also evict EclipseLink's shared cache before the next login. */
     public Users completeFirstLogin(int userId, String expectedPasswordHash, String newPassword) {
@@ -211,4 +212,7 @@ public class UserDAO {
         return PersistenceManager.createEntityManager();
     }
 
+    public static void main(String[] args) {
+        System.out.println(new UserDAO().login("admin", "123456").toString());
+    }
 }

@@ -35,17 +35,18 @@ public class CheckInService {
         if (!(owner instanceof Number) || ((Number) owner).intValue() <= 0) {
             throw new IllegalStateException("The booking customer account is unavailable. Reload check-in.");
         }
-        return new CheckInRequest(bookingID.trim(), actorUserID, ((Number) owner).intValue(), (BigDecimal) amount);
+        boolean deposit = "DEPOSIT".equals(summary.get("paymentOption")) && summary.get("firstPaidAt") != null;
+        return new CheckInRequest(bookingID.trim(), actorUserID, ((Number) owner).intValue(), (BigDecimal) amount, deposit);
     }
 
     public void confirm(CheckInRequest request, int actorUserID, String[] documents,
-            String methodID, boolean collectionConfirmed, Integer walletAuthorizedBy) {
+            String methodID, boolean collectionConfirmed, Integer walletAuthorizedBy, String bankReference) {
         if (request == null || actorUserID <= 0 || request.actorUserID != actorUserID) {
             throw new IllegalArgumentException("Reload the check-in form before trying again.");
         }
         String guestDocuments = validateDocuments(documents);
         String method = methodID == null ? "" : methodID.trim();
-        String reference = "SIM-CHECKIN-" + request.token;
+        String reference = "CHECKIN-" + request.token;
         if (request.roomAmount.signum() > 0) {
             if (!collectionConfirmed) {
                 throw new IllegalArgumentException("Confirm that the outstanding room payment has been collected.");
@@ -53,13 +54,19 @@ public class CheckInService {
             if (method.isEmpty() || method.length() > 4 || !isAvailableMethod(method)) {
                 throw new IllegalArgumentException("Select one of the available booking payment methods.");
             }
-            if ("PT09".equals(method) && (walletAuthorizedBy == null || walletAuthorizedBy != request.customerUserID)) {
+            if ("PT02".equals(method) && (walletAuthorizedBy == null || walletAuthorizedBy != request.customerUserID)) {
                 throw new IllegalArgumentException("The booking customer must authorize their own wallet payment.");
             }
         } else {
             method = null;
         }
-        Integer authorizedWalletOwner = "PT09".equals(method) ? walletAuthorizedBy : null;
+        if (request.roomAmount.signum() > 0 && "PT01".equals(method)) {
+            reference = bankReference == null ? "" : bankReference.trim();
+            if (reference.isEmpty() || reference.length() > 100) {
+                throw new IllegalArgumentException("Enter the verified bank transaction reference (maximum 100 characters).");
+            }
+        }
+        Integer authorizedWalletOwner = "PT02".equals(method) ? walletAuthorizedBy : null;
         synchronized (request) {
             try (Connection connection = openConnection()) {
                 writeCheckIn(connection, request, guestDocuments, method, reference, authorizedWalletOwner);
@@ -72,7 +79,7 @@ public class CheckInService {
     }
 
     protected boolean isAvailableMethod(String methodID) {
-        return new PaymentmethodDAO().getBookingMethods().stream()
+        return new PaymentmethodDAO().getCollectionMethods().stream()
                 .anyMatch(method -> methodID.equals(method.getMethodID().trim()));
     }
 
@@ -93,7 +100,7 @@ public class CheckInService {
         connection.setAutoCommit(false);
         try (PreparedStatement statement = connection.prepareStatement(
                 "EXEC dbo.SP_CHECKIN_WITH_ROOM_PAYMENT @BookingID = ?, @ActorUserID = ?, "
-                + "@GuestDocuments = ?, @ExpectedRoomAmount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAuthorizedBy = ?;")) {
+                + "@GuestDocuments = ?, @ExpectedRoomAmount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAuthorizedBy = ?, @TransactionID = ?;")) {
             statement.setString(1, request.bookingID);
             statement.setInt(2, request.actorUserID);
             statement.setString(3, documents);
@@ -102,6 +109,7 @@ public class CheckInService {
             statement.setString(6, reference);
             if (walletAuthorizedBy == null) statement.setNull(7, java.sql.Types.INTEGER);
             else statement.setInt(7, walletAuthorizedBy);
+            statement.setString(8, "PT01".equals(method) ? reference : null);
             boolean result = statement.execute();
             // Nested payment can return a row before a later check-in error. Drain all results.
             while (true) {
@@ -153,6 +161,7 @@ public class CheckInService {
             case 51031: case 51060: return "Only authorized staff or admin can check in guests.";
             case 51038: return "This payment reference has already been recorded. Review payment history before retrying.";
             case 51046: return "The customer's wallet cannot cover the room balance. Select another payment method.";
+            case 51210: return "A verified bank transaction reference is required for VietQR.";
             case 51048: return "A receptionist must record a wallet payment authorized by the booking customer.";
             case 51044: case 51111: return "The room balance changed. Reload check-in and verify payments before collecting money.";
             case 51064: return "Assign all requested rooms before check-in.";
@@ -175,16 +184,19 @@ public class CheckInService {
         private final int actorUserID;
         private final int customerUserID;
         private final BigDecimal roomAmount;
-        private CheckInRequest(String bookingID, int actorUserID, int customerUserID, BigDecimal roomAmount) {
+        private final boolean deposit;
+        private CheckInRequest(String bookingID, int actorUserID, int customerUserID, BigDecimal roomAmount, boolean deposit) {
             this.bookingID = bookingID;
             this.actorUserID = actorUserID;
             this.customerUserID = customerUserID;
             this.roomAmount = roomAmount;
+            this.deposit = deposit;
         }
         public String getToken() { return token; }
         public String getBookingID() { return bookingID; }
         public int getActorUserID() { return actorUserID; }
         public int getCustomerUserID() { return customerUserID; }
         public BigDecimal getRoomAmount() { return roomAmount; }
+        public boolean isPayOsRoomBalance() { return deposit && roomAmount.signum() > 0; }
     }
 }

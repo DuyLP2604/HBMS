@@ -37,7 +37,7 @@
                                             <div class="ui-result-action"><a class="ui-button ui-button-primary" href="${pageContext.request.contextPath}/process-checkin?bookingID=${fn:escapeXml(booking.bookingID)}">Check In Now <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
                                             <p class="ui-help">Verify guest identity documents in the next step. Check-in requires all assigned rooms to be ready.</p>
                                         </c:when>
-                                        <c:otherwise><div class="ui-notice ui-notice-warning">Check-in opens on the arrival date at 14:00 Vietnam time. Early check-in is not enabled.</div></c:otherwise>
+                                        <c:otherwise><div class="ui-notice ui-notice-warning">Check-in is currently unavailable for this booking.</div></c:otherwise>
                                     </c:choose>
                                 </c:when>
                                 <c:when test="${booking.bookingStatus eq 'CHECKED_IN'}"><div class="ui-notice ui-notice-success">Guest checked in.</div></c:when>
@@ -57,7 +57,7 @@
                                     <input type="hidden" name="paymentToken" value="${fn:escapeXml(paymentToken)}">
                                     <div class="ui-field">
                                         <label for="methodID">Payment method</label>
-                                        <select id="methodID" name="methodID" required><option value="PT01">Cash</option><option value="PT10">VietQR — manually verified bank transfer</option></select>
+                                        <select id="methodID" name="methodID" required><option value="PT03">Cash</option><option value="PT01">VietQR — manually verified bank transfer</option></select>
                                     </div>
                                     <div class="ui-field ui-field-spacing"><label for="bankReference">Bank transaction reference (required for VietQR)</label><input id="bankReference" name="bankReference" maxlength="100" autocomplete="off"></div>
                                     <p class="ui-help">For VietQR, let the customer scan the hotel's bank QR and verify the incoming transfer before recording payment.</p>
@@ -83,7 +83,7 @@
                                     <div class="ui-field"><label for="checkInDate">Check-in date</label><input type="date" id="checkInDate" name="checkInDate" min="${today}" value="${today}" required></div>
                                     <div class="ui-field"><label for="checkOutDate">Check-out date</label><input type="date" id="checkOutDate" name="checkOutDate" min="${tomorrow}" value="${tomorrow}" required></div>
                                 </div>
-                                <p class="ui-help">Counter bookings can start today. Check-in opens at 14:00, after payment and room assignment. Availability is checked again when you submit.</p>
+                                <p class="ui-help">Counter bookings can start today. Check-in follows payment and room assignment. Availability is checked again when you submit.</p>
                                 <div class="ui-table-scroll" role="region" aria-label="Room type selection">
                                     <table class="ui-table ui-booking-table">
                                         <thead><tr><th scope="col">Room type</th><th scope="col">Price / night</th><th scope="col">Capacity / room</th><th scope="col">Rooms</th><th scope="col">Guests</th></tr></thead>

@@ -3,14 +3,109 @@
     const form = document.getElementById('checkInForm');
     if (!form) return;
     const method = document.getElementById('checkInMethod');
+    const bankGroup = document.getElementById('checkInBankReferenceGroup');
+    const bankReference = document.getElementById('checkInBankReference');
     const walletGroup = document.getElementById('checkInWalletAuthorization');
     const confirmation = document.getElementById('collectionConfirmed');
+    const collectionGroup = document.getElementById('checkInCollectionGroup');
+    const payOsPanel = document.getElementById('checkInPayOs');
+    const payOsCreate = document.getElementById('checkInPayOsCreate');
+    const payOsCode = document.getElementById('checkInPayOsOrderCode');
+    const payOsImage = document.getElementById('checkInPayOsImage');
+    const payOsCheckout = document.getElementById('checkInPayOsCheckout');
+    const payOsStatus = document.getElementById('checkInPayOsStatus');
     const submit = document.getElementById('confirmCheckIn');
     const initialLabel = submit.innerHTML;
     const progress = form.querySelector('[data-document-progress]');
     const hint = form.querySelector('[data-checkin-hint]');
     const requiredRooms = Number(form.dataset.requiredRooms || form.querySelectorAll('.checkin-room').length);
     let submitting = false;
+    let payOsState = 'NONE';
+    let payOsBusy = false;
+    let pollTimer;
+
+    function usesPayOs() {
+        return payOsPanel && method.value === 'PT01';
+    }
+
+    function renderPayOs(order) {
+        payOsState = order.status;
+        payOsCode.value = order.orderCode || '';
+        const pending = payOsState === 'PENDING';
+        const locked = pending || payOsState === 'PAID' || payOsState === 'FAILED';
+        if (locked) method.value = 'PT01';
+        for (const option of method.options) {
+            option.disabled = locked && option.value !== 'PT01';
+        }
+        payOsImage.hidden = !pending;
+        payOsCheckout.hidden = !pending;
+        if (pending) {
+            if (payOsImage.getAttribute('src') !== order.imageUrl) payOsImage.src = order.imageUrl;
+            payOsCheckout.href = order.checkoutUrl;
+        }
+        if (payOsState === 'PAID') {
+            const roomTotal = form.querySelector('[data-checkin-room-total]');
+            const roomPaid = form.querySelector('[data-checkin-room-paid]');
+            const roomBalance = form.querySelector('[data-checkin-room-balance]');
+            if (roomTotal && roomPaid) roomPaid.textContent = roomTotal.textContent;
+            if (roomBalance) roomBalance.textContent = '0 VND';
+        }
+        payOsStatus.textContent = {
+            PENDING: 'Waiting for PayOS to confirm the transfer.',
+            PAID: 'Room payment received. You can complete check-in.',
+            FAILED: 'The transfer needs review. Check the PayOS order before collecting again.',
+            EXPIRED: 'This QR expired. Verify any transfer before generating a new code.'
+        }[payOsState] || '';
+        syncPaymentMethod();
+    }
+
+    async function readPayOsResponse(response) {
+        if (!response.ok) throw new Error('Unable to check PayOS. Reload the booking and try again.');
+        return response.json();
+    }
+
+    async function pollPayOs() {
+        const url = new URL(form.action);
+        url.searchParams.set('bookingID', form.elements.bookingID.value);
+        url.searchParams.set('action', 'payOsStatus');
+        if (payOsCode.value) url.searchParams.set('orderCode', payOsCode.value);
+        try {
+            renderPayOs(await readPayOsResponse(await fetch(url, {cache: 'no-store'})));
+        } catch (error) {
+            payOsStatus.textContent = error.message;
+        }
+        if (payOsState === 'PENDING') pollTimer = setTimeout(pollPayOs, 3000);
+    }
+
+    async function createPayOs() {
+        if (payOsBusy || payOsState === 'PENDING') return;
+        payOsBusy = true;
+        updateState();
+        payOsStatus.textContent = 'Generating VietQR…';
+        const body = new URLSearchParams({
+            action: 'createPayOs',
+            bookingID: form.elements.bookingID.value,
+            checkInToken: form.elements.checkInToken.value,
+            csrfToken: form.elements.csrfToken.value
+        });
+        try {
+            const response = await fetch(form.action, {method: 'POST', body});
+            if (response.status === 409) {
+                const result = await response.json();
+                throw new Error(result.message);
+            }
+            renderPayOs(await readPayOsResponse(response));
+            if (payOsState === 'PENDING') {
+                clearTimeout(pollTimer);
+                pollTimer = setTimeout(pollPayOs, 3000);
+            }
+        } catch (error) {
+            payOsStatus.textContent = error.message;
+        } finally {
+            payOsBusy = false;
+            updateState();
+        }
+    }
 
     function updateState() {
         form.querySelectorAll('input[name="cccd"]').forEach(input => {
@@ -27,26 +122,59 @@
         });
         const documentsReady = requiredRooms > 0 && representatives.length === requiredRooms
                 && Array.from(form.querySelectorAll('input[name="cccd"]')).every(input => input.checkValidity());
-        const paymentReady = !method || (method.value !== '' && confirmation.checked
-                && (!walletGroup || Array.from(walletGroup.querySelectorAll('input')).every(input => input.disabled || input.checkValidity())));
-        submit.disabled = submitting || !documentsReady || !paymentReady;
+        const paymentReady = !method || (usesPayOs() ? payOsState === 'PAID' : (method.value !== '' && confirmation.checked
+                && (!walletGroup || Array.from(walletGroup.querySelectorAll('input')).every(input => input.disabled || input.checkValidity()))
+                && (!bankReference || bankReference.disabled || bankReference.checkValidity())));
+        if (payOsCreate) {
+            payOsCreate.disabled = payOsBusy;
+            payOsCreate.hidden = ['PENDING', 'PAID', 'FAILED'].includes(payOsState);
+        }
+        const submitLabel = submit.querySelector('span');
+        if (submitLabel && payOsState === 'PAID') submitLabel.textContent = 'Complete check-in';
+        submit.disabled = submitting || payOsBusy || !documentsReady || !paymentReady;
         if (hint) hint.textContent = !documentsReady ? 'Enter valid guest documents for every assigned room.'
-                : !paymentReady ? 'Choose a payment method and confirm the room payment.'
+                : !paymentReady ? (usesPayOs() ? 'Wait for PayOS to confirm the room payment.'
+                        : 'Choose a payment method and confirm the room payment.')
                 : 'Guest documents are ready. You can confirm check-in.';
     }
-    if (method && walletGroup) {
-        const updateMethod = function () {
-            const useWallet = method.value === 'PT09';
-            walletGroup.hidden = !useWallet;
-            walletGroup.querySelectorAll('input').forEach(input => {
-                input.required = useWallet;
-                input.disabled = !useWallet;
-                if (!useWallet) input.value = '';
-            });
+    function syncPaymentMethod() {
+        if (!method) return;
+        const useWallet = method.value === 'PT02';
+        const usePayOs = usesPayOs();
+        if (bankGroup && bankReference) {
+            const useManualQr = method.value === 'PT01' && !usePayOs;
+            bankGroup.hidden = !useManualQr;
+            bankReference.disabled = !useManualQr;
+            bankReference.required = useManualQr;
+        }
+        if (payOsPanel) {
+            payOsPanel.hidden = !usePayOs;
+            collectionGroup.hidden = !!usePayOs;
+            confirmation.disabled = !!usePayOs;
+            confirmation.required = !usePayOs;
+        }
+        walletGroup.hidden = !useWallet;
+        walletGroup.querySelectorAll('input').forEach(input => {
+            input.required = useWallet;
+            input.disabled = !useWallet;
+            if (!useWallet) input.value = '';
+        });
+        updateState();
+    }
+
+    if (method) {
+        method.addEventListener('change', syncPaymentMethod);
+        syncPaymentMethod();
+    }
+    if (payOsPanel) {
+        payOsCreate.addEventListener('click', createPayOs);
+        window.addEventListener('pagehide', () => clearTimeout(pollTimer));
+        payOsBusy = true;
+        updateState();
+        pollPayOs().finally(() => {
+            payOsBusy = false;
             updateState();
-        };
-        method.addEventListener('change', updateMethod);
-        updateMethod();
+        });
     }
     form.addEventListener('input', updateState);
     form.addEventListener('change', updateState);
@@ -94,7 +222,11 @@
         submit.disabled = true;
         submit.textContent = 'Confirming check-in...';
     });
-    window.addEventListener('pageshow', () => {
+    window.addEventListener('pageshow', event => {
+        if (event.persisted && payOsPanel) {
+            clearTimeout(pollTimer);
+            pollPayOs();
+        }
         submitting = false;
         submit.innerHTML = initialLabel;
         updateState();

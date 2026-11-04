@@ -217,7 +217,7 @@ public class CounterBookingServlet extends HttpServlet {
                 }
                 String method = trim(req.getParameter("methodID"));
 
-                if (!Set.of("PT01", "PT10").contains(method)
+                if (!Set.of("PT03", "PT01").contains(method)
                         || req.getParameter("useWallet") != null) {
                     throw new IllegalArgumentException(
                             "Counter payments only support Cash or VietQR.");
@@ -230,7 +230,7 @@ public class CounterBookingServlet extends HttpServlet {
 
                 String bankReference = trim(req.getParameter("bankReference"));
 
-                if ("PT10".equals(method) && bankReference.isEmpty()) {
+                if ("PT01".equals(method) && bankReference.isEmpty()) {
                     throw new IllegalArgumentException(
                             "Enter the bank transaction reference for VietQR.");
                 }
@@ -241,7 +241,7 @@ public class CounterBookingServlet extends HttpServlet {
                         actor.getUserID(),
                         false,
                         false,
-                        "PT10".equals(method) ? bankReference : ""
+                        "PT01".equals(method) ? bankReference : ""
                 );
                 session.setAttribute("counterMessage", "PAID".equals(result.getStatus())
                         ? "Payment recorded successfully. You can assign rooms now."

@@ -1,225 +1,190 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 
-<layout:layout title="Payment" useBootstrap="true" pageCss="wallet.css" pageJs="payment.js">
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-primary text-white">
-                        <h1 class="h4 mb-0">Booking Payment</h1>
-                    </div>
+<fmt:setLocale value="en_US" scope="page" />
+<c:url var="paymentUrl" value="/payment" />
+<c:url var="bookingUrl" value="/my-bookings"><c:param name="bookingID" value="${booking.bookingID}" /></c:url>
+<c:url var="walletUrl" value="/wallet" />
+<c:forEach var="method" items="${paymentMethods}">
+    <c:if test="${fn:trim(method.methodID) eq 'PT01'}"><c:set var="payOsAvailable" value="${true}" /></c:if>
+    <c:if test="${fn:trim(method.methodID) eq 'PT02'}"><c:set var="walletMethodAvailable" value="${true}" /></c:if>
+</c:forEach>
+<c:set var="initialPayment" value="${paymentType eq 'DEPOSIT' or paymentType eq 'FULL'}" />
+<c:set var="canPay" value="${not empty paymentRequestToken and amountToPay gt 0
+    and (initialPayment or paymentType eq 'BALANCE') and (payOsAvailable or (walletMethodAvailable and walletCanPay))}" />
 
-                    <div class="card-body p-4">
-                        <c:if test="${not empty errorMessage}">
-                            <div class="alert alert-danger">
-                                <c:out value="${errorMessage}" />
-                            </div>
-                        </c:if>
+<layout:layout title="Booking Payment" pageCss="booking-completion.css" pageJs="payment.js"
+               useBootstrap="true" bodyClass="booking-completion-body">
+    <div class="booking-completion pay-page">
+        <header class="bc-heading">
+            <div>
+                <p class="bc-eyebrow">BOOKING <c:out value="${booking.bookingID}" /></p>
+                <h1>Booking Payment</h1>
+                <p>Choose how to pay and review the amount due.</p>
+            </div>
+            <a class="bc-text-link" href="<c:out value='${bookingUrl}' />">
+                <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to booking
+            </a>
+        </header>
 
-                        <dl class="row">
-                            <dt class="col-sm-5">Booking Reference</dt>
-                            <dd class="col-sm-7">
-                                <c:out value="${booking.bookingID}" />
-                            </dd>
-
-                            <dt class="col-sm-5">Check-in</dt>
-                            <dd class="col-sm-7">
-                                <fmt:formatDate value="${booking.checkInDate}" pattern="dd/MM/yyyy" />
-                            </dd>
-
-                            <dt class="col-sm-5">Check-out</dt>
-                            <dd class="col-sm-7">
-                                <fmt:formatDate value="${booking.checkOutDate}" pattern="dd/MM/yyyy" />
-                            </dd>
-
-                            <dt class="col-sm-5">Booking Status</dt>
-                            <dd class="col-sm-7">
-                                <c:out value="${bookingSummary.bookingStatus}" />
-                            </dd>
-
-                            <dt class="col-sm-5">Total Booking Amount</dt>
-                            <dd class="col-sm-7">
-                                <fmt:formatNumber value="${bookingSummary.totalAmount}" type="number" /> VND
-                            </dd>
-
-                            <dt class="col-sm-5">Already Paid</dt>
-                            <dd class="col-sm-7">
-                                <fmt:formatNumber value="${bookingSummary.totalPaidAmount}" type="number" /> VND
-                            </dd>
-
-                            <dt class="col-sm-5">Payment Type</dt>
-                            <dd class="col-sm-7 fw-semibold">
-                                <c:choose>
-                                    <c:when test="${paymentType eq 'DEPOSIT'}">30% Deposit</c:when>
-                                    <c:when test="${paymentType eq 'FULL'}">Full Payment (100%)</c:when>
-                                    <c:when test="${paymentType eq 'BALANCE'}">Remaining Balance</c:when>
-                                    <c:otherwise>Unavailable</c:otherwise>
-                                </c:choose>
-                            </dd>
-
-                            <c:if test="${paymentType eq 'DEPOSIT' or paymentType eq 'FULL'}">
-                                <dt class="col-sm-5">Payment Deadline</dt>
-                                <dd class="col-sm-7">
-                                    <fmt:formatDate value="${booking.paymentDeadline}" pattern="dd/MM/yyyy HH:mm:ss" />
-                                </dd>
-
-                                <dt class="col-sm-5">Time Remaining</dt>
-                                <dd class="col-sm-7">
-                                    <span id="paymentCountdown" class="fw-semibold text-danger" data-deadline="<c:out value='${booking.paymentDeadline.time}' />" role="timer">Calculating...</span>
-                                </dd>
-                            </c:if>
-
-                            <dt class="col-sm-5">Amount to Pay Now</dt>
-                            <dd class="col-sm-7 fw-bold text-success">
-                                <fmt:formatNumber value="${amountToPay}" type="number" /> VND
-                            </dd>
-                        </dl>
-
+        <c:if test="${initialPayment}">
+            <section class="bp-deadline" id="paymentDeadlineBanner" aria-label="Payment deadline">
+                <div class="bp-deadline-details">
+                    <span class="bc-icon"><i class="fa-regular fa-clock" aria-hidden="true"></i></span>
+                    <div>
+                        <span class="bc-small-label">Payment deadline</span>
                         <c:choose>
-                            <c:when test="${paymentType eq 'DEPOSIT'}">
-                                <div class="alert alert-info">Pay 30% to confirm your booking. Any outstanding room charges must be settled before check-in.</div>
+                            <c:when test="${not empty booking.paymentDeadline}">
+                                <strong><fmt:formatDate value="${booking.paymentDeadline}" pattern="dd MMM yyyy, HH:mm" timeZone="Asia/Ho_Chi_Minh" /></strong>
+                                <small>Vietnam time</small>
                             </c:when>
-                            <c:when test="${paymentType eq 'FULL'}">
-                                <div class="alert alert-info">Pay the full booking amount to confirm your booking.</div>
-                            </c:when>
-                            <c:when test="${paymentType eq 'BALANCE'}">
-                                <div class="alert alert-info">${bookingSummary.bookingStatus eq 'CHECKED_IN' ? 'This payment settles your outstanding charges. Extra services must be paid before checkout.' : 'This payment settles the outstanding room charges before check-in. Extra services are due at checkout.'} It does not restart the 24-hour refund period.</div>
-                            </c:when>
-                        </c:choose>
-
-                        <div class="wallet-payment-panel">
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                                <strong>My Wallet</strong>
-                                <a href="${pageContext.request.contextPath}/wallet" class="small">View Wallet &amp; History</a>
-                            </div>
-
-                            <c:choose>
-                                <c:when test="${walletAvailable}">
-                                    <div class="wallet-amount mb-2">
-                                        <fmt:formatNumber value="${walletBalance}" pattern="#,##0.##" /> VND
-                                    </div>
-
-                                    <c:choose>
-                                        <c:when test="${walletCanPay}">
-                                            <div class="small text-success">Your wallet covers this payment.</div>
-                                        </c:when>
-                                        <c:otherwise>
-                                            <div class="small text-danger">
-                                                Use your wallet balance and pay the remaining
-                                                <fmt:formatNumber value="${externalContribution}" pattern="#,##0.##" /> VND
-                                                with another payment method.
-                                            </div>
-                                        </c:otherwise>
-                                    </c:choose>
-                                </c:when>
-                                <c:otherwise>
-                                    <div class="small text-muted">Your wallet is not available yet. Please select another payment method.</div>
-                                </c:otherwise>
-                            </c:choose>
-                        </div>
-
-                        <c:choose>
-                            <c:when test="${empty paymentRequestToken or empty amountToPay or amountToPay le 0 or (paymentType ne 'DEPOSIT' and paymentType ne 'FULL' and paymentType ne 'BALANCE')}">
-                                <div class="alert alert-warning">Payment information is unavailable. Open your booking again to continue.</div>
-                                <a href="${pageContext.request.contextPath}/my-bookings" class="btn btn-secondary w-100">Back to My Bookings</a>
-                            </c:when>
-
-                            <c:when test="${empty paymentMethods}">
-                                <div class="alert alert-warning">No payment methods are currently available.</div>
-                                <a href="${pageContext.request.contextPath}/my-bookings" class="btn btn-secondary w-100">Back to My Bookings</a>
-                            </c:when>
-
-                            <c:otherwise>
-                                <form id="paymentForm" action="${pageContext.request.contextPath}/payment" method="post" data-wallet-can-pay="<c:out value='${walletCanPay}' />" data-amount="<c:out value='${amountToPay}' />" data-wallet-contribution="<c:out value='${walletContribution}' />">
-                                    <input type="hidden" name="bookingID" value="<c:out value='${booking.bookingID}' />">
-                                    <input type="hidden" name="paymentRequestToken" value="<c:out value='${paymentRequestToken}' />">
-
-                                    <div class="form-check mb-3">
-                                        <input class="form-check-input" type="checkbox" id="useWallet" name="useWallet" value="true" ${walletContribution gt 0 ? '' : 'disabled'}>
-                                        <label class="form-check-label" for="useWallet">Use my wallet balance first</label>
-
-                                        <div class="small text-muted">
-                                            Use up to
-                                            <fmt:formatNumber value="${walletContribution}" pattern="#,##0.##" /> VND
-                                            from your wallet. Pay any remaining amount with the method below.
-                                        </div>
-                                    </div>
-
-                                    <div id="paymentBreakdown" class="border rounded p-3 mb-3" role="status" aria-live="polite">
-                                        <div class="d-flex justify-content-between">
-                                            <span>Total Payment</span>
-                                            <strong>
-                                                <fmt:formatNumber value="${amountToPay}" pattern="#,##0.##" /> VND
-                                            </strong>
-                                        </div>
-
-                                        <div class="d-flex justify-content-between">
-                                            <span>From My Wallet</span>
-                                            <strong id="walletContributionDisplay">0 VND</strong>
-                                        </div>
-
-                                        <div class="d-flex justify-content-between border-top pt-2 mt-2">
-                                            <span>Amount to Pay Externally</span>
-                                            <strong id="externalContributionDisplay">
-                                                <fmt:formatNumber value="${amountToPay}" pattern="#,##0.##" /> VND
-                                            </strong>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <label for="methodID" class="form-label fw-semibold">Payment Method</label>
-
-                                        <select id="methodID" name="methodID" class="form-select" required>
-                                            <option value="" disabled selected>Select a payment method</option>
-
-                                            <c:forEach var="method" items="${paymentMethods}">
-                                                <c:choose>
-                                                    <c:when test="${method.methodID eq 'PT09'}">
-                                                        <option value="PT09" ${walletCanPay ? '' : 'disabled'}>
-                                                            My Wallet —
-                                                            <c:choose>
-                                                                <c:when test="${walletAvailable}">
-                                                                    <fmt:formatNumber value="${walletBalance}" pattern="#,##0.##" /> VND
-                                                                    <c:if test="${not walletCanPay}"> (Insufficient balance)</c:if>
-                                                                </c:when>
-                                                                <c:otherwise>Unavailable</c:otherwise>
-                                                            </c:choose>
-                                                        </option>
-                                                    </c:when>
-                                                    <c:otherwise>
-                                                        <option value="<c:out value='${method.methodID}' />">
-                                                            <c:out value="${method.methodName}" />
-                                                        </option>
-                                                    </c:otherwise>
-                                                </c:choose>
-                                            </c:forEach>
-                                        </select>
-                                    </div>
-
-                                    <div id="walletPaymentNotice" class="alert alert-info d-none" role="status">Your wallet contribution is checked again when you pay. If the available balance has changed, reload this page to review the amounts.</div>
-
-                                    <div id="expiredMessage" class="alert alert-danger d-none" role="alert">The payment time limit has expired.</div>
-
-                                    <div class="d-flex gap-2">
-                                        <a href="${pageContext.request.contextPath}/my-bookings" class="btn btn-outline-secondary">Back</a>
-
-                                        <button id="paymentButton" type="submit" class="btn btn-success flex-grow-1">
-                                            <c:choose>
-                                                <c:when test="${paymentType eq 'DEPOSIT'}">Pay 30% Deposit</c:when>
-                                                <c:when test="${paymentType eq 'FULL'}">Pay Full Amount</c:when>
-                                                <c:otherwise>Pay Remaining Balance</c:otherwise>
-                                            </c:choose>
-                                        </button>
-                                    </div>
-                                </form>
-                            </c:otherwise>
+                            <c:otherwise><strong>Unavailable</strong></c:otherwise>
                         </c:choose>
                     </div>
                 </div>
-            </div>
-        </div>
+                <div class="bp-clock">
+                    <span class="bc-small-label">Time remaining</span>
+                    <strong id="paymentCountdown" data-deadline="<c:out value='${booking.paymentDeadline.time}' />" role="timer">Calculating…</strong>
+                </div>
+            </section>
+        </c:if>
+
+        <c:if test="${not empty errorMessage}">
+            <div class="bp-notice bp-notice-error" role="alert"><c:out value="${errorMessage}" /></div>
+        </c:if>
+        <p id="expiredMessage" class="bp-notice bp-notice-error" role="alert" hidden></p>
+
+        <c:choose>
+            <c:when test="${canPay}">
+                <form id="paymentForm" class="bp-layout" action="<c:out value='${paymentUrl}' />" method="post"
+                      data-amount="<c:out value='${amountToPay}' />"
+                      data-wallet-contribution="<c:out value='${walletContribution}' />">
+                    <input type="hidden" name="bookingID" value="<c:out value='${booking.bookingID}' />">
+                    <input type="hidden" name="paymentRequestToken" value="<c:out value='${paymentRequestToken}' />">
+
+                    <section class="bc-panel bp-methods" aria-labelledby="paymentMethodsHeading">
+                        <div class="bp-mobile-due">
+                            <span class="bc-small-label">Due now</span>
+                            <strong><fmt:formatNumber value="${amountToPay}" pattern="#,##0.##" /> VND</strong>
+                        </div>
+                        <div class="bc-section-heading bp-method-heading">
+                            <div>
+                                <h2 id="paymentMethodsHeading">Payment method</h2>
+                                <p>Choose one of the options below.</p>
+                            </div>
+                            <a class="bc-text-link" href="<c:out value='${walletUrl}' />">Wallet history</a>
+                        </div>
+
+                        <fieldset class="bp-options" aria-labelledby="paymentMethodsHeading">
+                            <c:if test="${payOsAvailable}">
+                                <label class="bp-option">
+                                    <input type="radio" name="methodID" value="PT01" required>
+                                    <span class="bp-option-card">
+                                        <span class="bc-icon"><i class="fa-solid fa-qrcode" aria-hidden="true"></i></span>
+                                        <span class="bp-option-text">
+                                            <strong>VietQR via PayOS</strong>
+                                            <span>Open PayOS to scan a QR code with your banking app.</span>
+                                        </span>
+                                        <span class="bp-radio" aria-hidden="true"></span>
+                                    </span>
+                                </label>
+                            </c:if>
+                            <c:if test="${walletMethodAvailable}">
+                                <label class="bp-option">
+                                    <input type="radio" name="methodID" value="PT02" required ${walletCanPay ? '' : 'disabled'}>
+                                    <span class="bp-option-card">
+                                        <span class="bc-icon"><i class="fa-solid fa-wallet" aria-hidden="true"></i></span>
+                                        <span class="bp-option-text">
+                                            <strong>My Wallet</strong>
+                                            <c:choose>
+                                                <c:when test="${walletAvailable}">
+                                                    <span>Balance <fmt:formatNumber value="${walletBalance}" pattern="#,##0.##" /> VND</span>
+                                                    <c:if test="${not walletCanPay}"><small>Insufficient balance for this payment</small></c:if>
+                                                </c:when>
+                                                <c:otherwise><span>Wallet balance is unavailable</span></c:otherwise>
+                                            </c:choose>
+                                        </span>
+                                        <span class="bp-radio" aria-hidden="true"></span>
+                                    </span>
+                                </label>
+                            </c:if>
+                        </fieldset>
+
+                        <c:if test="${payOsAvailable and walletContribution gt 0 and not walletCanPay}">
+                            <label class="bp-wallet-split" id="walletSplitOption" hidden>
+                                <input type="checkbox" id="useWallet" name="useWallet" value="true" disabled>
+                                <span>
+                                    <strong>Use my wallet balance first</strong>
+                                    <small>Use <fmt:formatNumber value="${walletContribution}" pattern="#,##0.##" /> VND from your wallet, then pay the rest via PayOS.</small>
+                                </span>
+                            </label>
+                        </c:if>
+                    </section>
+
+                    <aside class="bc-panel bp-summary" aria-labelledby="paymentSummaryHeading">
+                        <div class="bc-section-heading">
+                            <h2 id="paymentSummaryHeading">Booking summary</h2>
+                            <span class="bc-icon"><i class="fa-solid fa-receipt" aria-hidden="true"></i></span>
+                        </div>
+                        <dl class="bc-lines bp-summary-lines">
+                            <div><dt>Check-in</dt><dd><fmt:formatDate value="${booking.checkInDate}" pattern="dd MMM yyyy" /></dd></div>
+                            <div><dt>Check-out</dt><dd><fmt:formatDate value="${booking.checkOutDate}" pattern="dd MMM yyyy" /></dd></div>
+                            <div>
+                                <dt>Booking status</dt>
+                                <dd><c:choose>
+                                    <c:when test="${initialPayment}">Awaiting payment</c:when>
+                                    <c:when test="${bookingSummary.bookingStatus eq 'CHECKED_IN'}">Checked in</c:when>
+                                    <c:when test="${bookingSummary.bookingStatus eq 'ASSIGNED'}">Rooms assigned</c:when>
+                                    <c:otherwise>Confirmed</c:otherwise>
+                                </c:choose></dd>
+                            </div>
+                            <div class="bp-summary-divider"><dt>Booking total</dt><dd><fmt:formatNumber value="${bookingSummary.totalAmount}" pattern="#,##0.##" /> VND</dd></div>
+                            <div><dt>Already paid</dt><dd><fmt:formatNumber value="${bookingSummary.totalPaidAmount}" pattern="#,##0.##" /> VND</dd></div>
+                        </dl>
+                        <div class="bp-due">
+                            <div class="bp-due-label">
+                                <strong>Due now</strong>
+                                <span class="ps-payment-type"><c:choose>
+                                    <c:when test="${paymentType eq 'DEPOSIT'}">30% deposit</c:when>
+                                    <c:when test="${paymentType eq 'FULL'}">Full payment</c:when>
+                                    <c:otherwise>Remaining balance</c:otherwise>
+                                </c:choose></span>
+                            </div>
+                            <strong class="bp-due-amount"><fmt:formatNumber value="${amountToPay}" pattern="#,##0.##" /> <small>VND</small></strong>
+                            <c:choose>
+                                <c:when test="${paymentType eq 'DEPOSIT' and bookingSummary.roomRemainingAmount gt amountToPay}">
+                                    <p><fmt:formatNumber value="${bookingSummary.roomRemainingAmount - amountToPay}" pattern="#,##0.##" /> VND in room charges remains due before check-in.</p>
+                                </c:when>
+                                <c:when test="${paymentType eq 'DEPOSIT'}"><p>This deposit confirms your booking.</p></c:when>
+                                <c:when test="${paymentType eq 'FULL'}"><p>Pay in full to confirm your booking.</p></c:when>
+                                <c:when test="${bookingSummary.bookingStatus eq 'CHECKED_IN'}"><p>This payment covers your outstanding charges.</p></c:when>
+                                <c:otherwise><p>This payment settles room charges. Extra services are due at checkout.</p></c:otherwise>
+                            </c:choose>
+                            <c:if test="${paymentType eq 'BALANCE'}">
+                                <p>The 24-hour refund window keeps its original deadline.</p>
+                            </c:if>
+                        </div>
+                        <dl id="paymentBreakdown" class="bc-lines bp-breakdown" aria-live="polite" hidden>
+                            <div><dt>From wallet</dt><dd id="walletContributionDisplay"></dd></div>
+                            <div><dt>Via PayOS</dt><dd id="externalContributionDisplay"></dd></div>
+                        </dl>
+                        <button id="paymentButton" type="submit" class="bc-button bc-button-primary bp-pay-button">
+                            <span id="paymentButtonLabel">Continue to payment</span>
+                            <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                        </button>
+                    </aside>
+                </form>
+            </c:when>
+            <c:otherwise>
+                <section class="bc-panel bp-unavailable">
+                    <h2>Payment unavailable</h2>
+                    <p>Check your booking for its current payment status and available options.</p>
+                    <a class="bc-button bc-button-secondary" href="<c:out value='${bookingUrl}' />">View booking</a>
+                </section>
+            </c:otherwise>
+        </c:choose>
     </div>
 </layout:layout>
