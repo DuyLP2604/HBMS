@@ -3,7 +3,7 @@
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-<layout:layout title="Book for Customer" useBootstrap="true" pageCss="shared-ui.css" bodyClass="hbms-ui-page">
+<layout:layout title="Book for Customer" useBootstrap="true" pageCss="shared-ui.css" pageJs="checkin-payment.js" bodyClass="hbms-ui-page">
     <div class="hbms-ui ui-shell">
         <header class="ui-page-heading">
             <div><p class="ui-eyebrow">FRONT DESK</p><h1>Book for Customer</h1><p class="ui-description">Find customer → Book → Pay → Assign rooms → Check in</p></div>
@@ -50,19 +50,34 @@
                                 <div class="ui-section-heading"><h2>Collect payment at counter</h2></div>
                                 <div class="ui-payment-amount"><span><c:out value="${payment.paymentType}"/></span><strong><fmt:formatNumber value="${payment.amount}"/> <small>VND</small></strong></div>
                                 <div class="ui-notice ui-notice-warning"><i class="fa-regular fa-clock" aria-hidden="true"></i><span>Pay before <strong><fmt:formatDate value="${booking.paymentDeadline}" pattern="dd/MM/yyyy HH:mm:ss"/></strong>. Unpaid bookings expire after 15 minutes.</span></div>
-                                <form method="post" action="${pageContext.request.contextPath}/staff/counter-booking">
+                                <form method="post" action="${pageContext.request.contextPath}/staff/counter-booking"
+                                      id="checkInForm" data-initial-counter-payment="true">
                                     <input type="hidden" name="csrfToken" value="${fn:escapeXml(sessionScope.counterCsrf)}">
                                     <input type="hidden" name="action" value="pay">
                                     <input type="hidden" name="bookingID" value="${fn:escapeXml(booking.bookingID)}">
                                     <input type="hidden" name="paymentToken" value="${fn:escapeXml(paymentToken)}">
                                     <div class="ui-field">
-                                        <label for="methodID">Payment method</label>
-                                        <select id="methodID" name="methodID" required><option value="PT03">Cash</option><option value="PT01">VietQR — manually verified bank transfer</option></select>
+                                        <label for="checkInMethod">Payment method</label>
+                                        <select id="checkInMethod" name="methodID" required>
+                                            <option value="PT03">Cash</option>
+                                            <option value="PT01">VietQR via PayOS</option>
+                                        </select>
                                     </div>
-                                    <div class="ui-field ui-field-spacing"><label for="bankReference">Bank transaction reference (required for VietQR)</label><input id="bankReference" name="bankReference" maxlength="100" autocomplete="off"></div>
-                                    <p class="ui-help">For VietQR, let the customer scan the hotel's bank QR and verify the incoming transfer before recording payment.</p>
-                                    <div class="ui-checkbox-field"><input type="checkbox" id="collectionConfirmed" name="collectionConfirmed" value="true" required><label for="collectionConfirmed">I confirm the cash / bank transfer was received.</label></div>
-                                    <button class="ui-button ui-button-primary ui-button-wide" type="submit"><i class="fa-solid fa-receipt" aria-hidden="true"></i> Record Payment</button>
+                                    <section id="checkInPayOs" class="ui-counter-qr" aria-label="VietQR via PayOS" hidden>
+                                        <input type="hidden" id="checkInPayOsOrderCode">
+                                        <p class="ui-help">Scan to pay the amount due. The booking updates when PayOS confirms the transfer.</p>
+                                        <button type="button" class="ui-button ui-button-secondary" id="checkInPayOsCreate">Generate VietQR</button>
+                                        <img id="checkInPayOsImage" width="240" height="240" alt="VietQR for this booking" hidden>
+                                        <a id="checkInPayOsCheckout" class="ui-button ui-button-secondary" target="_blank" rel="noopener noreferrer" hidden>Open PayOS</a>
+                                        <p id="checkInPayOsStatus" class="ui-help" role="status"></p>
+                                    </section>
+                                    <div class="ui-checkbox-field" id="checkInCollectionGroup">
+                                        <input type="checkbox" id="collectionConfirmed" name="collectionConfirmed" value="true" required>
+                                        <label for="collectionConfirmed">I confirm the cash was received.</label>
+                                    </div>
+                                    <button class="ui-button ui-button-primary ui-button-wide" type="submit" id="confirmCheckIn">
+                                        <i class="fa-solid fa-receipt" aria-hidden="true"></i> Record Payment
+                                    </button>
                                 </form>
                             </div>
                         </section>
@@ -71,6 +86,7 @@
                 <div class="ui-after-panel"><a class="ui-button ui-button-secondary" href="${pageContext.request.contextPath}/staff/counter-booking">Book for another customer</a></div>
             </c:when>
             <c:when test="${not empty selectedCustomer}">
+                <script src="${pageContext.request.contextPath}/js/counter-booking-payment-option.js" defer></script>
                 <div class="ui-counter-create">
                     <section class="ui-panel" aria-label="Booking information">
                         <form method="post" action="${pageContext.request.contextPath}/staff/counter-booking">
@@ -99,13 +115,13 @@
                                         </tbody>
                                     </table>
                                 </div>
-                                <c:set var="selectedPaymentOption" value="${empty sessionScope.counterFormPaymentOption ? 'FULL' : sessionScope.counterFormPaymentOption}" />
                                 <div class="ui-field ui-field-spacing">
                                     <label for="paymentOption">Payment option</label>
-                                    <select id="paymentOption" name="paymentOption" required>
-                                        <option value="FULL" ${selectedPaymentOption eq 'FULL' ? 'selected' : ''}>Full payment</option>
-                                        <option value="DEPOSIT" ${selectedPaymentOption eq 'DEPOSIT' ? 'selected' : ''}>30% deposit</option>
+                                    <select id="paymentOption" name="paymentOption" aria-describedby="counterPaymentHelp" required>
+                                        <option value="FULL">Full payment (100%)</option>
+                                        <option id="counterDepositOption" value="DEPOSIT" hidden disabled>30% deposit</option>
                                     </select>
+                                    <small id="counterPaymentHelp" class="ui-help">Check-in today requires full payment. A 30% deposit is available for tomorrow or later.</small>
                                 </div>
                             </div>
                             <div class="ui-panel-footer ui-booking-actions">

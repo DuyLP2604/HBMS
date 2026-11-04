@@ -159,15 +159,41 @@ public class PaymentServlet extends HttpServlet {
             return;
         }
 
+        if ("BALANCE".equals(paymentRequest.getPaymentType())) {
+            submitPayment(request, response, session, methodID, useWallet, paymentRequest);
+            return;
+        }
+        PayOsOrderDAO orders = new PayOsOrderDAO();
+        try {
+            orders.withCounterPaymentLock(bookingID, connection -> {
+                if (orders.hasOpenPaymentOrder(connection, bookingID, paymentRequest.getPaymentType(), false)) {
+                    throw new IllegalStateException("A VietQR payment is open at reception. Check it before paying again.");
+                }
+                submitPayment(request, response, session, methodID, useWallet, paymentRequest);
+                return null;
+            });
+        } catch (IOException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            if (response.isCommitted()) return;
+            getServletContext().log("Unable to start the booking payment.", exception);
+            session.setAttribute("paymentError", exception instanceof IllegalStateException ? exception.getMessage()
+                    : "Unable to start the payment. Check your booking before trying again.");
+            response.sendRedirect(request.getContextPath() + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8));
+        }
+    }
+
+    private void submitPayment(HttpServletRequest request, HttpServletResponse response, HttpSession session,
+            String methodID, boolean useWallet, PaymentRequest paymentRequest) throws IOException {
         if ("PT01".equals(methodID)) {
-            if (handlePayOsCheckout(request, response, session, user, bookingID, paymentRequest, useWallet)) {
+            if (handlePayOsCheckout(request, response, session, paymentRequest, useWallet)) {
                 return;
             }
             methodID = "PT02";
         }
 
-        String redirectPath = processDirectPayment(session, paymentRequest, methodID, user.getUserID(), useWallet, bookingID);
-
+        String redirectPath = processDirectPayment(session, paymentRequest, methodID, paymentRequest.getUserID(),
+                useWallet, paymentRequest.getBookingID());
         response.sendRedirect(request.getContextPath() + redirectPath);
     }
 
@@ -345,7 +371,10 @@ public class PaymentServlet extends HttpServlet {
         return true;
     }
 
-    private boolean handlePayOsCheckout(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user, String bookingID, PaymentRequest paymentRequest, boolean useWallet) throws IOException {
+    private boolean handlePayOsCheckout(HttpServletRequest request, HttpServletResponse response, HttpSession session,
+            PaymentRequest paymentRequest, boolean useWallet) throws IOException {
+        String bookingID = paymentRequest.getBookingID();
+        int userID = paymentRequest.getUserID();
         BigDecimal walletAmount = useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
         BigDecimal shortfall = paymentRequest.getAmount().subtract(walletAmount);
 
@@ -355,7 +384,7 @@ public class PaymentServlet extends HttpServlet {
         }
 
         try {
-            PaymentRequest current = createPaymentService().createPaymentRequest(bookingID, user.getUserID());
+            PaymentRequest current = createPaymentService().createPaymentRequest(bookingID, userID);
             if (!current.getPaymentType().equals(paymentRequest.getPaymentType())
                     || current.getAmount().compareTo(paymentRequest.getAmount()) != 0
                     || (useWallet && current.getOfferedWalletAmount().compareTo(walletAmount) != 0)) {
@@ -367,7 +396,7 @@ public class PaymentServlet extends HttpServlet {
             PayOsOrderDAO.Order order = new PayOsOrderDAO.Order();
             order.orderCode = orderCode;
             order.bookingID = bookingID;
-            order.userID = user.getUserID();
+            order.userID = userID;
             order.paymentType = paymentRequest.getPaymentType();
             order.amount = paymentRequest.getAmount();
             order.walletAmount = walletAmount;
@@ -379,7 +408,7 @@ public class PaymentServlet extends HttpServlet {
             String cancelUrl = returnUrl + "&payosCancelled=true";
 
             // Use the booking deadline for the PayOS link.
-            Booking booking = createPaymentService().getBookingForPayment(bookingID, user.getUserID());
+            Booking booking = createPaymentService().getBookingForPayment(bookingID, userID);
             long expiredAtEpochSeconds = 0;
             if (booking != null && booking.getPaymentDeadline() != null) {
                 expiredAtEpochSeconds = booking.getPaymentDeadline().getTime() / 1000;

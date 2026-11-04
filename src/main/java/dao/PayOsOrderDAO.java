@@ -60,17 +60,37 @@ public class PayOsOrderDAO {
     }
 
     public Order findCheckInOrder(Connection c, String bookingID, Long orderCode) throws SQLException {
+        return findCounterOrder(c, bookingID, orderCode, "o.CheckInStaffUserID IS NOT NULL",
+                "b.BookingStatus <> 'ASSIGNED' OR b.PaymentOption <> 'DEPOSIT' OR r.RoomRemainingAmount <> o.ExternalAmount");
+    }
+
+    public Order findInitialCounterOrder(String bookingID, Long orderCode) throws SQLException {
+        try (Connection c = PersistenceManager.openConnection()) {
+            return findInitialCounterOrder(c, bookingID, orderCode);
+        }
+    }
+
+    public Order findInitialCounterOrder(Connection c, String bookingID, Long orderCode) throws SQLException {
+        return findCounterOrder(c, bookingID, orderCode, "o.CheckInStaffUserID IS NULL AND o.CheckInQrCode IS NOT NULL "
+                + "AND o.PaymentType IN ('DEPOSIT', 'FULL')",
+                "b.BookingStatus <> 'PENDING_PAYMENT' OR b.FirstPaidAt IS NOT NULL "
+                + "OR b.PaymentOption <> o.PaymentType OR b.InitialRequiredAmount <> o.ExternalAmount");
+    }
+
+    private Order findCounterOrder(Connection c, String bookingID, Long orderCode, String stage, String balanceChanged)
+            throws SQLException {
         String filter = orderCode == null
-                ? "AND o.Status <> 'PAID' AND o.CheckInExpiresAt > ? ORDER BY o.CreatedAt DESC, o.OrderCode DESC"
+                ? "AND ((o.Status <> 'PAID' AND o.CheckInExpiresAt > ?) "
+                        + "OR (o.Status = 'PAID' AND o.PaymentType IN ('DEPOSIT', 'FULL') AND b.FirstPaidAt IS NOT NULL)) "
+                        + "ORDER BY o.CreatedAt DESC, o.OrderCode DESC"
                 : "AND o.OrderCode = ?";
         try (PreparedStatement ps = c.prepareStatement("SELECT TOP (1) o.OrderCode, o.PaymentID, o.ExternalAmount, "
-                + "CASE WHEN o.Status IN ('PENDING', 'PROCESSING') AND (b.BookingStatus <> 'ASSIGNED' "
-                + "OR b.PaymentOption <> 'DEPOSIT' OR r.RoomRemainingAmount <> o.ExternalAmount) "
+                + "CASE WHEN o.Status IN ('PENDING', 'PROCESSING') AND (" + balanceChanged + ") "
                 + "THEN 'FAILED' ELSE o.Status END AS Status, "
                 + "o.CheckInExpiresAt, o.CheckInQrCode, o.CheckInCheckoutUrl FROM dbo.PAYOS_ORDER o "
-                + "JOIN dbo.BOOKING b ON b.BookingID = o.BookingID "
+                + "JOIN dbo.V_BOOKING_PAYMENT_SUMMARY b ON b.BookingID = o.BookingID "
                 + "JOIN dbo.V_BOOKING_ROOM_BALANCE r ON r.BookingID = o.BookingID "
-                + "WHERE o.BookingID = ? AND o.CheckInStaffUserID IS NOT NULL " + filter)) {
+                + "WHERE o.BookingID = ? AND " + stage + " " + filter)) {
             ps.setString(1, bookingID);
             ps.setLong(2, orderCode == null ? java.time.Instant.now().getEpochSecond() : orderCode);
             try (ResultSet r = ps.executeQuery()) {
@@ -89,31 +109,49 @@ public class PayOsOrderDAO {
         }
     }
 
-    public void insertCheckInOrder(Connection c, Order order, int staffUserID, String paymentLinkId) throws SQLException {
+    public boolean hasOpenPaymentOrder(Connection c, String bookingID, String paymentType, boolean includeOnline) throws SQLException {
+        String source = includeOnline ? "" : "AND CheckInQrCode IS NOT NULL ";
+        try (PreparedStatement ps = c.prepareStatement("SELECT TOP (1) 1 FROM dbo.PAYOS_ORDER "
+                + "WHERE BookingID = ? AND PaymentType = ? AND CheckInStaffUserID IS NULL "
+                + source + "AND Status IN ('PENDING', 'PROCESSING', 'FAILED') "
+                + "AND (CheckInExpiresAt > ? OR (CheckInExpiresAt IS NULL "
+                + "AND CreatedAt > DATEADD(MINUTE, -15, SYSDATETIME())))")) {
+            ps.setString(1, bookingID);
+            ps.setString(2, paymentType);
+            ps.setLong(3, java.time.Instant.now().getEpochSecond());
+            try (ResultSet r = ps.executeQuery()) {
+                return r.next();
+            }
+        }
+    }
+
+    // Counter bookings reuse the QR fields with no check-in staff ID.
+    public void insertCounterOrder(Connection c, Order order, Integer checkInStaffUserID, String paymentLinkId) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement("INSERT INTO dbo.PAYOS_ORDER "
                 + "(OrderCode, BookingID, UserID, PaymentType, Amount, WalletAmount, ExternalAmount, PaymentLinkId, "
                 + "CheckInStaffUserID, CheckInExpiresAt, CheckInQrCode, CheckInCheckoutUrl) "
-                + "VALUES (?, ?, ?, 'BALANCE', ?, 0, ?, ?, ?, ?, ?, ?)")) {
+                + "VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?)")) {
             ps.setLong(1, order.orderCode);
             ps.setString(2, order.bookingID);
             ps.setInt(3, order.userID);
-            ps.setBigDecimal(4, order.externalAmount);
+            ps.setString(4, order.paymentType);
             ps.setBigDecimal(5, order.externalAmount);
-            ps.setString(6, paymentLinkId);
-            ps.setInt(7, staffUserID);
-            ps.setLong(8, order.checkInExpiresAt);
-            ps.setString(9, order.checkInQrCode);
-            ps.setString(10, order.checkInCheckoutUrl);
+            ps.setBigDecimal(6, order.externalAmount);
+            ps.setString(7, paymentLinkId);
+            ps.setObject(8, checkInStaffUserID, Types.INTEGER);
+            ps.setLong(9, order.checkInExpiresAt);
+            ps.setString(10, order.checkInQrCode);
+            ps.setString(11, order.checkInCheckoutUrl);
             ps.executeUpdate();
         }
     }
 
     @FunctionalInterface
-    public interface CheckInOperation<T> {
+    public interface CounterPaymentOperation<T> {
         T run(Connection connection) throws Exception;
     }
 
-    public <T> T withCheckInLock(String bookingID, CheckInOperation<T> operation) throws Exception {
+    public <T> T withCounterPaymentLock(String bookingID, CounterPaymentOperation<T> operation) throws Exception {
         // Keep one front desk payment active for each booking.
         String resource = "HBMS:checkin-qr:" + bookingID.toUpperCase(java.util.Locale.ROOT);
         try (Connection c = PersistenceManager.openConnection();

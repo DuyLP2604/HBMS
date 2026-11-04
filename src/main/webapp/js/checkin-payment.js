@@ -2,7 +2,8 @@
     'use strict';
     const form = document.getElementById('checkInForm');
     if (!form) return;
-    const checkInUrl = new URL(form.getAttribute('action'), document.baseURI).href;
+    const paymentUrl = new URL(form.getAttribute('action'), document.baseURI).href;
+    const initialCounterPayment = form.dataset.initialCounterPayment === 'true';
     const method = document.getElementById('checkInMethod');
     const bankGroup = document.getElementById('checkInBankReferenceGroup');
     const bankReference = document.getElementById('checkInBankReference');
@@ -45,6 +46,10 @@
             payOsCheckout.href = order.checkoutUrl;
         }
         if (payOsState === 'PAID') {
+            if (initialCounterPayment) {
+                window.location.reload();
+                return;
+            }
             const roomTotal = form.querySelector('[data-checkin-room-total]');
             const roomPaid = form.querySelector('[data-checkin-room-paid]');
             const roomBalance = form.querySelector('[data-checkin-room-balance]');
@@ -66,7 +71,7 @@
     }
 
     async function pollPayOs() {
-        const url = new URL(checkInUrl);
+        const url = new URL(paymentUrl);
         url.searchParams.set('bookingID', form.elements.bookingID.value);
         url.searchParams.set('action', 'payOsStatus');
         if (payOsCode.value) url.searchParams.set('orderCode', payOsCode.value);
@@ -86,11 +91,15 @@
         const body = new URLSearchParams({
             action: 'createPayOs',
             bookingID: form.elements.bookingID.value,
-            checkInToken: form.elements.checkInToken.value,
             csrfToken: form.elements.csrfToken.value
         });
+        if (initialCounterPayment) {
+            body.set('paymentToken', form.elements.paymentToken.value);
+        } else {
+            body.set('checkInToken', form.elements.checkInToken.value);
+        }
         try {
-            const response = await fetch(checkInUrl, {method: 'POST', body});
+            const response = await fetch(paymentUrl, {method: 'POST', body});
             if (response.status === 409) {
                 const result = await response.json();
                 throw new Error(result.message);
@@ -121,9 +130,10 @@
             const label = room.querySelector('[data-room-guest-count]');
             if (label) label.textContent = count + ' of 4 guests';
         });
-        const documentsReady = requiredRooms > 0 && representatives.length === requiredRooms
-                && Array.from(form.querySelectorAll('input[name="cccd"]')).every(input => input.checkValidity());
-        const paymentReady = !method || (usesPayOs() ? payOsState === 'PAID' : (method.value !== '' && confirmation.checked
+        const documentsReady = initialCounterPayment || (requiredRooms > 0 && representatives.length === requiredRooms
+                && Array.from(form.querySelectorAll('input[name="cccd"]')).every(input => input.checkValidity()));
+        const paymentReady = !method || (usesPayOs() ? !initialCounterPayment && payOsState === 'PAID' : (method.value !== ''
+                && (confirmation.disabled || confirmation.checked)
                 && (!walletGroup || Array.from(walletGroup.querySelectorAll('input')).every(input => input.disabled || input.checkValidity()))
                 && (!bankReference || bankReference.disabled || bankReference.checkValidity())));
         if (payOsCreate) {
@@ -132,6 +142,7 @@
         }
         const submitLabel = submit.querySelector('span');
         if (submitLabel && payOsState === 'PAID') submitLabel.textContent = 'Complete check-in';
+        if (initialCounterPayment) submit.hidden = usesPayOs();
         submit.disabled = submitting || payOsBusy || !documentsReady || !paymentReady;
         if (hint) hint.textContent = !documentsReady ? 'Enter valid guest documents for every assigned room.'
                 : !paymentReady ? (usesPayOs() ? 'Wait for PayOS to confirm the room payment.'
@@ -150,16 +161,20 @@
         }
         if (payOsPanel) {
             payOsPanel.hidden = !usePayOs;
-            collectionGroup.hidden = !!usePayOs;
-            confirmation.disabled = !!usePayOs;
-            confirmation.required = !usePayOs;
+            const collectConfirmation = initialCounterPayment ? method.value === 'PT03' : !usePayOs;
+            collectionGroup.hidden = !collectConfirmation;
+            confirmation.disabled = !collectConfirmation;
+            confirmation.required = collectConfirmation;
+            if (initialCounterPayment && !collectConfirmation) confirmation.checked = false;
         }
-        walletGroup.hidden = !useWallet;
-        walletGroup.querySelectorAll('input').forEach(input => {
-            input.required = useWallet;
-            input.disabled = !useWallet;
-            if (!useWallet) input.value = '';
-        });
+        if (walletGroup) {
+            walletGroup.hidden = !useWallet;
+            walletGroup.querySelectorAll('input').forEach(input => {
+                input.required = useWallet;
+                input.disabled = !useWallet;
+                if (!useWallet) input.value = '';
+            });
+        }
         updateState();
     }
 
@@ -221,7 +236,7 @@
         }
         submitting = true;
         submit.disabled = true;
-        submit.textContent = 'Confirming check-in...';
+        submit.textContent = initialCounterPayment ? 'Recording payment...' : 'Confirming check-in...';
     });
     window.addEventListener('pageshow', event => {
         if (event.persisted && payOsPanel) {

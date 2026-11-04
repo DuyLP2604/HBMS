@@ -126,6 +126,9 @@ body.hbms-ui-page {
 .hbms-ui .ui-counter-create { display: grid; grid-template-columns: minmax(0, 1fr) 280px; align-items: start; gap: 24px; }
 .hbms-ui .ui-counter-payment { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; gap: 24px; }
 .hbms-ui .ui-counter-payment > .ui-panel:only-child { grid-column: 1 / -1; }
+.hbms-ui .ui-counter-qr { display: grid; justify-items: start; gap: 12px; margin-top: 20px; }
+.hbms-ui .ui-counter-qr .ui-help { margin: 0; }
+.hbms-ui .ui-counter-qr img { max-width: 100%; height: auto; justify-self: center; }
 .hbms-ui .ui-selected-customer { min-width: 0; }
 .hbms-ui .ui-contact-list { display: grid; gap: 20px; margin: 24px 0 0; }
 .hbms-ui .ui-help { margin: 13px 0 21px; color: var(--ui-muted); font-size: 12px; line-height: 1.75; }
