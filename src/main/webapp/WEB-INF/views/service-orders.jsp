@@ -9,9 +9,9 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 
-<layout:layout title="Booked Services" useBootstrap="true" bodyClass="bg-light">
-    <div class="container my-5">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+<layout:layout title="Booked Services" pageCss="group5.css" useBootstrap="true" bodyClass="hbms-ui-page group5-page">
+    <div class="hbms-ui ui-shell g5-workspace">
+        <div class="g5-heading">
             <div>
                 <h1 class="h3 mb-1">
                     <i class="fa-solid fa-clipboard-list text-warning me-2"></i>Booked Services by Room
@@ -19,21 +19,21 @@
                 <p class="text-muted mb-0">Danh sách các dịch vụ khách đang lưu trú đã yêu cầu theo từng phòng.</p>
             </div>
             <div class="d-flex gap-2">
-                <a href="${pageContext.request.contextPath}/service?action=manage" class="btn btn-outline-warning text-dark">
+                <a href="${pageContext.request.contextPath}/service?action=manage" class="btn g5-secondary text-dark">
                     <i class="fa-solid fa-bell-concierge me-1"></i>Service Catalog
                 </a>
             </div>
         </div>
 
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 border-0">
+        <div class="card g5-panel">
+            <div class="card-header g5-section-header">
                 <h2 class="h5 mb-0 text-secondary">
                     <i class="fa-solid fa-list-check me-2"></i>Danh sách yêu cầu dịch vụ
                 </h2>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                <div class="table-responsive g5-table-scroll" tabindex="0" role="region" aria-label="Đơn dịch vụ">
+                    <table class="table table-hover align-middle mb-0 g5-orders-table">
                         <thead class="table-light">
                             <tr>
                                 <th class="text-center" style="width: 60px;">#</th>
@@ -62,7 +62,7 @@
                                         <tr>
                                             <td class="text-center text-muted"><c:out value="${loop.count}" /></td>
                                             <td>
-                                                <span class="badge bg-primary fs-6">
+                                                <span class="badge g5-status-neutral">
                                                     <c:out value="${bs.booking.bookingID}" />
                                                 </span>
                                             </td>
@@ -78,7 +78,7 @@
                                             <td class="text-end">
                                                 <c:choose>
                                                     <c:when test="${bs.unitPrice == 0}">
-                                                        <span class="badge bg-success">Miễn phí</span>
+                                                        <span class="badge g5-status-success">Miễn phí</span>
                                                     </c:when>
                                                     <c:otherwise>
                                                         <fmt:formatNumber value="${bs.unitPrice}" type="number" groupingUsed="true" maxFractionDigits="0" /> VND
@@ -97,12 +97,12 @@
                                             <td class="text-center">
                                                 <c:choose>
                                                     <c:when test="${bs.serviceStatus eq 'COMPLETED'}">
-                                                        <span class="badge bg-success px-2 py-1">
+                                                        <span class="badge g5-status-success px-2 py-1">
                                                             <i class="fa-solid fa-check-circle me-1"></i>Đã hoàn thành
                                                         </span>
                                                     </c:when>
                                                     <c:otherwise>
-                                                        <span class="badge bg-warning text-dark px-2 py-1">
+                                                        <span class="badge g5-status-pending px-2 py-1">
                                                             <i class="fa-solid fa-clock me-1"></i>Chờ phục vụ
                                                         </span>
                                                     </c:otherwise>
@@ -121,7 +121,7 @@
                                                             <input type="hidden" name="action" value="completeOrder">
                                                             <input type="hidden" name="bookingID" value="${bs.booking.bookingID.trim()}">
                                                             <input type="hidden" name="serviceID" value="${bs.service.serviceID.trim()}">
-                                                            <button type="submit" class="btn btn-sm btn-success fw-bold shadow-sm">
+                                                            <button type="submit" class="btn btn-sm g5-primary fw-bold shadow-sm">
                                                                 <i class="fa-solid fa-check me-1"></i>Đã xong
                                                             </button>
                                                         </form>

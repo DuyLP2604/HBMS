@@ -79,6 +79,41 @@ public class CustomerDAO {
         return List.of();
     }
 
+    public long countCustomers(String keyword) {
+        boolean filtered = keyword != null && !keyword.trim().isEmpty();
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            String jpql = "SELECT COUNT(c) FROM Customer c"
+                    + (filtered ? " WHERE LOWER(c.fullName) LIKE :name OR c.phone LIKE :phone" : "");
+            TypedQuery<Long> query = em.createQuery(jpql, Long.class);
+            if (filtered) {
+                query.setParameter("name", "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%");
+                query.setParameter("phone", "%" + keyword.trim() + "%");
+            }
+            return query.getSingleResult();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    public List<Customer> getCustomersPage(String keyword, int offset, int pageSize) {
+        boolean filtered = keyword != null && !keyword.trim().isEmpty();
+        try (EntityManager em = PersistenceManager.createEntityManager()) {
+            String jpql = "SELECT c FROM Customer c LEFT JOIN FETCH c.nationalityID"
+                    + (filtered ? " WHERE LOWER(c.fullName) LIKE :name OR c.phone LIKE :phone" : "")
+                    + " ORDER BY c.customerID ASC";
+            TypedQuery<Customer> query = em.createQuery(jpql, Customer.class);
+            if (filtered) {
+                query.setParameter("name", "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%");
+                query.setParameter("phone", "%" + keyword.trim() + "%");
+            }
+            return query.setFirstResult(offset).setMaxResults(pageSize).getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return List.of();
+    }
+
     public Customer getCustomerById(String id) {
         if (id == null || id.trim().isEmpty()) {
             return null;

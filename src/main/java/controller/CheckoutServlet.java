@@ -1,5 +1,4 @@
 package controller;
-
 import dao.BookingDAO;
 import dto.BookingWishList;
 import entity.Booking;
@@ -90,7 +89,6 @@ public class CheckoutServlet extends HttpServlet
             request.setAttribute("checkoutServerNow", System.currentTimeMillis());
             if (booking.getPaymentDeadline() != null)
             {
-                // SQL DATETIME stores the hotel's local wall time without a timezone.
                 LocalDateTime deadline = new Timestamp(booking.getPaymentDeadline().getTime()).toLocalDateTime();
                 request.setAttribute("checkoutDeadlineEpoch", deadline.atZone(BookingTimePolicy.HOTEL_ZONE).toInstant().toEpochMilli());
                 request.setAttribute("checkoutDeadlineLabel", deadline.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale.ENGLISH)));

@@ -51,7 +51,6 @@ public class InvoiceDTO implements Serializable {
             setUsedServices("Không có dịch vụ");
         }
 
-        // Ép kiểu và tính toán tiền bạc
         BigDecimal gTotal = getBigDecimal(summary.get("totalAmount"));
         BigDecimal pAmount = getBigDecimal(summary.get("totalPaidAmount"));
         BigDecimal rAmount = getBigDecimal(summary.get("remainingAmount"));
