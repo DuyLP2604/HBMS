@@ -3,9 +3,10 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
-<layout:layout title="Hotel Services" pageCss="service.css" useBootstrap="true" bodyClass="bg-light">
-    <div class="container-fluid px-lg-5 my-4">
+<%-- Lets a guest choose a hotel service and quantity for a booking. --%>
+<layout:layout title="Hotel Services" pageCss="group5.css" useBootstrap="true" bodyClass="hbms-ui-page group5-page">
+    <div class="hbms-ui ui-shell g5-workspace">
+        <header class="g5-heading"><h1>Dịch vụ khách sạn</h1></header>
 
         <c:if test="${not empty sessionScope.successMessage}">
             <div class="alert alert-success alert-dismissible py-2 mb-3 fade show shadow-sm">
@@ -22,15 +23,15 @@
             <c:remove var="errorMessage" scope="session" />
         </c:if>
 
-        <div class="card shadow-sm mb-4 border-0">
+        <div class="card g5-panel mb-4">
             <div class="card-body p-3 bg-white rounded">
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <c:choose>
                             <c:when test="${not empty currentBooking}">
                                 <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <span class="badge bg-primary fs-6 px-3 py-2"><i class="fa-solid fa-hotel me-1"></i>Đơn đặt phòng #${currentBooking.bookingID}</span>
-                                    <span class="badge bg-secondary py-2 px-3">${currentBooking.bookingStatus}</span>
+                                    <span class="badge g5-status-neutral px-3 py-2"><i class="fa-solid fa-hotel me-1"></i>Đơn đặt phòng #${currentBooking.bookingID}</span>
+                                    <span class="badge g5-status-neutral py-2 px-3">${currentBooking.bookingStatus}</span>
                                     <span class="text-muted ms-2">
                                         <i class="fa-regular fa-calendar-days me-1"></i>
                                         <fmt:formatDate value="${currentBooking.checkInDate}" pattern="dd/MM/yyyy" /> - <fmt:formatDate value="${currentBooking.checkOutDate}" pattern="dd/MM/yyyy" />
@@ -48,7 +49,7 @@
                     </div>
                     <c:if test="${empty currentBooking}">
                         <div class="col-md-4 text-md-end mt-2 mt-md-0">
-                            <a href="${pageContext.request.contextPath}/" class="btn btn-primary btn-sm px-3">
+                            <a href="${pageContext.request.contextPath}/" class="btn g5-primary btn-sm px-3">
                                 <i class="fa-solid fa-calendar-plus me-1"></i>Đặt phòng ngay
                             </a>
                         </div>
@@ -67,9 +68,9 @@
         </div>
 
         <div class="row g-4">
-            <div class="col-lg-5 col-md-6">
-                <div class="card shadow-sm sticky-top" style="top: 20px; z-index: 1;">
-                    <div class="card-header bg-primary text-white py-3">
+            <div class="col-12">
+                <div class="card g5-panel">
+                    <div class="card-header g5-section-header">
                         <h2 class="h5 mb-0"><i class="fa-solid fa-cart-plus me-2"></i>Chọn dịch vụ khách sạn</h2>
                     </div>
                     <div class="card-body p-3">
@@ -78,9 +79,9 @@
                                 <input type="hidden" name="bookingID" value="${currentBooking.bookingID}">
                             </c:if>
 
-                            <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
-                                <table class="table table-bordered table-hover align-middle mb-0">
-                                    <thead class="table-light sticky-top" style="z-index: 0;">
+                            <div class="table-responsive g5-table-scroll" tabindex="0" role="region" aria-label="Danh mục dịch vụ">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width: 15%">Chọn</th>
                                             <th style="width: 50%">Dịch vụ</th>
@@ -113,7 +114,7 @@
                                                 <td class="text-end">
                                                     <c:choose>
                                                         <c:when test="${isFree}">
-                                                            <span class="badge bg-success">Miễn phí</span>
+                                                            <span class="badge g5-status-success">Miễn phí</span>
                                                         </c:when>
                                                         <c:otherwise>
                                                             <span class="fw-semibold text-primary">
@@ -140,9 +141,9 @@
                                 </div>
                             </c:if>
 
-                            <div class="d-flex justify-content-between mt-3">
-                                <a href="${pageContext.request.contextPath}/" class="btn btn-secondary px-4">Quay lại</a>
-                                <button type="submit" class="btn btn-primary px-4" ${empty list || empty currentBooking ? "disabled" : ""}>
+                            <div class="g5-actions justify-content-between mt-3">
+                                <a href="${pageContext.request.contextPath}/" class="btn g5-secondary px-4">Quay lại</a>
+                                <button type="submit" class="btn g5-primary px-4" ${empty list || empty currentBooking ? "disabled" : ""}>
                                     <i class="fa-solid fa-plus me-1"></i>Thêm dịch vụ
                                 </button>
                             </div>
@@ -151,18 +152,18 @@
                 </div>
             </div>
 
-            <div class="col-lg-7 col-md-6">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
+            <div class="col-12">
+                <div class="card g5-panel">
+                    <div class="card-header g5-section-header">
                         <h2 class="h5 mb-0"><i class="fa-solid fa-clipboard-list me-2"></i>Dịch vụ đã đặt</h2>
                         <c:if test="${not empty currentBooking}">
-                            <span class="badge bg-light text-dark">Phòng đơn #${currentBooking.bookingID}</span>
+                            <span class="badge bg-light text-dark">Booking #${currentBooking.bookingID}</span>
                         </c:if>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive" style="max-height: 80vh; overflow-y: auto;">
-                            <table class="table table-hover table-bordered mb-0 align-middle text-center">
-                                <thead class="table-light sticky-top" style="z-index: 0;">
+                        <div class="table-responsive g5-table-scroll" tabindex="0" role="region" aria-label="Dịch vụ đã đặt">
+                            <table class="table table-hover mb-0 align-middle text-center">
+                                <thead class="table-light">
                                     <tr>
                                         <th class="text-start">Tên dịch vụ</th>
                                         <th>Đơn giá</th>

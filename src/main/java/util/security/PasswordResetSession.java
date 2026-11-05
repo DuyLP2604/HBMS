@@ -31,6 +31,7 @@ public final class PasswordResetSession {
         return new Account((Integer) id, (String) role, (String) email, (String) hash);
     }
 
+    /** Check that the session still points to an eligible recovery account. */
     public static boolean isEligible(HttpSession session, PasswordResetDAO dao) {
         Account account = account(session);
         return account != null && dao.isEligible(account);

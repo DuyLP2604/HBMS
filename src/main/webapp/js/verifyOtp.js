@@ -1,3 +1,4 @@
+// Updates the OTP resend countdown.
 document.addEventListener("DOMContentLoaded", function () {
 
     const resendButton =

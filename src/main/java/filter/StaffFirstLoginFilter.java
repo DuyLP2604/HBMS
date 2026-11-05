@@ -14,7 +14,9 @@ import util.flash.Flash;
 import util.security.LoginSession;
 
 /* Mapped first in web.xml. A pending login has no user/role/userId attributes. */
+/** Keeps staff in first-login setup until they replace the temporary password. */
 public class StaffFirstLoginFilter implements Filter {
+    /** Redirect pending staff sessions to the password setup page. */
     @Override
     public void doFilter(ServletRequest input, ServletResponse output, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) input;

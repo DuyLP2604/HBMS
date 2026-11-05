@@ -13,14 +13,18 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
+import jakarta.xml.bind.annotation.XmlTransient;
 import java.io.Serializable;
+import java.util.Collection;
 
 /**
+ * Maps sign-in credentials, account roles, and staff first-login state.
  *
  * @author Asus
  */
@@ -50,6 +54,12 @@ public class Users implements Serializable {
     @Size(min = 1, max = 50)
     @Column(name = "Role")
     private String role;
+    @OneToMany(mappedBy = "collectedByUserID")
+    private Collection<Payment> paymentCollection;
+    @OneToMany(mappedBy = "walletAuthorizedByUserID")
+    private Collection<Payment> paymentCollection1;
+    @OneToMany(mappedBy = "cancelledByUserID")
+    private Collection<Booking> bookingCollection;
 
     @Basic(optional = false)
     @Column(name = "MustChangePassword", nullable = false)
@@ -131,6 +141,29 @@ public class Users implements Serializable {
         return "entity.Users[ userID=" + userID + " ]";
     }
 
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public boolean getMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
+
+
+    @XmlTransient
+    public Collection<Booking> getBookingCollection() {
+        return bookingCollection;
+    }
+
+    public void setBookingCollection(Collection<Booking> bookingCollection) {
+        this.bookingCollection = bookingCollection;
+    }
+
     public String getUsername() {
         return username;
     }
@@ -155,16 +188,22 @@ public class Users implements Serializable {
         this.role = role;
     }
 
-    public boolean isMustChangePassword() {
-        return mustChangePassword;
+    @XmlTransient
+    public Collection<Payment> getPaymentCollection() {
+        return paymentCollection;
     }
 
-    public boolean getMustChangePassword() {
-        return mustChangePassword;
+    public void setPaymentCollection(Collection<Payment> paymentCollection) {
+        this.paymentCollection = paymentCollection;
     }
 
-    public void setMustChangePassword(boolean mustChangePassword) {
-        this.mustChangePassword = mustChangePassword;
+    @XmlTransient
+    public Collection<Payment> getPaymentCollection1() {
+        return paymentCollection1;
+    }
+
+    public void setPaymentCollection1(Collection<Payment> paymentCollection1) {
+        this.paymentCollection1 = paymentCollection1;
     }
 
 }

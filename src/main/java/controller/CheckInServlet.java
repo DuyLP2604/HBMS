@@ -12,11 +12,13 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.List;
 
+/** Shows checked-in guests and routes staff to the check-in form. */
 @WebServlet(name = "CheckInServlet", urlPatterns = {"/checkin"})
 public class CheckInServlet extends HttpServlet
 {
     private final BookingDAO bookingDAO = new BookingDAO();
 
+    /** Load the list of guests who are already checked in. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -38,6 +40,7 @@ public class CheckInServlet extends HttpServlet
         }
     }
 
+    /** Send the selected booking to the room payment and check-in form. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {

@@ -2,27 +2,43 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
-<layout:layout title="Room Details" pageCss="room.css" useBootstrap="true" bodyClass="bg-light">
-    <div class="container my-5">
-        <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3 border-0">
-                <h2 class="h4 mb-0 fw-bold"><i class="fa-solid fa-door-open me-2"></i>Room Details: <c:out value="${room.roomNumber}" /></h2>
-                <span class="badge bg-white text-primary fs-6 shadow-sm">ID: <c:out value="${room.roomID}" /></span>
+<%-- Shows details about one physical room. --%>
+<layout:layout title="Room Details" pageCss="room.css" useBootstrap="true" bodyClass="hbms-ui-page room-management-page">
+    <div class="hbms-ui ui-shell room-workspace">
+        <div class="room-detail">
+            <div class="room-page-header">
+                <h1><i class="fa-solid fa-door-open me-2"></i>Room Details: <c:out value="${room.roomNumber}" /></h1>
+                <div class="room-detail-identifiers">
+                    <span class="room-id-label">ID: <c:out value="${room.roomID}" /></span>
+                    <c:choose>
+                        <c:when test="${room.status eq 'Available' or room.status eq 'ACTIVE'}">
+                            <span class="room-status room-status-active"><c:out value="${room.status}"/></span>
+                        </c:when>
+                        <c:when test="${room.status eq 'Occupied'}">
+                            <span class="room-status room-status-warning">Occupied</span>
+                        </c:when>
+                        <c:when test="${room.status eq 'MAINTENANCE'}">
+                            <span class="room-status room-status-warning">Maintenance</span>
+                        </c:when>
+                        <c:otherwise>
+                            <span class="room-status"><c:out value="${room.status}" /></span>
+                        </c:otherwise>
+                    </c:choose>
+                </div>
             </div>
-            <div class="card-body p-5 bg-white">
-                <div class="row g-5">
+            <div class="room-panel room-detail-panel">
+                <div class="room-detail-grid">
                     <!-- Hình ảnh phòng -->
-                    <div class="col-lg-5 text-center">
+                    <div class="room-detail-media">
                         <c:choose>
                             <c:when test="${not empty room.roomImage}">
                                 <div class="position-relative">
                                     <img src="${pageContext.request.contextPath}/assets/images/room/${room.roomImage}"
-                                         alt="Room ${room.roomNumber}" class="img-fluid rounded-3 shadow" style="width: 100%; max-height: 380px; object-fit: cover;">
+                                         alt="Room ${room.roomNumber}" class="room-detail-image">
                                 </div>
                             </c:when>
                             <c:otherwise>
-                                <div class="bg-light rounded-3 d-flex align-items-center justify-content-center border shadow-sm" style="height: 380px;">
+                                <div class="room-detail-image room-detail-placeholder">
                                     <i class="fa-solid fa-image fa-5x text-secondary opacity-25"></i>
                                 </div>
                             </c:otherwise>
@@ -30,47 +46,28 @@
                     </div>
 
                     <!-- Thông tin chi tiết -->
-                    <div class="col-lg-7 d-flex flex-column justify-content-center">
-                        <h3 class="fw-bold text-dark mb-4 border-bottom pb-2">Room Information</h3>
-                        <table class="table table-borderless fs-5 mb-0">
+                    <div class="room-detail-content">
+                        <h3 class="room-detail-subtitle">Room Information</h3>
+                        <table class="table room-detail-facts mb-0">
                             <tbody>
                                 <tr>
-                                    <th class="text-muted w-40 py-3"><i class="fa-solid fa-tag me-2"></i>Room Type:</th>
+                                    <th class="text-muted py-3"><i class="fa-solid fa-tag me-2"></i>Room Type:</th>
                                     <td class="fw-bold text-dark py-3"><c:out value="${room.roomTypeID.typeName}" /></td>
                                 </tr>
                                 <tr class="border-top border-light">
                                     <th class="text-muted py-3"><i class="fa-solid fa-users me-2"></i>Capacity:</th>
-                                    <td class="py-3"><span class="badge bg-info text-dark fs-6 shadow-sm"><c:out value="${room.roomTypeID.capacity}" /> Guests</span></td>
+                                    <td class="py-3"><span class="room-status"><c:out value="${room.roomTypeID.capacity}" /> Guests</span></td>
                                 </tr>
                                 <tr class="border-top border-light">
                                     <th class="text-muted py-3"><i class="fa-solid fa-money-bill-wave me-2"></i>Price:</th>
-                                    <td class="text-danger fw-bold fs-4 py-3">
+                                    <td class="room-detail-price py-3">
                                         <fmt:formatNumber value="${room.roomTypeID.price}" type="number" maxFractionDigits="0"/> <span class="fs-6 text-muted fw-normal">VND / night</span>
-                                    </td>
-                                </tr>
-                                <tr class="border-top border-light">
-                                    <th class="text-muted py-3"><i class="fa-solid fa-circle-info me-2"></i>Status:</th>
-                                    <td class="py-3">
-                                        <c:choose>
-                                            <c:when test="${room.status eq 'Available' or room.status eq 'ACTIVE'}">
-                                                <span class="badge bg-success shadow-sm px-3 py-2 fs-6 text-uppercase"><c:out value="${room.status}"/></span>
-                                            </c:when>
-                                            <c:when test="${room.status eq 'Occupied'}">
-                                                <span class="badge bg-warning text-dark shadow-sm px-3 py-2 fs-6 text-uppercase">Occupied</span>
-                                            </c:when>
-                                            <c:when test="${room.status eq 'MAINTENANCE'}">
-                                                <span class="badge bg-warning text-dark shadow-sm px-3 py-2 fs-6 text-uppercase">Maintenance</span>
-                                            </c:when>
-                                            <c:otherwise>
-                                                <span class="badge bg-secondary shadow-sm px-3 py-2 fs-6 text-uppercase"><c:out value="${room.status}" /></span>
-                                            </c:otherwise>
-                                        </c:choose>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        <div class="mt-4 p-4 bg-light rounded-3 shadow-sm border">
+                        <div class="room-description-panel">
                             <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-align-left me-2"></i>Description</h6>
                             <p class="text-muted mb-0 lh-lg"><c:out value="${room.roomTypeID.description}" /></p>
                         </div>
@@ -78,16 +75,16 @@
                 </div>
 
                 <!-- Nhóm Nút Hành động -->
-                <div class="d-flex justify-content-end gap-2 mt-5 border-top pt-4">
+                <div class="room-form-actions">
                     <c:if test="${sessionScope.user.role eq 'Admin'}">
                         <button type="button" class="btn btn-outline-danger px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#deleteDetailModal">
                             <i class="fa-solid fa-trash me-2"></i>Delete Room
                         </button>
-                        <a href="${pageContext.request.contextPath}/room?action=update&id=${room.roomID}" class="btn btn-warning px-4 shadow-sm fw-bold text-dark">
+                        <a href="${pageContext.request.contextPath}/room?action=update&id=${room.roomID}" class="btn room-button-primary px-4 shadow-sm fw-bold text-dark">
                             <i class="fa-solid fa-pen me-2"></i>Edit Room
                         </a>
                     </c:if>
-                    <a href="${pageContext.request.contextPath}/room?action=list" class="btn btn-secondary px-4 shadow-sm fw-bold">
+                    <a href="${pageContext.request.contextPath}/room?action=list" class="btn room-button-secondary px-4 shadow-sm fw-bold">
                         <i class="fa-solid fa-arrow-left me-2"></i>Back to List
                     </a>
                 </div>
@@ -120,7 +117,7 @@
                         <p class="text-muted mt-4 mb-0 small">This action cannot be undone.</p>
                     </div>
                     <div class="modal-footer justify-content-center bg-light border-0 py-3">
-                        <button type="button" class="btn btn-outline-secondary px-4 fw-bold" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn room-button-secondary px-4 fw-bold" data-bs-dismiss="modal">Cancel</button>
                         <a href="${pageContext.request.contextPath}/room?action=delete&id=${room.roomID}" class="btn btn-danger px-5 fw-bold shadow-sm">Delete</a>
                     </div>
                 </div>

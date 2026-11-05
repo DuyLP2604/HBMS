@@ -10,18 +10,18 @@ import jakarta.mail.internet.MimeMessage;
 import java.util.Properties;
 import java.util.logging.Logger;
 
+/**
+ * Sends password recovery codes and temporary staff credentials.
+ */
 public class EmailService {
+
     private static final Logger LOGGER = Logger.getLogger(EmailService.class.getName());
     private final String senderEmail;
     private final String appPassword;
-    
-    //simplebearhotelhcm@gmail.com
-    //kogw whjq imqx bzuw
+
     public EmailService() {
-//        this.senderEmail = setting("hbms.mail.username", "HBMS_MAIL_USERNAME");
-//        this.appPassword = setting("hbms.mail.appPassword", "HBMS_MAIL_APP_PASSWORD");
-          this.senderEmail = "simplebearhotelhcm@gmail.com";
-          this.appPassword = "kogwwhjqimqxbzuw";
+        this.senderEmail = setting("hbms.mail.username", "HBMS_MAIL_USERNAME");
+        this.appPassword = setting("hbms.mail.appPassword", "HBMS_MAIL_APP_PASSWORD");
     }
 
     private static String setting(String property, String environment) {
@@ -45,15 +45,24 @@ public class EmailService {
         }
     }
 
+    /**
+     * Email a short-lived OTP for password recovery.
+     */
     public boolean sendPasswordResetOtp(String recipient, String otp) {
         return sendText(recipient, "Simple Bear Hotel - Password Reset Code", "Hello,\n\nYour password reset verification code is:\n\n" + otp + "\n\nThis code will expire in 5 minutes.\n\nIf you did not request a password reset, please ignore this email.\n\nSimple Bear Hotel");
     }
 
+    /**
+     * Email the employee's username and temporary password.
+     */
     public boolean sendStaffCredentials(String recipient, String fullName, String username, String temporaryPassword) {
         String body = "Hello " + fullName + ",\n\nYour Simple Bear Hotel staff account is ready.\n\nUsername: " + username + "\nTemporary password: " + temporaryPassword + "\n\nLog in using these credentials. You must set a new password before accessing the staff dashboard.\n\nIf you receive another login email, use the credentials in the latest email.\nKeep these credentials private.\n\nSimple Bear Hotel";
         return sendText(recipient, "Simple Bear Hotel - Your Staff Account", body);
     }
 
+    /**
+     * Send a plain-text email and report whether it was sent.
+     */
     protected boolean sendText(String recipient, String subject, String body) {
         if (!isConfigured()) {
             LOGGER.warning("Email is not configured. Set HBMS_MAIL_USERNAME and HBMS_MAIL_APP_PASSWORD.");

@@ -31,6 +31,7 @@ public final class ReceptionDashboard {
                 ? focus : "all";
     }
 
+    /** Build the front desk counters and task list from active bookings. */
     public static ReceptionDashboard from(List<Booking> bookings, LocalDateTime now, String focus) {
         ReceptionDashboard dashboard = new ReceptionDashboard(focus == null ? "all" : focus);
         LocalDate today = now.toLocalDate();
@@ -40,6 +41,7 @@ public final class ReceptionDashboard {
                 unique.putIfAbsent(booking.getBookingID().trim(), booking);
             }
         }
+        // Count arrivals, departures, room assignments, and bookings that need review.
         for (Booking booking : unique.values()) {
             if (booking.getCheckInDate() == null || booking.getCheckOutDate() == null) continue;
             LocalDate arrival = stayDate(booking.getCheckInDate());
@@ -59,6 +61,7 @@ public final class ReceptionDashboard {
             if (needsRoom && arrival.equals(today)) dashboard.assignmentsToday++;
             if (review) dashboard.reviews++;
 
+            // Show the highest-priority task for each booking.
             Task task = null;
             if (departureDue) {
                 task = new Task(booking, departure, departure.isBefore(today) ? 0 : 3,
@@ -118,6 +121,7 @@ public final class ReceptionDashboard {
     public int getReviews() { return reviews; }
     public int getTotal() { return (int) tasks.stream().filter(task -> !task.upcoming).count(); }
     public int getFilteredTotal() { return (int) tasks.stream().filter(this::matches).count(); }
+    /** Return up to eight tasks for the selected dashboard filter. */
     public List<Task> getTasks() {
         return Collections.unmodifiableList(tasks.stream().filter(this::matches).limit(ROW_LIMIT).collect(Collectors.toList()));
     }

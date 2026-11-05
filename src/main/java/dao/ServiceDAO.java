@@ -1,17 +1,20 @@
 package dao;
 
-import entity.Booking;
 import entity.BookingService;
-import entity.BookingServicePK;
 import entity.Service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import util.PersistenceManager;
 
+/** Reads the service catalog and updates the services booked by guests. */
 public class ServiceDAO {
 
     public List<Service> getAllServices() {
@@ -37,6 +40,7 @@ public class ServiceDAO {
         }
     }
 
+    /** Load the services ordered for a booking. */
     public List<BookingService> getServicesByBookingId(String bookingID) {
         if (bookingID == null || bookingID.trim().isEmpty()) {
             return Collections.emptyList();
@@ -103,6 +107,7 @@ public class ServiceDAO {
         }
     }
 
+    /** Save a service with the next catalog ID. */
     public void createService(String serviceName, double unitPrice) {
         if (serviceName == null || serviceName.trim().isEmpty()) {
             throw new IllegalArgumentException("Tên dịch vụ không được để trống.");
@@ -180,93 +185,42 @@ public class ServiceDAO {
         }
     }
 
-    public void insertBookingService(String bookingID, String serviceID, int quantity) {
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("Số lượng dịch vụ phải lớn hơn 0.");
+    /** Add a service using the booking and payment write lock. */
+    public void insertBookingService(String bookingID, String serviceID, int quantity, int actorUserID) {
+        String sql = "EXEC dbo.SP_ADD_BOOKING_SERVICE @BookingID=?, @ServiceID=?, @Quantity=?, @ActorUserID=?";
+        try (Connection connection = PersistenceManager.openConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, bookingID);
+            statement.setString(2, serviceID);
+            statement.setInt(3, quantity);
+            statement.setInt(4, actorUserID);
+            statement.execute();
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Không thể thêm dịch vụ: " + exception.getMessage(), exception);
         }
-        EntityManager em = PersistenceManager.createEntityManager();
-        try {
-            em.getTransaction().begin();
-            Booking booking = em.find(Booking.class, bookingID.trim());
-            Service service = em.find(Service.class, serviceID.trim());
-            if (booking == null || service == null) {
-                throw new IllegalArgumentException("Không tìm thấy booking hoặc dịch vụ.");
+        PersistenceManager.getEMF().getCache().evictAll();
+    }
+
+    /** Claim an open service order or finish one claimed by this staff member. */
+    public boolean updateBookingServiceStatus(String bookingID, String serviceID, int actorUserID, String status) {
+        String sql = "EXEC dbo.SP_UPDATE_BOOKING_SERVICE_STATUS @BookingID=?, @ServiceID=?, @ActorUserID=?, @NewStatus=?";
+        boolean changed;
+        try (Connection connection = PersistenceManager.openConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, bookingID);
+            statement.setString(2, serviceID);
+            statement.setInt(3, actorUserID);
+            statement.setString(4, status);
+            try (ResultSet result = statement.executeQuery()) {
+                changed = result.next() && result.getBoolean("Changed");
             }
-            BookingServicePK pk = new BookingServicePK(booking.getBookingID(), service.getServiceID());
-            BookingService bs = em.find(BookingService.class, pk);
-            if (bs == null) {
-                bs = new BookingService(pk);
-                bs.setBooking(booking);
-                bs.setService(service);
-                bs.setQuantity(quantity);
-                bs.setUnitPrice(service.getUnitPrice());
-                bs.setSubtotal(service.getUnitPrice().multiply(BigDecimal.valueOf(quantity)));
-                em.persist(bs);
-            } else {
-                int newQty = bs.getQuantity() + quantity;
-                bs.setQuantity(newQty);
-                bs.setSubtotal(bs.getUnitPrice().multiply(BigDecimal.valueOf(newQty)));
-            }
-            em.getTransaction().commit();
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Không thể cập nhật đơn dịch vụ.", exception);
+        }
+        if (changed) {
             PersistenceManager.getEMF().getCache().evictAll();
-        } catch (Exception e) {
-            rollback(em);
-            throw new IllegalStateException("Không thể thêm dịch vụ: " + e.getMessage(), e);
-        } finally {
-            close(em);
         }
-    }
-
-    public boolean acceptBookingService(String bookingId, String serviceId, int userId) {
-        EntityManager em = PersistenceManager.createEntityManager();
-        try {
-            em.getTransaction().begin();
-            Query query = em.createQuery(
-                    "UPDATE BookingService bs SET bs.serviceStatus = 'IN_PROGRESS', bs.servedByUserID = :uid "
-                    + "WHERE TRIM(bs.booking.bookingID) = :bid AND TRIM(bs.service.serviceID) = :sid "
-                    + "AND (bs.serviceStatus = 'PENDING' OR bs.serviceStatus IS NULL)"
-            );
-            query.setParameter("uid", userId);
-            query.setParameter("bid", bookingId.trim());
-            query.setParameter("sid", serviceId.trim());
-            int rows = query.executeUpdate();
-            em.getTransaction().commit();
-            return rows > 0;
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            e.printStackTrace();
-            return false;
-        } finally {
-            em.close();
-        }
-    }
-
-    public boolean completeBookingService(String bookingId, String serviceId, int userId) {
-        EntityManager em = PersistenceManager.createEntityManager();
-        try {
-            em.getTransaction().begin();
-            Query query = em.createQuery(
-                    "UPDATE BookingService bs SET bs.serviceStatus = 'COMPLETED' "
-                    + "WHERE TRIM(bs.booking.bookingID) = :bid AND TRIM(bs.service.serviceID) = :sid "
-                    + "AND bs.servedByUserID = :uid"
-            );
-            query.setParameter("uid", userId);
-            query.setParameter("bid", bookingId.trim());
-            query.setParameter("sid", serviceId.trim());
-            int rows = query.executeUpdate();
-            em.getTransaction().commit();
-            return rows > 0;
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            e.printStackTrace();
-            return false;
-        } finally {
-            em.close();
-        }
+        return changed;
     }
 
     private void rollback(EntityManager em) {

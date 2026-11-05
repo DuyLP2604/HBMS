@@ -94,6 +94,7 @@ public class HotelServlet extends HttpServlet {
 
     private final HotelDAO hotelDAO = new HotelDAO();
 
+    /** Load the current hotel information for the admin edit form. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -112,6 +113,7 @@ public class HotelServlet extends HttpServlet {
         forwardForm(request, response, hotel);
     }
 
+    /** Validate the hotel fields and images before saving the changes. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

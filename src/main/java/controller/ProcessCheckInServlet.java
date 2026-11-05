@@ -1,11 +1,15 @@
 package controller;
 
+import com.google.zxing.WriterException;
 import dao.BookingDAO;
+import dao.PayOsOrderDAO;
+import dao.PayOsOrderDAO.Order;
 import dao.PaymentmethodDAO;
 import dao.UserDAO;
 import entity.Booking;
 import entity.Users;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import jakarta.servlet.ServletException;
@@ -14,17 +18,22 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import service.CounterPaymentService;
 import service.CheckInService;
+import service.PayOsService;
 import service.CheckInService.CheckInRequest;
 import util.security.CsrfTokens;
 
+/** Handles guest identity details and any room payment required before check-in. */
 @WebServlet(name = "ProcessCheckInServlet", urlPatterns = {"/process-checkin"})
 public class ProcessCheckInServlet extends HttpServlet {
     private static final String REQUESTS = "checkInPaymentRequests";
+    private final PayOsOrderDAO payOsOrders = new PayOsOrderDAO();
     protected BookingDAO createBookingDAO() { return new BookingDAO(); }
     protected CheckInService createCheckInService() { return new CheckInService(); }
     protected UserDAO createUserDAO() { return new UserDAO(); }
 
+    /** Prepare the check-in form and show any room balance due. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -33,6 +42,12 @@ public class ProcessCheckInServlet extends HttpServlet {
         String bookingID = bookingID(request);
         if (bookingID == null) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "A valid booking ID is required.");
+            return;
+        }
+        response.setHeader("Cache-Control", "no-store");
+        String action = request.getParameter("action");
+        if ("payOsStatus".equals(action) || "payOsImage".equals(action)) {
+            showPayOsOrder(request, response, bookingID, "payOsImage".equals(action));
             return;
         }
         try {
@@ -60,7 +75,7 @@ public class ProcessCheckInServlet extends HttpServlet {
             request.setAttribute("booking", booking);
             request.setAttribute("paymentSummary", summary);
             request.setAttribute("checkInRequest", payment);
-            request.setAttribute("paymentMethods", new PaymentmethodDAO().getBookingMethods());
+            request.setAttribute("paymentMethods", new PaymentmethodDAO().getCollectionMethods());
             request.setAttribute("csrfToken", CsrfTokens.getOrCreate(session));
             request.getRequestDispatcher("/WEB-INF/views/checkin-form.jsp").forward(request, response);
         } catch (IllegalArgumentException | IllegalStateException exception) {
@@ -72,6 +87,7 @@ public class ProcessCheckInServlet extends HttpServlet {
         }
     }
 
+    /** Route check-in confirmation, direct payment, or QR payment requests. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -82,7 +98,8 @@ public class ProcessCheckInServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Reload the check-in form and try again.");
             return;
         }
-        if (!"confirmCheckIn".equals(request.getParameter("action"))) {
+        String action = request.getParameter("action");
+        if (!"confirmCheckIn".equals(action) && !"createPayOs".equals(action)) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unsupported check-in action.");
             return;
         }
@@ -97,23 +114,109 @@ public class ProcessCheckInServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "The check-in form expired. Open the booking again.");
             return;
         }
+        if ("createPayOs".equals(action)) {
+            createPayOsOrder(request, response, payment);
+            return;
+        }
+
         try {
-            Integer walletOwner = null;
-            if (payment.getRoomAmount().signum() > 0 && "PT09".equals(request.getParameter("methodID"))) {
-                walletOwner = authorizeWallet(request, payment);
+            String method = request.getParameter("methodID");
+            if (payment.isPayOsRoomBalance() && "PT01".equals(method)) {
+                completePaidCheckIn(request, payment);
+            } else if (payment.isPayOsRoomBalance()) {
+                payOsOrders.withCounterPaymentLock(bookingID, connection -> {
+                    if (payOsOrders.findCheckInOrder(connection, bookingID, null) != null) {
+                        throw new IllegalStateException("Check the active VietQR payment before collecting by another method.");
+                    }
+                    collectAndCheckIn(request, payment, method);
+                    return null;
+                });
+            } else {
+                collectAndCheckIn(request, payment, method);
             }
-            createCheckInService().confirm(payment, user.getUserID(), request.getParameterValues("cccd"),
-                    request.getParameter("methodID"), "true".equals(request.getParameter("collectionConfirmed")),
-                    walletOwner);
-            session.setAttribute("lifecycleSuccess", "Check-in confirmed for " + bookingID
-                    + ". Room charges are fully paid; only unpaid extra services are due at checkout.");
-            response.sendRedirect(request.getContextPath() + "/staff/stays");
         } catch (IllegalArgumentException | IllegalStateException exception) {
             session.setAttribute("checkInError", exception.getMessage());
             response.sendRedirect(request.getContextPath() + "/process-checkin?bookingID=" + bookingID);
+            return;
+        } catch (Exception exception) {
+            log("Unable to finish check-in for " + bookingID, exception);
+            session.setAttribute("checkInError", "Check-in could not be confirmed. Review the booking before trying again.");
+            response.sendRedirect(request.getContextPath() + "/process-checkin?bookingID=" + bookingID);
+            return;
+        }
+        session.setAttribute("lifecycleSuccess", "Check-in confirmed for " + bookingID
+                + ". Room charges are fully paid; only unpaid extra services are due at checkout.");
+        response.sendRedirect(request.getContextPath() + "/staff/stays");
+    }
+
+    /** Record the selected direct payment and complete the guest check-in. */
+    private void collectAndCheckIn(HttpServletRequest request, CheckInRequest payment, String method) {
+        Integer walletOwner = null;
+        if (payment.getRoomAmount().signum() > 0 && "PT02".equals(method)) {
+            walletOwner = authorizeWallet(request, payment);
+        }
+        createCheckInService().confirm(payment, payment.getActorUserID(), request.getParameterValues("cccd"),
+                method, "true".equals(request.getParameter("collectionConfirmed")),
+                walletOwner, request.getParameter("bankReference"));
+    }
+
+    /** Complete check-in after the QR payment has been confirmed. */
+    private void completePaidCheckIn(HttpServletRequest request, CheckInRequest payment) throws SQLException {
+        String bookingID = payment.getBookingID();
+        Order order = payOsOrders.findCheckInOrder(bookingID, CounterPaymentSupport.parseOrderCode(request.getParameter("payOsOrderCode")));
+        if (order == null || !"PAID".equals(order.status) || order.paymentID == null) {
+            throw new IllegalArgumentException("Wait until PayOS confirms the room payment.");
+        }
+
+        // The webhook already collected the balance.
+        CheckInRequest current = createCheckInService().createRequest(bookingID, payment.getActorUserID(),
+                createBookingDAO().getPaymentSummary(bookingID));
+        if (current.getRoomAmount().signum() != 0) {
+            throw new IllegalStateException("The room balance changed. Reload and review the payment.");
+        }
+        createCheckInService().confirm(current, current.getActorUserID(), request.getParameterValues("cccd"),
+                null, false, null, null);
+    }
+
+    /** Open a PayOS order for the remaining room balance. */
+    private void createPayOsOrder(HttpServletRequest request, HttpServletResponse response, CheckInRequest payment)
+            throws IOException {
+        response.setHeader("Cache-Control", "no-store");
+        Order order;
+        try {
+            String baseUrl = PayOsService.publicBaseUrl(request.getScheme() + "://" + request.getServerName()
+                    + ":" + request.getServerPort() + request.getContextPath());
+            order = new CounterPaymentService().openCheckInOrder(payment,
+                    baseUrl + "/process-checkin?bookingID=" + payment.getBookingID());
+        } catch (Exception exception) {
+            log("Unable to open a PayOS check-in order.", exception);
+            CounterPaymentSupport.writeError(response, HttpServletResponse.SC_CONFLICT,
+                    "Unable to open VietQR. Reload check-in and review the room balance before trying again.");
+            return;
+        }
+        CounterPaymentSupport.writeOrder(request, response, order, "/process-checkin");
+    }
+
+    /** Return the status or image for the check-in QR order. */
+    private void showPayOsOrder(HttpServletRequest request, HttpServletResponse response, String bookingID, boolean image)
+            throws IOException {
+        try {
+            String code = request.getParameter("orderCode");
+            Order order = payOsOrders.findCheckInOrder(bookingID, code == null && !image ? null : CounterPaymentSupport.parseOrderCode(code));
+            if (image) {
+                CounterPaymentSupport.writeQrImage(response, order);
+            } else {
+                CounterPaymentSupport.writeOrder(request, response, order, "/process-checkin");
+            }
+        } catch (IllegalArgumentException exception) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+        } catch (SQLException | WriterException exception) {
+            log("Unable to load the PayOS check-in order.", exception);
+            response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
         }
     }
 
+    /** Verify the customer's credentials before charging their wallet. */
     private int authorizeWallet(HttpServletRequest request, CheckInRequest payment) {
         HttpSession session = request.getSession(false);
         synchronized (session) {

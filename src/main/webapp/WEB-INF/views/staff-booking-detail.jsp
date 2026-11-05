@@ -2,7 +2,9 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows a booking's payment, room assignment, and guest information to reception.
+--%>
 <fmt:setLocale value="en_GB" scope="page" />
 <fmt:setTimeZone value="Asia/Ho_Chi_Minh" scope="page" />
 <c:url var="assignmentListUrl" value="/staff/bookings" />

@@ -9,6 +9,7 @@ import java.util.Locale;
 import util.EmployeeIdGenerator;
 import util.PersistenceManager;
 
+/** Queries employee records and saves staff profiles with their user accounts. */
 public class EmployeeDAO {
 
     public List<Employee> getAllEmployees() {
@@ -136,9 +137,7 @@ public class EmployeeDAO {
         }
     }
 
-    /*
-     * Creates the account and employee in one transaction.
-     */
+    /** Save the employee profile and user account in one transaction. */
     public void insertEmployeeWithUser(Employee employee, Users user) {
         validateEmployee(employee);
         validateUser(user);
@@ -202,6 +201,7 @@ public class EmployeeDAO {
         }
     }
 
+    /** Check whether the login account belongs to a receptionist. */
     public boolean isReceptionistByUserId(int userID) {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
@@ -215,6 +215,7 @@ public class EmployeeDAO {
         }
     }
 
+    /** Find the employee profile linked to the signed-in account. */
     public Employee getByUserId(int userID) {
         EntityManager em = PersistenceManager.createEntityManager();
         try {

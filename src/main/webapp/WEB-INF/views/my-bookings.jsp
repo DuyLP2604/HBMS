@@ -2,7 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Lists the signed-in customer's bookings and payment statuses. --%>
 <layout:layout title="My Bookings" useBootstrap="true" pageCss="my-bookings.css" pageJs="my-bookings.js" bodyClass="my-bookings-page">
     <div class="container my-bookings">
         <header class="bookings-heading">

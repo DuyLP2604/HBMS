@@ -1,15 +1,31 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows the successful booking payment and updated balance.
+--%>
 <fmt:setLocale value="en_US" />
 <c:url var="successBookingUrl" value="/my-bookings"><c:param name="bookingID" value="${bookingID}" /></c:url>
 <c:url var="balancePaymentUrl" value="/payment"><c:param name="bookingID" value="${bookingID}" /></c:url>
 <c:set var="successState" value="${successBookingSummary.bookingStatus}" />
 <c:set var="successCanPay" value="${successBookingSummary.remainingAmount gt 0 and (successState eq 'CONFIRMED' or successState eq 'ASSIGNED' or successState eq 'CHECKED_IN')}" />
-<layout:layout title="Payment Successful" pageCss="booking-completion.css" useBootstrap="true" bodyClass="booking-completion-body">
+<layout:layout title="Payment Received" pageCss="booking-completion.css" useBootstrap="true" bodyClass="booking-completion-body">
     <div class="booking-completion ps-page">
-        <header class="ps-heading"><span class="ps-check"><i class="fa-solid fa-check" aria-hidden="true"></i></span><p class="bc-eyebrow">PAYMENT RECEIVED</p><h1>Payment successful</h1><p>Your payment has been recorded. Here is your payment summary.</p><span class="ps-payment-type"><c:choose><c:when test="${paymentType eq 'DEPOSIT'}">30% deposit</c:when><c:when test="${paymentType eq 'FULL'}">Full payment</c:when><c:when test="${paymentType eq 'BALANCE'}">Remaining balance payment</c:when><c:otherwise>Booking payment</c:otherwise></c:choose></span><strong class="ps-paid-amount"><fmt:formatNumber value="${paymentAmount}" pattern="#,##0.##" /> <small>VND</small></strong></header>
+        <header class="ps-heading">
+            <span class="ps-check"><i class="fa-solid fa-check" aria-hidden="true"></i></span>
+            <p class="bc-eyebrow">BOOKING PAYMENT</p>
+            <h1>Payment received</h1>
+            <p>Booking <strong><c:out value="${bookingID}" /></strong></p>
+            <span class="ps-payment-type">
+                <c:choose>
+                    <c:when test="${paymentType eq 'DEPOSIT'}">30% deposit</c:when>
+                    <c:when test="${paymentType eq 'FULL'}">Full payment</c:when>
+                    <c:when test="${paymentType eq 'BALANCE'}">Remaining balance payment</c:when>
+                    <c:otherwise>Booking payment</c:otherwise>
+                </c:choose>
+            </span>
+            <strong class="ps-paid-amount"><fmt:formatNumber value="${paymentAmount}" pattern="#,##0.##" /> <small>VND</small></strong>
+        </header>
         <div class="ps-layout">
             <section class="bc-panel ps-receipt" aria-labelledby="paymentReceiptTitle"><div class="bc-section-heading"><h2 id="paymentReceiptTitle">Payment receipt</h2><i class="fa-solid fa-receipt" aria-hidden="true"></i></div><dl class="bc-lines ps-receipt-lines"><div><dt>Booking reference</dt><dd><a class="bc-text-link" href="<c:out value='${successBookingUrl}' />"><c:out value="${bookingID}" /> <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a></dd></div><div><dt>Payment reference</dt><dd><c:out value="${paymentID}" /></dd></div><c:if test="${not empty transactionCode}"><div class="ps-transaction"><dt>Transaction reference</dt><dd><c:out value="${transactionCode}" /></dd></div></c:if></dl>
                 <c:if test="${walletAmount gt 0 or externalAmount gt 0}"><div class="ps-source"><h3>Paid with</h3><c:if test="${walletAmount gt 0}"><div><span><i class="fa-solid fa-wallet" aria-hidden="true"></i> Internal wallet</span><strong><fmt:formatNumber value="${walletAmount}" pattern="#,##0.##" /> <small>VND</small></strong></div></c:if><c:if test="${externalAmount gt 0}"><div><span><i class="fa-regular fa-credit-card" aria-hidden="true"></i> <c:out value="${empty externalMethodName ? 'Payment method' : externalMethodName}" /></span><strong><fmt:formatNumber value="${externalAmount}" pattern="#,##0.##" /> <small>VND</small></strong></div></c:if></div></c:if>

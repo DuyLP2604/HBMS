@@ -3,6 +3,7 @@ package dto;
 import java.math.BigDecimal;
 import java.util.Date;
 
+/** Holds the wallet information shown on the wallet page and navigation bar. */
 public final class WalletSummary
 {
     private final long walletID;

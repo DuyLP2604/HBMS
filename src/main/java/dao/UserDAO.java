@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import util.PersistenceManager;
 
+/** Handles user credentials and account updates. */
 public class UserDAO {
 
     public String hashMD5(String password) {
@@ -27,6 +28,7 @@ public class UserDAO {
         return hash.toString();
     }
 
+    /** Find the account that matches the submitted credentials. */
     public Users login(String username, String password) {
         if (username == null || username.isBlank() || password == null || password.isBlank()) {
             return null;
@@ -39,7 +41,7 @@ public class UserDAO {
             List<Users> users = query.setMaxResults(1).getResultList();
             return users.isEmpty() ? null : users.get(0);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
         return null;
     }
@@ -151,8 +153,10 @@ public class UserDAO {
         }
         return false;
     }
+
     /* Conditional updates make a temporary credential single-use across sessions.
      * Bulk updates also evict EclipseLink's shared cache before the next login. */
+    /** Replace the temporary password and clear the first-login requirement. */
     public Users completeFirstLogin(int userId, String expectedPasswordHash, String newPassword) {
         String error = util.EmployeeValidator.validatePassword(newPassword);
         if (error != null) {
@@ -188,6 +192,7 @@ public class UserDAO {
     }
 
     /* An administrator can resend credentials only while first-login setup is pending. */
+    /** Set a new temporary password for a staff account that still needs setup. */
     public boolean renewStaffTemporaryPassword(int userId, String temporaryPassword) {
         EntityManager em = createEntityManager();
         try {
@@ -211,4 +216,7 @@ public class UserDAO {
         return PersistenceManager.createEntityManager();
     }
 
+    public static void main(String[] args) {
+        System.out.println(new UserDAO().login("admin", "123456").toString());
+    }
 }

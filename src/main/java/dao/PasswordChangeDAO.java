@@ -7,6 +7,7 @@ import util.PersistenceManager;
 
 /** Changes only the signed-in account, using its current password as a write guard. */
 public class PasswordChangeDAO {
+    /** Verify the current password before saving the new one. */
     public boolean changePassword(int userId, String role, String currentPassword, String newPassword) {
         if (userId <= 0 || !("Customer".equals(role) || "Staff".equals(role))
                 || currentPassword == null || currentPassword.isEmpty()) {

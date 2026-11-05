@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/** Holds the stay dates and room selections before a booking is created. */
 public class BookingWishList implements Serializable {
 
     private static final long serialVersionUID = 1L;

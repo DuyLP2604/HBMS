@@ -447,3 +447,25 @@ The declarations below belong only in `layout.tag`:
 ```
 
 Do not copy them into normal JSP pages.
+
+## Xác nhận thanh toán booking qua PayOS
+
+1. **DB v6 đang dùng:** chạy `db/HBMS_PayOS_Migration.sql` để thêm bảng `PAYOS_ORDER` nếu còn thiếu và cài thủ tục xử lý webhook. **Cài DB mới:** chạy `db/DB_v6_merged_transaction.sql`, bản này đã có bảng và thủ tục PayOS. Script khởi tạo có lệnh xóa DB cũ.
+2. Đặt `PAYOS_CLIENT_ID`, `PAYOS_API_KEY` và `PAYOS_CHECKSUM_KEY` trên tiến trình Tomcat. Khi dùng tunnel hoặc reverse proxy, đặt `PAYOS_PUBLIC_BASE_URL` thành URL HTTPS của ứng dụng, gồm cả context path, ví dụ `https://hbms.example.com/HBMS`. Đăng nhập và mở trang thanh toán bằng cùng URL này khi thử.
+3. Clean and Build, deploy WAR mới và đăng ký webhook của kênh PayOS tại `<PAYOS_PUBLIC_BASE_URL>/payos-webhook`. Nếu Tomcat chỉ chạy localhost, dùng URL HTTPS của tunnel để PayOS gọi được endpoint.
+4. Trên DB test, tạo một booking, chọn PayOS rồi thanh toán. Xác nhận `PAYOS_ORDER.Status = 'PAID'`, có một dòng `PAYMENT` tương ứng và booking đợt đầu lên `CONFIRMED`. Gửi lại cùng webhook để kiểm tra dòng thanh toán vẫn chỉ có một. Webhook thử lúc đăng ký URL được chấp nhận khi có chữ ký hợp lệ, và mã đơn thử không khớp đơn HBMS sẽ không tạo thanh toán.
+
+Nếu PayOS đã báo thành công mà HBMS chưa cập nhật, kiểm tra lịch sử gọi webhook của kênh và log Tomcat. HTTP 401 là chữ ký không khớp. HTTP 503 là backend chưa thể xử lý, chẳng hạn thiếu migration hoặc lỗi kết nối DB. Đơn `FAILED` có `ErrorMessage` để đối chiếu trường hợp sai tiền, quá hạn hoặc số dư ví thay đổi. Trạng thái trên URL quay về chỉ dùng để điều hướng. Thanh toán được ghi sau khi webhook đã xác thực và đối chiếu với đơn lưu trong DB.
+
+- [Webhook PayOS](https://payos.vn/docs/du-lieu-tra-ve/webhook/)
+- [Kiểm tra chữ ký](https://payos.vn/docs/tich-hop-webhook/kiem-tra-du-lieu-voi-signature/)
+
+### VietQR tại quầy khi nhận phòng
+
+Sau khi cập nhật code, chạy lại `db/HBMS_PayOS_Migration.sql` trên DB v6 đang dùng để thêm các trường cho QR tại quầy. DB mới đã có các trường này trong script v6. Dùng cùng kênh PayOS, các biến môi trường và webhook `/payos-webhook` đang chạy.
+
+1. Mở check-in của booking đã đặt cọc và đã gán phòng. Chọn **VietQR** rồi bấm **Generate VietQR**.
+2. Cho khách quét mã để trả phần tiền phòng còn thiếu. Webhook PayOS cập nhật số tiền đã trả.
+3. Kiểm tra CCCD và bấm **Complete check-in**. Phí dịch vụ còn lại thu lúc checkout.
+
+Mã có hạn 15 phút. Tải lại trang sẽ hiện mã đang hoạt động của booking. Nếu khách đã chuyển tiền mà trạng thái cần đối soát hoặc mã hết hạn, kiểm tra giao dịch PayOS trước khi thu lại.

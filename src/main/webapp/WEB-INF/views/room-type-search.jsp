@@ -2,176 +2,160 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
-<layout:layout title="Search Rooms" useBootstrap="true">
-    <div class="container py-5">
-
-        <!-- Page Header & Action Buttons -->
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 border-bottom pb-3">
-            <div class="mb-3 mb-md-0">
-                <h1 class="h3 fw-bold mb-1"><i class="fa-solid fa-bed text-primary me-2"></i>Available Rooms</h1>
-                <p class="text-muted mb-0 fs-6">
-                    <c:choose>
-                        <c:when test="${not empty checkInDate and not empty checkOutDate}">
-                            Showing availability from <strong class="text-dark">${checkInDate}</strong> to <strong class="text-dark">${checkOutDate}</strong>
-                        </c:when>
-                        <c:otherwise>
-                            Please select dates to check availability.
-                        </c:otherwise>
-                    </c:choose>
-                </p>
+<%-- Shows available room types for the selected dates and guest count. --%>
+<layout:layout title="Search Rooms" useBootstrap="true"
+               pageCss="guest-room-catalog.css" bodyClass="hbms-ui-page">
+    <div class="hbms-ui ui-shell room-catalog">
+        <header class="ui-page-heading">
+            <div>
+                <p class="ui-eyebrow">PLAN YOUR STAY</p>
+                <h1>Find a Room</h1>
+                <p class="ui-description">Choose your dates to see the rooms available for your stay.</p>
             </div>
-            <div class="d-flex gap-2">
-                <!-- ================= POP-UP DROPDOWN MỚI ================= -->
-                <div class="dropdown">
-                    <button type="button" id="btnSelectDates" class="btn btn-primary fw-bold shadow-sm d-flex align-items-center" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">
-                        <i class="fa-solid fa-filter me-2"></i> Select Dates
-                    </button>
+            <a href="${pageContext.request.contextPath}/booking-wish-list" class="ui-button ui-button-secondary">
+                <i class="fa-solid fa-clipboard-list" aria-hidden="true"></i> View Wishlist
+            </a>
+        </header>
 
-                    <!-- Form ẩn trong Dropdown Menu -->
-                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4 p-0 mt-2" style="width: 320px;">
-                        <div class="bg-light border-bottom px-4 py-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0 fw-bold text-dark"><i class="fa-solid fa-calendar-check text-primary me-2"></i>Select Dates</h6>
-                            <!-- Nút X (Đóng menu bằng cách giả lập click ra ngoài body) -->
-                            <button type="button" class="btn-close btn-sm" aria-label="Close" onclick="document.body.click()"></button>
-                        </div>
-                        <form id="searchRoomForm" action="${pageContext.request.contextPath}/room-types" method="get" class="p-4">
-                            <div class="mb-3">
-                                <label for="checkInDate" class="form-label fw-bold text-secondary small text-uppercase">Check-in Date (14:00)</label>
-                                <input type="date" id="checkInDate" name="checkInDate" value="<c:out value='${checkInDate}' />" min="<c:out value='${today}' />" class="form-control bg-light" required>
-                            </div>
-                            <div class="mb-4">
-                                <label for="checkOutDate" class="form-label fw-bold text-secondary small text-uppercase">Check-out Date</label>
-                                <input type="date" id="checkOutDate" name="checkOutDate" value="${checkOutDate}" class="form-control bg-light" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">
-                                <i class="fa-solid fa-magnifying-glass me-2"></i> Search Availability
-                            </button>
-                        </form>
-                    </div>
+        <div class="ui-panel room-catalog-panel">
+            <form id="searchRoomForm" action="${pageContext.request.contextPath}/room-types" method="get"
+                  class="room-catalog-search">
+                <div class="ui-field">
+                    <label for="checkInDate">Check-in Date</label>
+                    <input type="date" id="checkInDate" name="checkInDate"
+                           value="<c:out value='${checkInDate}' />" min="<c:out value='${today}' />" required>
                 </div>
-                <!-- ======================================================== -->
-
-                <a href="${pageContext.request.contextPath}/booking-wish-list" class="btn btn-outline-secondary fw-bold shadow-sm d-flex align-items-center">
-                    <i class="fa-solid fa-clipboard-list me-2"></i> View Wishlist
-                </a>
-            </div>
+                <div class="ui-field">
+                    <label for="checkOutDate">Check-out Date</label>
+                    <input type="date" id="checkOutDate" name="checkOutDate"
+                           value="<c:out value='${checkOutDate}' />" required>
+                </div>
+                <button type="submit" class="ui-button ui-button-primary">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search Availability
+                </button>
+            </form>
+            <p class="room-catalog-note">
+                Same-day bookings close at 10:00 Vietnam time. Check-in is at 14:00.
+            </p>
         </div>
 
-        <!-- Messages -->
-        <p class="small text-muted">Same-day bookings close at 10:00 Vietnam time. Check-in is at 14:00.</p>
-
         <c:if test="${not empty successMessage}">
-            <div class="alert alert-success shadow-sm rounded-3"><i class="fa-solid fa-circle-check me-2"></i><c:out value="${successMessage}" /></div>
-            </c:if>
-            <c:if test="${not empty errorMessage}">
-            <div class="alert alert-danger shadow-sm rounded-3"><i class="fa-solid fa-triangle-exclamation me-2"></i><c:out value="${errorMessage}" /></div>
-            </c:if>
+            <div class="alert alert-success mt-3" role="status"><c:out value="${successMessage}" /></div>
+        </c:if>
+        <c:if test="${not empty errorMessage}">
+            <div class="alert alert-danger mt-3" role="alert"><c:out value="${errorMessage}" /></div>
+        </c:if>
 
-        <!-- Search results (Grid Danh sách phòng) -->
         <c:if test="${searched}">
-            <c:choose>
-                <c:when test="${not empty availabilityList}">
-                    <div class="row g-4">
-                        <c:forEach var="roomType" items="${availabilityList}">
-                            <div class="col-md-6 col-lg-4">
-                                <div class="card h-100 shadow-sm border-0 rounded-4 hover-lift overflow-hidden">
-                                    <!-- Room-type image -->
+            <section class="room-catalog-results" aria-labelledby="availableRoomsTitle">
+                <div class="ui-section-heading">
+                    <h2 id="availableRoomsTitle">Available Rooms</h2>
+                    <c:if test="${not empty checkInDate and not empty checkOutDate}">
+                        <p>Showing availability from <strong><c:out value="${checkInDate}" /></strong>
+                            to <strong><c:out value="${checkOutDate}" /></strong>.</p>
+                    </c:if>
+                </div>
+                <c:choose>
+                    <c:when test="${not empty availabilityList}">
+                        <div class="room-catalog-grid">
+                            <c:forEach var="roomType" items="${availabilityList}">
+                                <c:url var="roomTypeDetailUrl" value="/room-types">
+                                    <c:param name="action" value="detail" />
+                                    <c:param name="id" value="${roomType.roomTypeID}" />
+                                </c:url>
+                                <article class="ui-panel room-catalog-card">
                                     <c:choose>
                                         <c:when test="${not empty roomType.roomTypeImage}">
                                             <c:url var="roomTypeImageUrl" value="/assets/images/room-types/${roomType.roomTypeImage}" />
-                                            <img src="${roomTypeImageUrl}" class="card-img-top" alt="<c:out value='${roomType.typeName}' />" style="height: 240px; object-fit: cover; cursor: pointer;"
-                                                 onclick="window.location.href = '${pageContext.request.contextPath}/room-types?action=detail&id=${roomType.roomTypeID}'">
+                                            <a href="<c:out value='${roomTypeDetailUrl}' />" class="room-catalog-photo">
+                                                <img src="<c:out value='${roomTypeImageUrl}' />"
+                                                     alt="View details for <c:out value='${roomType.typeName}' />">
+                                            </a>
                                         </c:when>
                                         <c:otherwise>
-                                            <div class="bg-light text-secondary d-flex justify-content-center align-items-center border-bottom" style="height: 240px;">
-                                                <div class="text-center opacity-50">
-                                                    <i class="fa-solid fa-image fa-4x mb-2"></i>
-                                                    <div>No image available</div>
-                                                </div>
+                                            <div class="room-catalog-photo room-catalog-placeholder">
+                                                <i class="fa-solid fa-image" aria-hidden="true"></i> No image available
                                             </div>
                                         </c:otherwise>
                                     </c:choose>
 
-                                    <!-- Room-type information -->
-                                    <div class="card-body d-flex flex-column p-4">
-                                        <h2 class="h4 mb-3 fw-bold text-primary"><c:out value="${roomType.typeName}" /></h2>
-                                        <div class="mb-4 text-muted">
-                                            <p class="mb-2">
-                                                <i class="fa-solid fa-users text-primary me-2 width-20"></i> Capacity: <strong class="text-dark">${roomType.capacity} guest(s)</strong>
-                                            </p>
-                                            <p class="mb-2">
-                                                <i class="fa-solid fa-money-bill-wave text-primary me-2 width-20"></i> Price:
-                                                <strong class="text-danger fs-5">
-                                                    <fmt:formatNumber value="${roomType.price}" type="number" groupingUsed="true" /> <span class="fs-6 text-muted fw-normal">VND/night</span>
-                                                </strong>
-                                            </p>
-                                            <p class="mb-0">
-                                                <i class="fa-solid fa-door-open text-primary me-2 width-20"></i> Available:
+                                    <div class="room-catalog-card-body">
+                                        <div class="room-catalog-card-heading">
+                                            <h3><c:out value="${roomType.typeName}" /></h3>
+                                            <span class="room-catalog-status ${roomType.availableRooms > 0 ? 'is-available' : 'is-sold-out'}">
                                                 <c:choose>
                                                     <c:when test="${roomType.availableRooms > 0}">
-                                                        <strong class="badge bg-success px-2 py-1 fs-6">${roomType.availableRooms} room(s)</strong>
+                                                        <c:out value="${roomType.availableRooms}" /> available
                                                     </c:when>
-                                                    <c:otherwise>
-                                                        <strong class="badge bg-danger px-2 py-1 fs-6">Sold out</strong>
-                                                    </c:otherwise>
+                                                    <c:otherwise>Sold out</c:otherwise>
                                                 </c:choose>
-                                            </p>
+                                            </span>
                                         </div>
-
-                                        <!-- Booking form or sold-out button -->
-                                        <div class="mt-auto border-top pt-3">
-                                            <c:choose>
-                                                <c:when test="${roomType.availableRooms > 0}">
-                                                    <form action="${pageContext.request.contextPath}/booking-wish-list" method="post">
-                                                        <input type="hidden" name="action" value="add">
-                                                        <input type="hidden" name="roomTypeID" value="${roomType.roomTypeID}">
-                                                        <input type="hidden" name="checkInDate" value="${checkInDate}">
-                                                        <input type="hidden" name="checkOutDate" value="${checkOutDate}">
-                                                        <div class="row g-2 mb-3">
-                                                            <div class="col-6">
-                                                                <label for="quantity_${roomType.roomTypeID}" class="form-label text-muted small mb-1 fw-bold">Rooms</label>
-                                                                <input type="number" id="quantity_${roomType.roomTypeID}" name="quantity" class="form-control text-center" value="1" min="1" max="${roomType.availableRooms}" required>
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <label for="guestCount_${roomType.roomTypeID}" class="form-label text-muted small mb-1 fw-bold">Guests</label>
-                                                                <input type="number" id="guestCount_${roomType.roomTypeID}" name="guestCount" class="form-control text-center" value="1" min="1" required>
-                                                            </div>
-                                                        </div>
-                                                        <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm py-2">
-                                                            Select this room.
-                                                        </button>
-                                                    </form>
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <button type="button" class="btn btn-secondary w-100 py-2 fw-bold" disabled>
-                                                        <i class="fa-solid fa-ban me-2"></i> Currently Sold Out
-                                                    </button>
-                                                </c:otherwise>
-                                            </c:choose>
-                                        </div>
+                                        <p class="room-catalog-capacity">
+                                            <i class="fa-solid fa-users" aria-hidden="true"></i>
+                                            Up to <c:out value="${roomType.capacity}" /> guest(s) per room
+                                        </p>
+                                        <p class="room-catalog-rate">
+                                            <strong><fmt:formatNumber value="${roomType.price}" type="number" groupingUsed="true" /> VND</strong>
+                                            <span>/ night</span>
+                                        </p>
+                                        <a href="<c:out value='${roomTypeDetailUrl}' />" class="room-catalog-link">
+                                            View room details <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                                        </a>
                                     </div>
-                                </div>
-                            </div>
-                        </c:forEach>
-                    </div>
-                </c:when>
-                <c:otherwise>
-                    <div class="alert alert-warning text-center py-5 shadow-sm border-0 rounded-4 mt-4">
-                        <i class="fa-solid fa-folder-open fa-4x text-warning opacity-50 mb-3"></i>
-                        <h4 class="fw-bold">No Rooms Available</h4>
-                        <p class="mb-0 text-muted">We couldn't find any rooms for the selected dates. Please try adjusting your check-in and check-out dates.</p>
-                        <!-- Nút này khi bấm sẽ tự động bật cái Menu Dropdown phía trên -->
-                        <button type="button" class="btn btn-primary mt-4 fw-bold px-4" onclick="document.getElementById('btnSelectDates').click()">
-                            <i class="fa-solid fa-calendar-days me-2"></i> Change Dates
-                        </button>
-                    </div>
-                </c:otherwise>
-            </c:choose>
+
+                                    <div class="room-catalog-card-actions">
+                                        <c:choose>
+                                            <c:when test="${roomType.availableRooms > 0}">
+                                                <form action="${pageContext.request.contextPath}/booking-wish-list" method="post">
+                                                    <input type="hidden" name="action" value="add">
+                                                    <input type="hidden" name="roomTypeID" value="<c:out value='${roomType.roomTypeID}' />">
+                                                    <input type="hidden" name="checkInDate" value="<c:out value='${checkInDate}' />">
+                                                    <input type="hidden" name="checkOutDate" value="<c:out value='${checkOutDate}' />">
+                                                    <div class="room-catalog-fields">
+                                                        <div class="ui-field">
+                                                            <label for="quantity_${roomType.roomTypeID}">Rooms</label>
+                                                            <input type="number" id="quantity_${roomType.roomTypeID}" name="quantity"
+                                                                   value="1" min="1" max="${roomType.availableRooms}" required>
+                                                        </div>
+                                                        <div class="ui-field">
+                                                            <label for="guestCount_${roomType.roomTypeID}">Guests</label>
+                                                            <input type="number" id="guestCount_${roomType.roomTypeID}" name="guestCount"
+                                                                   value="1" min="1" required>
+                                                        </div>
+                                                    </div>
+                                                    <button type="submit" class="ui-button ui-button-primary ui-button-wide">
+                                                        Add to Wishlist
+                                                    </button>
+                                                </form>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <button type="button" class="ui-button ui-button-secondary ui-button-wide" disabled>
+                                                    Currently Sold Out
+                                                </button>
+                                            </c:otherwise>
+                                        </c:choose>
+                                    </div>
+                                </article>
+                            </c:forEach>
+                        </div>
+                    </c:when>
+                    <c:otherwise>
+                        <div class="ui-panel ui-empty-state">
+                            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+                            <h3>No Rooms Available</h3>
+                            <p>Try another check-in or check-out date.</p>
+                            <button type="button" class="ui-button ui-button-secondary mt-3"
+                                    onclick="document.getElementById('checkInDate').focus()">
+                                Change Dates
+                            </button>
+                        </div>
+                    </c:otherwise>
+                </c:choose>
+            </section>
         </c:if>
     </div>
 
-    <!-- Script xử lý Logic Ngày Tháng mặc định -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             const checkInInput = document.getElementById("checkInDate");
@@ -218,23 +202,4 @@
             </c:if>
         });
     </script>
-
-    <style>
-        .hover-lift {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .hover-lift:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.15)!important;
-        }
-        .width-20 {
-            width: 20px;
-            text-align: center;
-        }
-        /* Style bo góc form input gọn gàng hơn */
-        .dropdown-menu input[type="date"] {
-            border-radius: 8px;
-            border: 1px solid #dee2e6;
-        }
-    </style>
 </layout:layout>

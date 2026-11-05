@@ -22,6 +22,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 /**
+ * Checks access to the staff room assignment routes.
  *
  * @author default
  */
@@ -93,11 +94,11 @@ public class RoomAssignmentFilter implements Filter {
     }
 
     /**
+     * Require the receptionist role on room assignment routes.
      *
      * @param request The servlet request we are processing
      * @param response The servlet response we are creating
      * @param chain The filter chain we are processing
-     *
      * @exception IOException if an input/output error occurs
      * @exception ServletException if a servlet error occurs
      */

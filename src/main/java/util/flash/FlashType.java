@@ -5,6 +5,7 @@
 package util.flash;
 
 /**
+ * Lists the display levels for one-time messages.
  *
  * @author default
  */

@@ -1,5 +1,4 @@
 package controller;
-
 import dao.BookingDAO;
 import dto.BookingWishList;
 import entity.Booking;
@@ -21,9 +20,11 @@ import service.BookingCheckoutService;
 import util.BookingWishListSession;
 import util.BookingTimePolicy;
 
+/** Turns a customer's room wishlist into a booking ready for payment. */
 @WebServlet(name = "CheckoutServlet", urlPatterns = {"/checkout"})
 public class CheckoutServlet extends HttpServlet
 {
+    /** Show the pending booking and its payment deadline. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -34,6 +35,7 @@ public class CheckoutServlet extends HttpServlet
             return;
         }
         HttpSession session = request.getSession(false);
+        // Load the booking waiting for payment in this session.
         Object value = session.getAttribute("pendingBookingID");
         if (!(value instanceof String) || ((String) value).isBlank())
         {
@@ -58,6 +60,7 @@ public class CheckoutServlet extends HttpServlet
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "You cannot access another customer's checkout.");
                 return;
             }
+            // Check if the booking has expired before showing the payment button.
             if ("PENDING_PAYMENT".equals(booking.getBookingStatus()))
             {
                 bookingDAO.expirePendingBookings(booking.getCustomerID().getCustomerID());
@@ -90,7 +93,6 @@ public class CheckoutServlet extends HttpServlet
             request.setAttribute("checkoutServerNow", System.currentTimeMillis());
             if (booking.getPaymentDeadline() != null)
             {
-                // SQL DATETIME stores the hotel's local wall time without a timezone.
                 LocalDateTime deadline = new Timestamp(booking.getPaymentDeadline().getTime()).toLocalDateTime();
                 request.setAttribute("checkoutDeadlineEpoch", deadline.atZone(BookingTimePolicy.HOTEL_ZONE).toInstant().toEpochMilli());
                 request.setAttribute("checkoutDeadlineLabel", deadline.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm", Locale.ENGLISH)));
@@ -108,6 +110,7 @@ public class CheckoutServlet extends HttpServlet
         return new BookingDAO();
     }
 
+    /** Turn the wishlist into a pending booking and open checkout. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -121,6 +124,7 @@ public class CheckoutServlet extends HttpServlet
         String redirect;
         try
         {
+            // Reuse the pending booking if the checkout form was already submitted.
             synchronized (session)
             {
                 BookingWishList wishlist = BookingWishListSession.get(session);
@@ -145,12 +149,14 @@ public class CheckoutServlet extends HttpServlet
                     {
                         throw new IllegalArgumentException("Please choose a 30% deposit or full payment.");
                     }
+                    // Create a pending booking with the chosen deposit or full payment option.
                     Booking booking = new BookingCheckoutService().createPendingBooking(wishlist, user.getUserID(), paymentOption);
                     if (booking == null || booking.getBookingID() == null || booking.getBookingID().isBlank())
                     {
                         throw new IllegalStateException("Unable to confirm the booking. Check your bookings before trying again.");
                     }
                     session.setAttribute("pendingBookingID", booking.getBookingID().trim());
+                    // Clear the wishlist after saving the pending booking ID.
                     BookingWishListSession.remove(session);
                     session.removeAttribute("bookingError");
                     redirect = "/checkout";

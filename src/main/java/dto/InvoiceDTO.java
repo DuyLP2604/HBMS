@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/** Holds room charges, service charges, and payment totals for an invoice view. */
 public class InvoiceDTO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -51,7 +52,6 @@ public class InvoiceDTO implements Serializable {
             setUsedServices("Không có dịch vụ");
         }
 
-        // Ép kiểu và tính toán tiền bạc
         BigDecimal gTotal = getBigDecimal(summary.get("totalAmount"));
         BigDecimal pAmount = getBigDecimal(summary.get("totalPaidAmount"));
         BigDecimal rAmount = getBigDecimal(summary.get("remainingAmount"));

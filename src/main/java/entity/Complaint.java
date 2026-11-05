@@ -24,6 +24,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 /**
+ * Maps a customer complaint and its reply information.
  *
  * @author Asus
  */

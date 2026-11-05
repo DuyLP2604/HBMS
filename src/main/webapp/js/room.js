@@ -1,4 +1,4 @@
-// Tự động kích hoạt hiển thị mục chọn phụ (Options) ngay khi trang tải xong
+// Handles the room page options and room list controls.
 document.addEventListener("DOMContentLoaded", function () {
     updateSubFilter();
 });

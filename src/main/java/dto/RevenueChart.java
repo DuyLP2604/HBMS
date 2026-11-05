@@ -3,6 +3,7 @@ package dto;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
+/** Holds a date and its revenue value for the dashboard chart. */
 public class RevenueChart implements Serializable {
 
     private static final long serialVersionUID = 1L;

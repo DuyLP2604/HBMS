@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.util.Collection;
 
 /**
+ * Maps the payment methods available to the application.
  *
  * @author Asus
  */

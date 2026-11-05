@@ -24,6 +24,7 @@ import java.util.List;
 import util.BookingTimePolicy;
 import util.flash.Flash;
 
+/** Handles room type search and room type maintenance. */
 @WebServlet(name = "RoomTypeServlet", urlPatterns = {"/room-types"})
 @MultipartConfig(fileSizeThreshold = 1024 * 1024,
         maxFileSize = 1024 * 1024 * 5,
@@ -220,6 +221,7 @@ public class RoomTypeServlet extends HttpServlet {
     }
 
     // ================= HELPER METHODS =================
+    /** Validate the stay dates and show availability by room type. */
     private void showSearchPage(HttpServletRequest request, HttpServletResponse response, RoomTypeDAO roomTypeDAO) throws ServletException, IOException {
         moveFlashMessage(request);
         LocalDateTime now = BookingTimePolicy.now();
@@ -232,8 +234,7 @@ public class RoomTypeServlet extends HttpServlet {
         boolean hasCheckIn = checkInValue != null && !checkInValue.trim().isEmpty();
         boolean hasCheckOut = checkOutValue != null && !checkOutValue.trim().isEmpty();
 
-        // Keep the new servlet's automatic search on the first visit.
-        // From 10:00, the default stay starts tomorrow instead of today.
+        // On the first visit, search for one night from the earliest allowed date.
         if (!hasCheckIn && !hasCheckOut) {
             checkInValue = minimumCheckIn.toString();
             checkOutValue = minimumCheckIn.plusDays(1).toString();
@@ -250,6 +251,7 @@ public class RoomTypeServlet extends HttpServlet {
                 LocalDate checkOutDate = LocalDate.parse(checkOutValue.trim());
                 BookingTimePolicy.validateStayDates(checkInDate, checkOutDate, now);
 
+                // Load the available room count for each type and the selected dates.
                 List<RoomTypeAvailability> availabilityList = roomTypeDAO.getAvailability(checkInDate, checkOutDate);
                 request.setAttribute("availabilityList", availabilityList);
                 request.setAttribute("searched", true);
@@ -268,6 +270,7 @@ public class RoomTypeServlet extends HttpServlet {
         request.getRequestDispatcher("/WEB-INF/views/room-type-search.jsp").forward(request, response);
     }
 
+    /** Show the selected room type and availability for the default stay. */
     private void showRoomDetail(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String id = request.getParameter("id");
         if (id != null && !id.trim().isEmpty()) {
@@ -279,6 +282,7 @@ public class RoomTypeServlet extends HttpServlet {
 
             if (roomType != null) {
                 LocalDate minimumCheckIn = BookingTimePolicy.minimumCheckInDate(BookingTimePolicy.now());
+                // Show availability for the default one-night stay.
                 LocalDate defaultCheckOut = minimumCheckIn.plusDays(1);
                 long availableRooms = 0;
 

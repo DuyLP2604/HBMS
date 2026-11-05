@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import service.RoomAssignmentService;
 
+/** Lets reception assign available rooms to a booking. */
 @WebServlet(
         name = "RoomAssignmentServlet",
         urlPatterns = {"/staff/room-assignments"}
@@ -29,6 +30,7 @@ public class RoomAssignmentServlet extends HttpServlet {
     private final EmployeeDAO employeeDAO
             = new EmployeeDAO();
 
+    /** Read the receptionist's room choices and submit them for assignment. */
     @Override
     protected void doPost(
             HttpServletRequest request,
@@ -89,6 +91,7 @@ public class RoomAssignmentServlet extends HttpServlet {
                 );
             }
 
+            // Read the selected rooms for each booking detail.
             Map<Integer, List<String>> selectedRooms
                     = new HashMap<>();
 

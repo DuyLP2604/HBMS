@@ -9,6 +9,7 @@ import jakarta.persistence.EntityManager;
 import util.PersistenceManager;
 
 /**
+ * Reads and updates the hotel information.
  *
  * @author TAN LOI
  */
@@ -28,6 +29,8 @@ public class HotelDAO {
     }
 
     /**
+     * Save changes to the hotel record.
+     *
      * @param h
      * @return true if the hotel was saved, false if the update failed.
      */

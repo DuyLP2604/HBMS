@@ -1,3 +1,4 @@
+// Handles interactions on the list of checked-in guests.
 (function () {
     'use strict';
     const root = document.querySelector('[data-inhouse-list]');

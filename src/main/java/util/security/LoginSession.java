@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import java.io.Serializable;
 
+/** Manages signed-in sessions and pending staff password setup. */
 public final class LoginSession {
     public static final String PENDING_STAFF = "pendingStaffLogin";
     public static final int TIMEOUT_SECONDS = 30 * 60;
@@ -12,12 +13,14 @@ public final class LoginSession {
     private LoginSession() {
     }
 
+    /** Start a fresh session for a staff member who still needs a new password. */
     public static void beginPasswordSetup(HttpServletRequest request, Users user) {
         HttpSession session = replaceSession(request);
         session.setAttribute(PENDING_STAFF, new PendingStaffLogin(user, System.currentTimeMillis() + TIMEOUT_SECONDS * 1000L));
         CsrfTokens.getOrCreate(session);
     }
 
+    /** Start a fresh signed-in session for the verified account. */
     public static void authenticate(HttpServletRequest request, Users user) {
         HttpSession session = replaceSession(request);
         session.setAttribute("user", user);

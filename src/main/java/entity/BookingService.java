@@ -19,6 +19,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
+ * Maps a service ordered for a booking, including its quantity and status.
  *
  * @author Asus
  */
@@ -67,7 +68,7 @@ public class BookingService implements Serializable {
     public void setServiceStatus(String serviceStatus) {
         this.serviceStatus = serviceStatus;
     }
-    //
+
     @Column(name = "ServedByUserID")
     private Integer servedByUserID;
 

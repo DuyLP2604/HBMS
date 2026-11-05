@@ -14,8 +14,10 @@ import util.flash.Flash;
 import util.security.CsrfTokens;
 import util.security.LoginSession;
 
+/** Lets signed-in customers and staff change their passwords. */
 @WebServlet(name = "ChangePasswordServlet", urlPatterns = {"/change-password"})
 public class ChangePasswordServlet extends HttpServlet {
+    /** Show the password change form for the signed-in user. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -25,6 +27,7 @@ public class ChangePasswordServlet extends HttpServlet {
         }
     }
 
+    /** Validate the submitted passwords and update the signed-in account. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

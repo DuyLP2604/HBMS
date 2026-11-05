@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Date;
 
 /**
+ * Maps an issued invoice and its link to the booking and transaction.
  *
  * @author Asus
  */
@@ -51,7 +52,6 @@ public class Invoice implements Serializable {
     private String invoiceID;
     @Basic(optional = false)
     @NotNull
-    @Size(min = 1, max = 30)
     @Column(name = "InvoiceDate")
     @Temporal(TemporalType.DATE)
     private Date invoiceDate;
@@ -66,7 +66,7 @@ public class Invoice implements Serializable {
     @Column(name = "Status")
     private String status;
     @JoinColumn(name = "BookingID", referencedColumnName = "BookingID")
-    @OneToOne(optional = false)
+    @ManyToOne(optional = false)
     private Booking bookingID;
     @JoinColumn(name = "EmployeeID", referencedColumnName = "EmployeeID")
     @ManyToOne

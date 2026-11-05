@@ -1,3 +1,4 @@
+// Handles stay list actions and confirmation dialogs for reception.
 (() => {
     'use strict';
     const root = document.querySelector('[data-stay-list]');

@@ -4,7 +4,9 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ attribute name="bookings" required="true" type="java.util.Collection" %>
 <%@ attribute name="noShowBookings" required="false" type="java.util.Map" %>
-<%@ attribute name="waitingMode" required="true" type="java.lang.Boolean" %>
+<%@ attribute name="waitingMode" required="true" type="java.lang.Boolean" %><%--
+    Renders stay rows and the available actions for each booking.
+--%>
 <fmt:setLocale value="en_GB" scope="page" />
 <fmt:setTimeZone value="Asia/Ho_Chi_Minh" scope="page" />
 <c:url var="dashboardUrl" value="/staff/dashboard" />

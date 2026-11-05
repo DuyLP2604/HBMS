@@ -2,6 +2,7 @@ package util.security;
 
 import java.security.SecureRandom;
 
+/** Generates temporary passwords for staff accounts. */
 public final class TemporaryPasswordGenerator {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%_-";
@@ -9,6 +10,7 @@ public final class TemporaryPasswordGenerator {
     private TemporaryPasswordGenerator() {
     }
 
+    /** Create a temporary password that follows the staff password rules. */
     public static String generate() {
         StringBuilder value = new StringBuilder(20);
         for (int i = 0; i < 20; i++) {

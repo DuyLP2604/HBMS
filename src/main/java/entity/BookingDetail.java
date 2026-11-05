@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 
+/** Maps a room type and quantity reserved on a booking. */
 @Entity
 @Table(name = "BOOKING_DETAIL")
 @XmlRootElement

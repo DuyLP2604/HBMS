@@ -4,7 +4,9 @@
     Author     : default
 --%>
 
-<%@page contentType="text/html" pageEncoding="UTF-8"%>
+<%@page contentType="text/html" pageEncoding="UTF-8"%><%--
+    Shows an error message when a page cannot continue.
+--%>
 <!DOCTYPE html>
 <html>
     <head>

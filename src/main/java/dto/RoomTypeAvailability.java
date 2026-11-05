@@ -3,6 +3,7 @@ package dto;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
+/** Holds a room type and the number of rooms available for a requested stay. */
 public class RoomTypeAvailability implements Serializable {
 
     private static final long serialVersionUID = 1L;

@@ -2,17 +2,17 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
-<layout:layout title="Service Management" pageCss="service.css" useBootstrap="true" bodyClass="bg-light">
-    <div class="container my-5">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+<%-- Lists the service catalog and its admin actions. --%>
+<layout:layout title="Service Management" pageCss="group5.css" useBootstrap="true" bodyClass="hbms-ui-page group5-page">
+    <div class="hbms-ui ui-shell g5-workspace">
+        <div class="g5-heading">
             <div>
                 <h1 class="h3 mb-1"><i class="fa-solid fa-bell-concierge text-warning me-2"></i>Service Management</h1>
                 <p class="text-muted mb-0">Quản lý danh mục dịch vụ của khách sạn: xem danh sách, cập nhật đơn giá, tạo mới hoặc xóa dịch vụ.</p>
             </div>
             <div class="d-flex gap-2">
                 <c:if test="${sessionScope.user.role == 'Admin'}">
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createServiceModal">
+                    <button type="button" class="btn g5-primary" data-bs-toggle="modal" data-bs-target="#createServiceModal">
                         <i class="fa-solid fa-plus me-1"></i>Tạo Service mới
                     </button>
                 </c:if>
@@ -34,13 +34,13 @@
             <c:remove var="errorMessage" scope="session" />
         </c:if>
 
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+        <div class="card g5-panel">
+            <div class="card-header g5-section-header">
                 <h2 class="h5 mb-0 fw-bold">Danh sách dịch vụ (${services.size()})</h2>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered mb-0 align-middle">
+                <div class="table-responsive g5-table-scroll" tabindex="0" role="region" aria-label="Danh sách dịch vụ">
+                    <table class="table table-hover mb-0 align-middle">
                         <thead class="table-light">
                             <tr>
                                 <th style="width: 15%" class="text-center">Mã dịch vụ</th>
@@ -63,7 +63,7 @@
                                     <c:if test="${sessionScope.user.role == 'Admin'}">
                                         <td class="text-center">
                                             <div class="d-flex justify-content-center gap-2">
-                                                <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-semibold"
+                                                <button type="button" class="btn btn-sm g5-secondary text-dark fw-semibold"
                                                         data-bs-toggle="modal" data-bs-target="#editModal_${cleanID}">
                                                     <i class="fa-solid fa-pen-to-square me-1"></i>Cập nhật
                                                 </button>
@@ -90,9 +90,9 @@
             <div class="modal-content">
                 <form action="${pageContext.request.contextPath}/service" method="post">
                     <input type="hidden" name="action" value="create">
-                    <div class="modal-header bg-primary text-white">
+                    <div class="modal-header g5-section-header">
                         <h5 class="modal-title"><i class="fa-solid fa-plus me-2"></i>Tạo dịch vụ mới</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
@@ -106,8 +106,8 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check me-1"></i>Lưu dịch vụ</button>
+                        <button type="button" class="btn g5-secondary" data-bs-dismiss="modal">Hủy</button>
+                        <button type="submit" class="btn g5-primary"><i class="fa-solid fa-check me-1"></i>Lưu dịch vụ</button>
                     </div>
                 </form>
             </div>
@@ -123,7 +123,7 @@
                             <input type="hidden" name="action" value="update">
                             <input type="hidden" name="serviceID" value="${s.serviceID}">
 
-                            <div class="modal-header bg-warning text-dark">
+                            <div class="modal-header g5-section-header">
                                 <h5 class="modal-title fw-bold">Cập nhật dịch vụ</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
@@ -138,8 +138,8 @@
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                                <button type="submit" class="btn btn-warning fw-bold">Lưu thay đổi</button>
+                                <button type="button" class="btn g5-secondary" data-bs-dismiss="modal">Hủy</button>
+                                <button type="submit" class="btn g5-primary fw-bold">Lưu thay đổi</button>
                             </div>
                         </form>
                     </div>

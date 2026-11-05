@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import util.PersistenceManager;
 
+/** Queries room types and checks availability through SP_GET_ROOM_TYPE_AVAILABILITY. */
 public class RoomTypeDAO extends DAOFramework<RoomType> {
 
     public RoomTypeDAO() {
@@ -62,6 +63,7 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         return "RT01"; // ID mặc định nếu bảng RoomType đang trống
     }
 
+    /** Load room counts for each type in the requested date range. */
     public List<RoomTypeAvailability> getAvailability(
             LocalDate checkInDate,
             LocalDate checkOutDate) {
@@ -71,6 +73,7 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         EntityManager em = PersistenceManager.createEntityManager();
 
         try {
+            // SP_GET_ROOM_TYPE_AVAILABILITY returns free room counts by type and stay dates.
             StoredProcedureQuery query
                     = em.createStoredProcedureQuery(
                             "SP_GET_ROOM_TYPE_AVAILABILITY"
@@ -121,6 +124,7 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         }
     }
 
+    /** Keep only the room types with availability. */
     public List<RoomTypeAvailability> getAvailableRoomTypes(
             LocalDate checkInDate,
             LocalDate checkOutDate) {
@@ -143,6 +147,7 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         return availableTypes;
     }
 
+    /** Convert one availability row into a result for the search page. */
     private RoomTypeAvailability mapAvailability(Object[] row) {
 
         String roomTypeID = row[0] == null

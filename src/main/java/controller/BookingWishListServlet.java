@@ -22,9 +22,11 @@ import java.util.Map;
 import util.BookingWishListSession;
 import util.BookingTimePolicy;
 
+/** Manages the room types saved in the customer's booking wishlist. */
 @WebServlet(name = "BookingWishListServlet", urlPatterns = {"/booking-wish-list"})
 public class BookingWishListServlet extends HttpServlet {
 
+    /** Show the session wishlist with room subtotals and a deposit preview. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -39,6 +41,7 @@ public class BookingWishListServlet extends HttpServlet {
         sendMessage(request);
 
         BookingWishList wishlist = BookingWishListSession.getOrCreate(session);
+        // Use the session wishlist to show each room type's cost for the stay.
         Map<String, BigDecimal> subtotals = new HashMap<>();
 
         for (BookingCartItem item : wishlist.getItems()) {
@@ -60,6 +63,7 @@ public class BookingWishListServlet extends HttpServlet {
         request.getRequestDispatcher("/WEB-INF/views/booking-wish-list.jsp").forward(request, response);
     }
 
+    /** Route wishlist requests to the add, remove, or clear action. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -89,6 +93,7 @@ public class BookingWishListServlet extends HttpServlet {
         }
     }
 
+    /** Check the stay dates, room availability, and guest count before saving a room type. */
     private void handleAdd(HttpServletRequest request, HttpServletResponse response, HttpSession session, BookingWishList wishlist) throws IOException {
         RoomTypeDAO roomTypeDAO = new RoomTypeDAO();
         String checkInValue = request.getParameter("checkInDate");
@@ -123,6 +128,7 @@ public class BookingWishListServlet extends HttpServlet {
                 throw new IllegalArgumentException("The selected room type does not exist.");
             }
 
+            // Check availability again before saving the room selection.
             List<RoomTypeAvailability> availabilityList = roomTypeDAO.getAvailability(checkInDate, checkOutDate);
             RoomTypeAvailability availability = findAvailability(availabilityList, roomTypeID);
 
@@ -138,6 +144,7 @@ public class BookingWishListServlet extends HttpServlet {
                 throw new IllegalArgumentException("The selected rooms can accommodate a maximum of " + maximumGuests + " guest(s).");
             }
 
+            // All rooms in the wishlist must use the same stay dates.
             if (!wishlist.isEmpty()) {
                 boolean sameDates = checkInDate.equals(wishlist.getCheckInDate()) && checkOutDate.equals(wishlist.getCheckOutDate());
                 if (!sameDates) {
@@ -156,6 +163,7 @@ public class BookingWishListServlet extends HttpServlet {
                     guestCount
             );
 
+            // Replace the room and guest counts if this room type is already in the wishlist.
             wishlist.addOrUpdateItem(item);
             BookingWishListSession.save(session, wishlist);
 
@@ -174,6 +182,7 @@ public class BookingWishListServlet extends HttpServlet {
         }
     }
 
+    /** Remove one room type from the wishlist and return to the list. */
     private void handleRemove(HttpServletRequest request, HttpServletResponse response, HttpSession session, BookingWishList wishlist) throws IOException {
         String roomTypeID = request.getParameter("roomTypeID");
         boolean removed = wishlist.removeItem(roomTypeID);
@@ -187,6 +196,7 @@ public class BookingWishListServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/booking-wish-list");
     }
 
+    /** Clear the current wishlist and return to the empty list. */
     private void handleClear(HttpServletRequest request, HttpServletResponse response, HttpSession session, BookingWishList wishlist) throws IOException {
         wishlist.clear();
         session.setAttribute("bookingSuccess", "Your wishlist was cleared.");

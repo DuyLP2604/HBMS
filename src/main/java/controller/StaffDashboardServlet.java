@@ -17,12 +17,14 @@ import java.util.Locale;
 import service.BookingLifecycleService;
 import util.BookingTimePolicy;
 
+/** Shows reception staff the daily booking and stay workload. */
 @WebServlet(
         name = "StaffDashboardServlet",
         urlPatterns = {"/staff/dashboard"}
 )
 public class StaffDashboardServlet extends HttpServlet {
 
+    /** Load the staff profile and show front desk tasks for receptionists. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
@@ -56,6 +58,7 @@ public class StaffDashboardServlet extends HttpServlet {
             return;
         }
 
+        // Use the employee's position to decide whether to show the front desk tasks.
         boolean isReceptionist = "Receptionist".equalsIgnoreCase(employee.getPosition());
         request.setAttribute("employee", employee);
         request.setAttribute("isReceptionist", isReceptionist);
@@ -65,7 +68,7 @@ public class StaffDashboardServlet extends HttpServlet {
             request.setAttribute("dashboardDate", now.format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy", Locale.ENGLISH)));
             request.setAttribute("dashboardTime", now.format(DateTimeFormatter.ofPattern("HH:mm")));
             try {
-                // Reuse the existing operational query; the dashboard performs no booking updates.
+                // Build the task counts from active bookings using Vietnam time.
                 request.setAttribute("receptionDashboard", ReceptionDashboard.from(
                         createLifecycleService().getOperationalBookings(), now, request.getParameter("focus")));
             } catch (RuntimeException exception) {

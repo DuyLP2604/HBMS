@@ -1,3 +1,4 @@
+// Renders the admin dashboard charts and report controls.
 document.addEventListener("DOMContentLoaded", function () {
 
     initializeDateRangePicker();
