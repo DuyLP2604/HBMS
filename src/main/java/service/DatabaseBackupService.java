@@ -16,7 +16,7 @@ public class DatabaseBackupService {
             "PAYMENTMETHOD", "USERS", "EMPLOYEE", "CUSTOMER", "USER_BOOKING_CONTROL", "CUSTOMER_WALLET",
             "ROOM", "COMPLAINT", "BOOKING", "BOOKING_DETAIL", "BOOKING_SERVICE", "ROOM_ASSIGNMENT",
             "TRANSACTION", "PAYMENT", "BOOKING_REFUND", "REFUND_PAYMENT", "WALLET_TRANSACTION",
-            "BOOKING_LOCK_HISTORY", "INVOICE", "INVOICE_TRANSACTION");
+            "BOOKING_LOCK_HISTORY", "INVOICE", "INVOICE_TRANSACTION", "PAYOS_ORDER");
 
     protected Connection openConnection() throws SQLException { return PersistenceManager.openConnection(); }
 
