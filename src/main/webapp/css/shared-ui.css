@@ -137,6 +137,13 @@ body.hbms-ui-page {
 .hbms-ui .ui-booking-table .ui-name { min-width: 130px; }
 .hbms-ui .ui-price { font-variant-numeric: tabular-nums; }
 .hbms-ui .ui-booking-table input.ui-quantity { width: 76px; }
+.hbms-ui .ui-booking-table .ui-room-sold-out td { background: #f2f3f2; color: #606b63; }
+.hbms-ui .ui-booking-table .ui-room-sold-out input.ui-quantity {
+    background: #e9ece9;
+    border-color: #d5ddd6;
+    color: #606b63;
+    cursor: not-allowed;
+}
 .hbms-ui .ui-booking-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .hbms-ui .ui-counter-search { max-width: 860px; margin: 0 auto; }
 .hbms-ui .ui-search-results { margin-top: 24px; }

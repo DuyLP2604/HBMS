@@ -17,10 +17,11 @@ public class PaymentmethodDAO {
                 .collect(Collectors.toList());
     }
 
+    /** Load VietQR and cash for check-in. */
     public List<Paymentmethod> getCollectionMethods() {
         return getAll().stream()
                 .filter(method -> method.getMethodID() != null
-                        && java.util.Set.of("PT01", "PT02", "PT03").contains(method.getMethodID().trim()))
+                        && java.util.Set.of("PT01", "PT03").contains(method.getMethodID().trim()))
                 .collect(Collectors.toList());
     }
 

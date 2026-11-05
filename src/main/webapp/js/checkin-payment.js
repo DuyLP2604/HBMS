@@ -8,7 +8,6 @@
     const method = document.getElementById('checkInMethod');
     const bankGroup = document.getElementById('checkInBankReferenceGroup');
     const bankReference = document.getElementById('checkInBankReference');
-    const walletGroup = document.getElementById('checkInWalletAuthorization');
     const confirmation = document.getElementById('collectionConfirmed');
     const collectionGroup = document.getElementById('checkInCollectionGroup');
     const payOsPanel = document.getElementById('checkInPayOs');
@@ -135,7 +134,6 @@
                 && Array.from(form.querySelectorAll('input[name="cccd"]')).every(input => input.checkValidity()));
         const paymentReady = !method || (usesPayOs() ? !initialCounterPayment && payOsState === 'PAID' : (method.value !== ''
                 && (confirmation.disabled || confirmation.checked)
-                && (!walletGroup || Array.from(walletGroup.querySelectorAll('input')).every(input => input.disabled || input.checkValidity()))
                 && (!bankReference || bankReference.disabled || bankReference.checkValidity())));
         if (payOsCreate) {
             payOsCreate.disabled = payOsBusy;
@@ -152,7 +150,6 @@
     }
     function syncPaymentMethod() {
         if (!method) return;
-        const useWallet = method.value === 'PT02';
         const usePayOs = usesPayOs();
         if (bankGroup && bankReference) {
             const useManualQr = method.value === 'PT01' && !usePayOs;
@@ -167,14 +164,6 @@
             confirmation.disabled = !collectConfirmation;
             confirmation.required = collectConfirmation;
             if (initialCounterPayment && !collectConfirmation) confirmation.checked = false;
-        }
-        if (walletGroup) {
-            walletGroup.hidden = !useWallet;
-            walletGroup.querySelectorAll('input').forEach(input => {
-                input.required = useWallet;
-                input.disabled = !useWallet;
-                if (!useWallet) input.value = '';
-            });
         }
         updateState();
     }

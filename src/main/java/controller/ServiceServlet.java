@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Objects;
+import util.flash.Flash;
 import util.security.CsrfTokens;
 
 /** Manages the service catalog and service orders for bookings. */
@@ -196,21 +197,20 @@ public class ServiceServlet extends HttpServlet {
             return;
         }
 
-        HttpSession session = request.getSession();
         try {
             boolean changed = new ServiceDAO().updateBookingServiceStatus(bookingID.trim(), serviceID.trim(),
                     user.getUserID(), accepting ? "IN_PROGRESS" : "COMPLETED");
             if (changed) {
-                session.setAttribute("successMessage", accepting
+                Flash.success(request, accepting
                         ? "Bạn đã tiếp nhận đơn dịch vụ." : "Đã hoàn thành dịch vụ.");
             } else {
-                session.setAttribute("errorMessage", accepting
+                Flash.error(request, accepting
                         ? "Đơn đã được tiếp nhận hoặc booking đã đóng."
                         : "Chỉ nhân viên đã nhận đơn đang thực hiện mới có thể hoàn thành.");
             }
         } catch (IllegalStateException exception) {
             log("Unable to update service order.", exception);
-            session.setAttribute("errorMessage", exception.getMessage());
+            Flash.error(request, exception.getMessage());
         }
         response.sendRedirect(request.getContextPath() + "/service?action=orders");
     }

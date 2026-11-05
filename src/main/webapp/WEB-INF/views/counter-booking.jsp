@@ -89,6 +89,7 @@
             </c:when>
             <c:when test="${not empty selectedCustomer}">
                 <script src="${pageContext.request.contextPath}/js/counter-booking-payment-option.js" defer></script>
+                <script src="${pageContext.request.contextPath}/js/counter-booking-availability.js" defer></script>
                 <div class="ui-counter-create">
                     <section class="ui-panel" aria-label="Booking information">
                         <form method="post" action="${pageContext.request.contextPath}/staff/counter-booking">
@@ -101,15 +102,18 @@
                                     <div class="ui-field"><label for="checkInDate">Check-in date</label><input type="date" id="checkInDate" name="checkInDate" min="${today}" value="${today}" required></div>
                                     <div class="ui-field"><label for="checkOutDate">Check-out date</label><input type="date" id="checkOutDate" name="checkOutDate" min="${tomorrow}" value="${tomorrow}" required></div>
                                 </div>
-                                <p class="ui-help">Counter bookings can start today. Check-in follows payment and room assignment. Availability is checked again when you submit.</p>
+                                <p class="ui-help">Counter bookings can start today. Check-in follows payment and room assignment.
+                                    <span id="counterRoomAvailability" role="status">Availability is checked when you submit.</span>
+                                </p>
                                 <div class="ui-table-scroll" role="region" aria-label="Room type selection">
-                                    <table class="ui-table ui-booking-table">
-                                        <thead><tr><th scope="col">Room type</th><th scope="col">Price / night</th><th scope="col">Capacity / room</th><th scope="col">Rooms</th><th scope="col">Guests</th></tr></thead>
+                                    <table class="ui-table ui-booking-table" data-room-availability-url="${pageContext.request.contextPath}/staff/counter-booking">
+                                        <thead><tr><th scope="col">Room type</th><th scope="col">Price / night</th><th scope="col">Capacity / room</th><th scope="col">Available rooms</th><th scope="col">Rooms</th><th scope="col">Guests</th></tr></thead>
                                         <tbody>
                                             <c:forEach items="${roomTypes}" var="rt">
-                                                <tr>
+                                                <tr data-room-type="${fn:escapeXml(fn:trim(rt.roomTypeID))}">
                                                     <td class="ui-name"><c:out value="${rt.typeName}"/><input type="hidden" name="roomTypeID" value="${fn:escapeXml(rt.roomTypeID)}"></td>
                                                     <td class="ui-price"><fmt:formatNumber value="${rt.price}"/> VND</td><td><c:out value="${rt.capacity}"/></td>
+                                                    <td data-available-rooms aria-describedby="counterRoomAvailability">—</td>
                                                     <td><input type="number" name="quantity" min="0" max="999" value="0" required class="ui-quantity" aria-label="Room quantity for ${fn:escapeXml(rt.typeName)}"></td>
                                                     <td><input type="number" name="guestCount" min="0" max="9999" value="0" required class="ui-quantity" aria-label="Guest count for ${fn:escapeXml(rt.typeName)}"></td>
                                                 </tr>

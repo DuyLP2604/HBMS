@@ -145,7 +145,7 @@ public class DatabaseBackupService {
                     for (Column column : updates) bind(statement, parameter++, column, values.get(column));
                     for (Column column : primary) bind(statement, parameter++, column, values.get(column));
                     for (Column column : selected) bind(statement, parameter++, column, values.get(column));
-                    drain(statement);
+                    drain(statement, statement.execute());
                 } catch (Exception exception) {
                     throw new IllegalArgumentException(table + " row " + (index + 1) + ": " + exception.getMessage(), exception);
                 }
@@ -206,10 +206,17 @@ public class DatabaseBackupService {
             while (rows.next()) keys.add(rows.getString("COLUMN_NAME"));
         }
         Set<String> excluded = new HashSet<>();
+        Set<String> identities = new HashSet<>();
         try (PreparedStatement statement = connection.prepareStatement(
-                "SELECT name FROM sys.columns WHERE object_id = OBJECT_ID(?) AND (is_computed = 1 OR system_type_id = 189)")) {
+                "SELECT name, is_identity FROM sys.columns WHERE object_id = OBJECT_ID(?) "
+                + "AND (is_computed = 1 OR system_type_id = 189 OR is_identity = 1)")) {
             statement.setString(1, "dbo." + quote(table));
-            try (ResultSet rows = statement.executeQuery()) { while (rows.next()) excluded.add(rows.getString(1)); }
+            try (ResultSet rows = statement.executeQuery()) {
+                while (rows.next()) {
+                    if (rows.getBoolean(2)) identities.add(rows.getString(1));
+                    else excluded.add(rows.getString(1));
+                }
+            }
         }
         List<Column> columns = new ArrayList<>();
         try (ResultSet rows = connection.getMetaData().getColumns(null, "dbo", table, null)) {
@@ -217,7 +224,7 @@ public class DatabaseBackupService {
                 if (!table.equalsIgnoreCase(rows.getString("TABLE_NAME"))) continue;
                 String name = rows.getString("COLUMN_NAME");
                 if (!excluded.contains(name)) columns.add(new Column(name, rows.getInt("DATA_TYPE"),
-                        keys.contains(name), "YES".equals(rows.getString("IS_AUTOINCREMENT"))));
+                        keys.contains(name), identities.contains(name)));
             }
         }
         if (columns.isEmpty()) throw new SQLException("Missing v6 table: " + table);
@@ -252,10 +259,12 @@ public class DatabaseBackupService {
         execute(connection, "SELECT TOP (1) UserID FROM dbo.USERS; EXEC dbo.SP_HBMS_ACQUIRE_WRITE_LOCK;");
     }
     private static void execute(Connection connection, String sql) throws SQLException {
-        try (PreparedStatement statement = connection.prepareStatement(sql)) { drain(statement); }
+        // Run session settings outside the driver's prepared SQL batch.
+        try (Statement statement = connection.createStatement()) {
+            drain(statement, statement.execute(sql));
+        }
     }
-    private static void drain(PreparedStatement statement) throws SQLException {
-        boolean result = statement.execute();
+    private static void drain(Statement statement, boolean result) throws SQLException {
         while (true) {
             if (result) {
                 try (ResultSet rows = statement.getResultSet()) { while (rows.next()) { /* consume */ } }

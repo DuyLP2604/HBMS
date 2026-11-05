@@ -1,5 +1,6 @@
 package controller;
 
+import com.google.gson.JsonObject;
 import com.google.zxing.WriterException;
 import dao.*;
 import dao.PayOsOrderDAO.Order;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import service.BookingCheckoutService;
 import service.CounterPaymentService;
@@ -51,6 +53,10 @@ public class CounterBookingServlet extends HttpServlet {
             return;
         }
         String action = req.getParameter("action");
+        if ("roomAvailability".equals(action)) {
+            showRoomAvailability(req, res);
+            return;
+        }
         if ("payOsStatus".equals(action) || "payOsImage".equals(action)) {
             showPayOsOrder(req, res, "payOsImage".equals(action));
             return;
@@ -130,6 +136,38 @@ public class CounterBookingServlet extends HttpServlet {
             throw new ServletException("Unable to load counter booking.", ex);
         }
         req.getRequestDispatcher("/WEB-INF/views/counter-booking.jsp").forward(req, res);
+    }
+
+    /** Return available room counts for the selected stay dates. */
+    private void showRoomAvailability(HttpServletRequest req, HttpServletResponse res) throws IOException {
+        LocalDate checkIn;
+        LocalDate checkOut;
+        try {
+            checkIn = LocalDate.parse(trim(req.getParameter("checkInDate")));
+            checkOut = LocalDate.parse(trim(req.getParameter("checkOutDate")));
+        } catch (DateTimeParseException ex) {
+            res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Select valid stay dates.");
+            return;
+        }
+        if (checkIn.isBefore(BookingTimePolicy.now().toLocalDate())
+                || !checkOut.isAfter(checkIn) || checkOut.getYear() > 9999) {
+            res.sendError(HttpServletResponse.SC_BAD_REQUEST, "Select valid stay dates.");
+            return;
+        }
+
+        JsonObject counts = new JsonObject();
+        try {
+            // SP_GET_ROOM_TYPE_AVAILABILITY counts free rooms by room type and stay dates.
+            for (RoomTypeAvailability type : new RoomTypeDAO().getAvailability(checkIn, checkOut)) {
+                counts.addProperty(type.getRoomTypeID(), Math.max(0L, type.getAvailableRooms()));
+            }
+        } catch (RuntimeException ex) {
+            log("Unable to load room availability for counter booking.", ex);
+            res.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Unable to load room availability.");
+            return;
+        }
+        res.setContentType("application/json;charset=UTF-8");
+        res.getWriter().write(counts.toString());
     }
 
     /** Create a counter booking or collect its initial payment. */

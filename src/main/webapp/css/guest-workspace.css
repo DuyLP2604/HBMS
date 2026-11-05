@@ -61,10 +61,6 @@
 .guest-workspace .guest-payment-amount small { color: #729078; font-size: 13px; font-weight: 500; letter-spacing: 0; }
 .guest-workspace .guest-payment-confirm { display: flex; align-items: flex-start; gap: 10px; margin: 19px 0; color: #5e7464; font-size: 13px; line-height: 1.65; cursor: pointer; }
 .guest-workspace .guest-payment-confirm input { width: 16px; height: 16px; margin: 3px 0 0; accent-color: #28533b; flex-shrink: 0; }
-.guest-workspace .guest-wallet { margin-top: 16px; padding: 16px; background: #f3f7ef; border: 1px solid #dfe7d8; border-radius: 9px; }
-.guest-workspace .guest-wallet h3 { margin: 0; font-size: 14px; font-weight: 600; color: #3c5a40; }
-.guest-workspace .guest-wallet .guest-help { margin-bottom: 14px; }
-.guest-workspace .guest-wallet .guest-field + .guest-field { margin-top: 13px; }
 .guest-workspace .guest-confirm-button { width: 100%; font-size: 14px; min-height: 49px; }
 .guest-workspace .guest-paid { display: flex; gap: 9px; align-items: flex-start; padding: 13px 14px; margin-bottom: 20px; border-radius: 8px; background: #eef6eb; color: #497048; font-size: 13px; line-height: 1.7; }
 .guest-workspace .guest-paid i { margin-top: 4px; }
