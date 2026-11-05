@@ -1,8 +1,10 @@
 package controller;
 
 import dao.BookingDAO;
+import dao.EmployeeDAO;
 import dao.ServiceDAO;
 import entity.Booking;
+import entity.Employee;
 import entity.Users;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -11,6 +13,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.Objects;
+import util.security.CsrfTokens;
 
 /** Manages the service catalog and service orders for bookings. */
 @WebServlet(name = "ServiceServlet", urlPatterns = {"/service"})
@@ -32,6 +36,11 @@ public class ServiceServlet extends HttpServlet {
                 return;
             }
             ServiceDAO serviceDAO = new ServiceDAO();
+            boolean canFulfill = canFulfillOrders(currentUser);
+            request.setAttribute("canFulfillOrders", canFulfill);
+            if (canFulfill) {
+                request.setAttribute("serviceOrderCsrfToken", CsrfTokens.getOrCreate(request.getSession()));
+            }
             request.setAttribute("orders", serviceDAO.getAllBookedServices());
             request.getRequestDispatcher("/WEB-INF/views/service-orders.jsp").forward(request, response);
             return;
@@ -113,23 +122,9 @@ public class ServiceServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/service?action=manage");
             return;
         }
-        if ("completeOrder".equalsIgnoreCase(action)) {
-            try {
-                String bookingID = request.getParameter("bookingID");
-                String serviceID = request.getParameter("serviceID");
-                String staffID = String.valueOf(currentUser.getUserID());
-                if (bookingID != null && serviceID != null) {
-                    boolean success = new ServiceDAO().completeBookingService(bookingID, serviceID, staffID);
-                    if (success) {
-                        session.setAttribute("successMessage", "Đã xác nhận hoàn thành dịch vụ!");
-                    } else {
-                        session.setAttribute("errorMessage", "Không thể cập nhật trạng thái dịch vụ!");
-                    }
-                }
-            } catch (Exception e) {
-                session.setAttribute("errorMessage", "Lỗi: " + e.getMessage());
-            }
-            response.sendRedirect(request.getContextPath() + "/service?action=orders");
+        boolean accepting = "acceptOrder".equalsIgnoreCase(action);
+        if (accepting || "completeOrder".equalsIgnoreCase(action)) {
+            handleServiceOrder(request, response, currentUser, accepting);
             return;
         }
 
@@ -158,7 +153,7 @@ public class ServiceServlet extends HttpServlet {
 
             if ("Customer".equalsIgnoreCase(currentUser.getRole())) {
                 if (targetBooking.getCustomerID() == null || targetBooking.getCustomerID().getUserID() == null
-                        || targetBooking.getCustomerID().getUserID().getUserID() != currentUser.getUserID()) {
+                        || !Objects.equals(targetBooking.getCustomerID().getUserID().getUserID(), currentUser.getUserID())) {
                     throw new IllegalStateException("Bạn không có quyền thêm dịch vụ vào đơn đặt phòng này.");
                 }
             }
@@ -169,7 +164,11 @@ public class ServiceServlet extends HttpServlet {
             }
 
             ServiceDAO serviceDAO = new ServiceDAO();
-            serviceDAO.insertBookingService(targetBooking.getBookingID(), selectedServiceID.trim(), quantity);
+            String serviceID = selectedServiceID.trim();
+            if (serviceID.length() > 4) {
+                throw new IllegalArgumentException("Mã dịch vụ không hợp lệ.");
+            }
+            serviceDAO.insertBookingService(targetBooking.getBookingID(), serviceID, quantity, currentUser.getUserID());
 
             session.setAttribute("successMessage", "Thêm dịch vụ thành công!");
         } catch (IllegalArgumentException | IllegalStateException exception) {
@@ -181,6 +180,47 @@ public class ServiceServlet extends HttpServlet {
         } else {
             response.sendRedirect(request.getContextPath() + "/service");
         }
+    }
+
+    private void handleServiceOrder(HttpServletRequest request, HttpServletResponse response, Users user,
+            boolean accepting) throws IOException {
+        if (!canFulfillOrders(user) || !CsrfTokens.isValid(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+        String bookingID = request.getParameter("bookingID");
+        String serviceID = request.getParameter("serviceID");
+        if (bookingID == null || bookingID.isBlank() || bookingID.trim().length() > 6
+                || serviceID == null || serviceID.isBlank() || serviceID.trim().length() > 4) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
+
+        HttpSession session = request.getSession();
+        try {
+            boolean changed = new ServiceDAO().updateBookingServiceStatus(bookingID.trim(), serviceID.trim(),
+                    user.getUserID(), accepting ? "IN_PROGRESS" : "COMPLETED");
+            if (changed) {
+                session.setAttribute("successMessage", accepting
+                        ? "Bạn đã tiếp nhận đơn dịch vụ." : "Đã hoàn thành dịch vụ.");
+            } else {
+                session.setAttribute("errorMessage", accepting
+                        ? "Đơn đã được tiếp nhận hoặc booking đã đóng."
+                        : "Chỉ nhân viên đã nhận đơn đang thực hiện mới có thể hoàn thành.");
+            }
+        } catch (IllegalStateException exception) {
+            log("Unable to update service order.", exception);
+            session.setAttribute("errorMessage", exception.getMessage());
+        }
+        response.sendRedirect(request.getContextPath() + "/service?action=orders");
+    }
+
+    private boolean canFulfillOrders(Users user) {
+        if (!"Staff".equalsIgnoreCase(user.getRole()) || user.getUserID() == null) {
+            return false;
+        }
+        Employee employee = new EmployeeDAO().getByUserId(user.getUserID());
+        return employee != null && "Service staff".equalsIgnoreCase(employee.getPosition());
     }
 
     private boolean canAccessServices(Users user) {
@@ -198,7 +238,7 @@ public class ServiceServlet extends HttpServlet {
             if (booking != null) {
                 if ("Customer".equalsIgnoreCase(currentUser.getRole())) {
                     if (booking.getCustomerID() != null && booking.getCustomerID().getUserID() != null
-                            && booking.getCustomerID().getUserID().getUserID() == currentUser.getUserID()) {
+                            && Objects.equals(booking.getCustomerID().getUserID().getUserID(), currentUser.getUserID())) {
                         return booking;
                     }
                 } else {

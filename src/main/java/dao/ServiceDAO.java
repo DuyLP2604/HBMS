@@ -1,13 +1,15 @@
 package dao;
 
-import entity.Booking;
 import entity.BookingService;
-import entity.BookingServicePK;
 import entity.Service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import util.PersistenceManager;
@@ -183,67 +185,42 @@ public class ServiceDAO {
         }
     }
 
-    /** Add a service to the booking or increase the quantity already ordered. */
-    public void insertBookingService(String bookingID, String serviceID, int quantity) {
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("Số lượng dịch vụ phải lớn hơn 0.");
+    /** Add a service using the booking and payment write lock. */
+    public void insertBookingService(String bookingID, String serviceID, int quantity, int actorUserID) {
+        String sql = "EXEC dbo.SP_ADD_BOOKING_SERVICE @BookingID=?, @ServiceID=?, @Quantity=?, @ActorUserID=?";
+        try (Connection connection = PersistenceManager.openConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, bookingID);
+            statement.setString(2, serviceID);
+            statement.setInt(3, quantity);
+            statement.setInt(4, actorUserID);
+            statement.execute();
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Không thể thêm dịch vụ: " + exception.getMessage(), exception);
         }
-        EntityManager em = PersistenceManager.createEntityManager();
-        try {
-            em.getTransaction().begin();
-            Booking booking = em.find(Booking.class, bookingID.trim());
-            Service service = em.find(Service.class, serviceID.trim());
-            if (booking == null || service == null) {
-                throw new IllegalArgumentException("Không tìm thấy booking hoặc dịch vụ.");
-            }
-            BookingServicePK pk = new BookingServicePK(booking.getBookingID(), service.getServiceID());
-            BookingService bs = em.find(BookingService.class, pk);
-            if (bs == null) {
-                bs = new BookingService(pk);
-                bs.setBooking(booking);
-                bs.setService(service);
-                bs.setQuantity(quantity);
-                bs.setUnitPrice(service.getUnitPrice());
-                bs.setSubtotal(service.getUnitPrice().multiply(BigDecimal.valueOf(quantity)));
-                em.persist(bs);
-            } else {
-                int newQty = bs.getQuantity() + quantity;
-                bs.setQuantity(newQty);
-                bs.setSubtotal(bs.getUnitPrice().multiply(BigDecimal.valueOf(newQty)));
-            }
-            em.getTransaction().commit();
-            PersistenceManager.getEMF().getCache().evictAll();
-        } catch (Exception e) {
-            rollback(em);
-            throw new IllegalStateException("Không thể thêm dịch vụ: " + e.getMessage(), e);
-        } finally {
-            close(em);
-        }
+        PersistenceManager.getEMF().getCache().evictAll();
     }
 
-    /** Mark a service as complete and save the staff member who performed it. */
-    public boolean completeBookingService(String bookingId, String serviceId, String staffId) {
-        EntityManager em = PersistenceManager.createEntityManager();
-        try {
-            em.getTransaction().begin();
-            Query query = em.createQuery("UPDATE BookingService bs SET bs.serviceStatus = 'COMPLETED' "
-                    + "WHERE TRIM(bs.booking.bookingID) = :bid AND TRIM(bs.service.serviceID) = :sid"
-            );
-            query.setParameter("bid", bookingId.trim());
-            query.setParameter("sid", serviceId.trim());
-
-            int rows = query.executeUpdate();
-            em.getTransaction().commit();
-            return rows > 0;
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
+    /** Claim an open service order or finish one claimed by this staff member. */
+    public boolean updateBookingServiceStatus(String bookingID, String serviceID, int actorUserID, String status) {
+        String sql = "EXEC dbo.SP_UPDATE_BOOKING_SERVICE_STATUS @BookingID=?, @ServiceID=?, @ActorUserID=?, @NewStatus=?";
+        boolean changed;
+        try (Connection connection = PersistenceManager.openConnection();
+                PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, bookingID);
+            statement.setString(2, serviceID);
+            statement.setInt(3, actorUserID);
+            statement.setString(4, status);
+            try (ResultSet result = statement.executeQuery()) {
+                changed = result.next() && result.getBoolean("Changed");
             }
-            e.printStackTrace();
-            return false;
-        } finally {
-            em.close();
+        } catch (SQLException exception) {
+            throw new IllegalStateException("Không thể cập nhật đơn dịch vụ.", exception);
         }
+        if (changed) {
+            PersistenceManager.getEMF().getCache().evictAll();
+        }
+        return changed;
     }
 
     private void rollback(EntityManager em) {

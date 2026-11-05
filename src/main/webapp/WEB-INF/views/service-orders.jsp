@@ -44,7 +44,7 @@
                                 <th class="text-center">Số lượng</th>
                                 <th class="text-end">Thành tiền</th>
                                 <th class="text-center" style="width: 15%">Trạng thái</th>
-                                <th class="text-center" style="width: 20%">Thao tác</th>
+                                <th class="text-center" style="width: 20%">Nhân viên phục vụ</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -98,33 +98,59 @@
                                                 <c:choose>
                                                     <c:when test="${bs.serviceStatus eq 'COMPLETED'}">
                                                         <span class="badge g5-status-success px-2 py-1">
-                                                            <i class="fa-solid fa-check-circle me-1"></i>Đã hoàn thành
+                                                            <i class="fa-solid fa-circle-check me-1"></i>Đã phục vụ
                                                         </span>
                                                     </c:when>
+
+                                                    <c:when test="${bs.serviceStatus eq 'IN_PROGRESS'}">
+                                                        <c:choose>
+                                                            <c:when test="${canFulfillOrders and bs.booking.bookingStatus ne 'CHECKED_OUT' and sessionScope.user.userID eq bs.servedByUserID}">
+                                                                <form action="${pageContext.request.contextPath}/service" method="post" class="m-0" onsubmit="return confirm('Xác nhận đã phục vụ xong món này?');">
+                                                                    <input type="hidden" name="action" value="completeOrder">
+                                                                    <input type="hidden" name="csrfToken" value="${serviceOrderCsrfToken}">
+                                                                    <input type="hidden" name="bookingID" value="${bs.booking.bookingID.trim()}">
+                                                                    <input type="hidden" name="serviceID" value="${bs.service.serviceID.trim()}">
+                                                                    <button type="submit" class="btn btn-sm g5-primary fw-bold shadow-sm">
+                                                                        <i class="fa-solid fa-check me-1"></i>Hoàn thành
+                                                                    </button>
+                                                                </form>
+                                                            </c:when>
+                                                            <c:otherwise>
+                                                                <span class="badge bg-info text-dark px-2 py-1">
+                                                                    <i class="fa-solid fa-spinner fa-spin me-1"></i>Đang thực hiện
+                                                                </span>
+                                                            </c:otherwise>
+                                                        </c:choose>
+                                                    </c:when>
+
+                                                    <c:when test="${canFulfillOrders and bs.booking.bookingStatus ne 'CHECKED_OUT'}">
+                                                        <form action="${pageContext.request.contextPath}/service" method="post" class="m-0">
+                                                            <input type="hidden" name="action" value="acceptOrder">
+                                                            <input type="hidden" name="csrfToken" value="${serviceOrderCsrfToken}">
+                                                            <input type="hidden" name="bookingID" value="${bs.booking.bookingID.trim()}">
+                                                            <input type="hidden" name="serviceID" value="${bs.service.serviceID.trim()}">
+                                                            <button type="submit" class="btn btn-sm g5-primary fw-bold shadow-sm">
+                                                                <i class="fa-solid fa-hand me-1"></i>Nhận việc
+                                                            </button>
+                                                        </form>
+                                                    </c:when>
                                                     <c:otherwise>
-                                                        <span class="badge g5-status-pending px-2 py-1">
-                                                            <i class="fa-solid fa-clock me-1"></i>Chờ phục vụ
-                                                        </span>
+                                                        <span class="badge g5-status-pending px-2 py-1">Chờ phục vụ</span>
                                                     </c:otherwise>
                                                 </c:choose>
                                             </td>
 
                                             <td class="text-center">
                                                 <c:choose>
-                                                    <c:when test="${bs.serviceStatus eq 'COMPLETED'}">
-                                                        <span class="text-success small fw-bold">
-                                                            <i class="fa-solid fa-circle-check me-1"></i>Đã phục vụ
+                                                    <c:when test="${not empty bs.servedByUserID}">
+                                                        <span class="badge bg-light text-primary border border-primary px-2 py-1 fs-6">
+                                                            <i class="fa-solid fa-id-badge me-1"></i>User ID #<c:out value="${bs.servedByUserID}" />
                                                         </span>
                                                     </c:when>
                                                     <c:otherwise>
-                                                        <form action="${pageContext.request.contextPath}/service" method="post" class="m-0" onsubmit="return confirm('Xác nhận đã phục vụ xong món này cho đơn ${bs.booking.bookingID}?');">
-                                                            <input type="hidden" name="action" value="completeOrder">
-                                                            <input type="hidden" name="bookingID" value="${bs.booking.bookingID.trim()}">
-                                                            <input type="hidden" name="serviceID" value="${bs.service.serviceID.trim()}">
-                                                            <button type="submit" class="btn btn-sm g5-primary fw-bold shadow-sm">
-                                                                <i class="fa-solid fa-check me-1"></i>Đã xong
-                                                            </button>
-                                                        </form>
+                                                        <span class="text-muted fst-italic small">
+                                                            <i class="fa-solid fa-minus me-1"></i>Chưa ghi nhận
+                                                        </span>
                                                     </c:otherwise>
                                                 </c:choose>
                                             </td>

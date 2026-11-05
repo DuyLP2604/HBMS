@@ -69,6 +69,17 @@ public class BookingService implements Serializable {
         this.serviceStatus = serviceStatus;
     }
 
+    @Column(name = "ServedByUserID")
+    private Integer servedByUserID;
+
+    public Integer getServedByUserID() {
+        return servedByUserID;
+    }
+
+    public void setServedByUserID(Integer servedByUserID) {
+        this.servedByUserID = servedByUserID;
+    }
+
     public BookingService() {
     }
 
