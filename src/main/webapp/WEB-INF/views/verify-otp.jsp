@@ -1,5 +1,7 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Collects the OTP and offers to request a new code.
+--%>
 <layout:layout
     title="Verify Code"
     pageCss="forgotPassword.css"

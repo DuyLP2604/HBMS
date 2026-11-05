@@ -20,6 +20,7 @@ import service.PaymentService;
 import service.PaymentService.PaymentRequest;
 import util.BookingTimePolicy;
 
+/** Lets reception create bookings and collect initial payments for customers. */
 @WebServlet(name = "CounterBookingServlet", urlPatterns = {"/staff/counter-booking"})
 public class CounterBookingServlet extends HttpServlet {
     private static final String PATH = "/staff/counter-booking";
@@ -43,6 +44,7 @@ public class CounterBookingServlet extends HttpServlet {
         return user;
     }
 
+    /** Load the room search, booking details, or QR order status for reception. */
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         if (receptionist(req, res) == null) {
@@ -130,6 +132,7 @@ public class CounterBookingServlet extends HttpServlet {
         req.getRequestDispatcher("/WEB-INF/views/counter-booking.jsp").forward(req, res);
     }
 
+    /** Create a counter booking or collect its initial payment. */
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse res) throws ServletException, IOException {
         req.setCharacterEncoding("UTF-8");
@@ -245,6 +248,7 @@ public class CounterBookingServlet extends HttpServlet {
         res.sendRedirect(req.getContextPath() + redirect);
     }
 
+    /** Load the payment request that matches the booking and form token. */
     private PaymentRequest requirePaymentRequest(HttpServletRequest req, String bookingID) {
         HttpSession session = req.getSession(false);
         synchronized (session) {
@@ -256,6 +260,7 @@ public class CounterBookingServlet extends HttpServlet {
         }
     }
 
+    /** Create a PayOS order for the current counter payment request. */
     private void createPayOsOrder(HttpServletRequest req, HttpServletResponse res, String bookingID) throws IOException {
         Order order;
         try {
@@ -275,6 +280,7 @@ public class CounterBookingServlet extends HttpServlet {
         CounterPaymentSupport.writeOrder(req, res, order, PATH);
     }
 
+    /** Return the status or QR image for the selected counter order. */
     private void showPayOsOrder(HttpServletRequest req, HttpServletResponse res, boolean image) throws IOException {
         String bookingID = trim(req.getParameter("bookingID"));
         if (!bookingID.matches("[A-Za-z0-9]{1,6}")) {

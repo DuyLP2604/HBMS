@@ -3,7 +3,7 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Shows the booking amount due and the available online payment choices. --%>
 <fmt:setLocale value="en_US" scope="page" />
 <c:url var="paymentUrl" value="/payment" />
 <c:url var="bookingUrl" value="/my-bookings"><c:param name="bookingID" value="${booking.bookingID}" /></c:url>

@@ -18,6 +18,7 @@ import java.util.List;
 import util.PersistenceManager;
 import util.flash.Flash;
 
+/** Handles staff access to customer records and account creation. */
 @WebServlet(name = "CustomerServlet", urlPatterns = {"/customer"})
 public class CustomerServlet extends HttpServlet {
 
@@ -39,6 +40,7 @@ public class CustomerServlet extends HttpServlet {
         return "add".equalsIgnoreCase(action) || "update".equalsIgnoreCase(action);
     }
 
+    /** Check whether the signed-in user can open customer management. */
     private boolean checkAccess(HttpServletRequest request, HttpServletResponse response) throws IOException {
         Users user = getSessionUser(request);
         if (user == null) {
@@ -73,6 +75,7 @@ public class CustomerServlet extends HttpServlet {
         return size == 10 || size == 20 || size == 50 || size == 100 ? size : 10;
     }
 
+    /** Show customer search results, a profile, or a customer form. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!checkAccess(request, response)) {
@@ -161,6 +164,7 @@ public class CustomerServlet extends HttpServlet {
         }
     }
 
+    /** Save a new or updated customer record after checking staff access. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");

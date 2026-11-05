@@ -1,6 +1,8 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows the PayOS checkout link or QR code while confirmation is pending.
+--%>
 <c:url var="statusUrl" value="/payment-status"><c:param name="orderCode" value="${payOsOrderCode}" /></c:url>
 <c:url var="returnUrl" value="/payment"><c:param name="orderCode" value="${payOsOrderCode}" /></c:url>
 <c:url var="bookingUrl" value="/my-bookings"><c:param name="bookingID" value="${payOsBookingID}" /></c:url>

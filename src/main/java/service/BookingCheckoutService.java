@@ -24,6 +24,7 @@ import java.util.Set;
 import util.PersistenceManager;
 import util.BookingTimePolicy;
 
+/** Validates a room wishlist and creates a pending booking. */
 public class BookingCheckoutService
 {
     private static final long PAYMENT_TIMEOUT_MINUTES = 15;
@@ -34,11 +35,13 @@ public class BookingCheckoutService
         return createPendingBooking(cart, userID, "FULL");
     }
 
+    /** Create a pending booking from the customer's wishlist. */
     public Booking createPendingBooking(BookingWishList cart, int userID, String paymentOption)
     {
         return createPendingBooking(cart, userID, paymentOption, userID, false);
     }
 
+    /** Create a booking on behalf of a customer after checking the staff role. */
     public Booking createForReceptionist(BookingWishList cart, int customerUserID, String option, int actorUserID) {
         if (!new dao.EmployeeDAO().isReceptionistByUserId(actorUserID)) {
             throw new SecurityException("Only receptionists can book for customers.");
@@ -82,6 +85,7 @@ public class BookingCheckoutService
         booking.setCheckOutDate(checkOutDate);
         booking.setPaymentOption(option);
         booking.setBookingStatus("PENDING_PAYMENT");
+        // Hold the rooms for 15 minutes while the customer completes the first payment.
         booking.setPaymentDeadline(java.util.Date.from(Instant.now().plus(PAYMENT_TIMEOUT_MINUTES, ChronoUnit.MINUTES)));
         BookingDAO bookingDAO = new BookingDAO();
         for (int attempt = 1; attempt <= MAX_BOOKING_ID_ATTEMPTS; attempt++)
@@ -89,6 +93,7 @@ public class BookingCheckoutService
             booking.setBookingID(generateBookingID());
             try
             {
+                // The DAO calls SP_CREATE_BOOKING to recheck availability and create the booking.
                 Booking created = bookingDAO.createBooking(booking, roomRequests, actorUserID);
                 if (created == null)
                 {
@@ -122,6 +127,7 @@ public class BookingCheckoutService
         return customers.isEmpty() ? null : customers.get(0);
     }
 
+    /** Convert wishlist items into the room details used to create a booking. */
     private List<BookingDetail> buildRoomRequests(EntityManager em, BookingWishList cart)
     {
         List<BookingDetail> requests = new ArrayList<>();

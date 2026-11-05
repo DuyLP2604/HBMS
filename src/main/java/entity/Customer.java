@@ -17,6 +17,7 @@ import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlTransient;
 import java.io.Serializable;
 import java.util.Collection;
+/** Maps a customer profile and its linked user account. */
 @Entity
 @Table(name = "CUSTOMER")
 @XmlRootElement

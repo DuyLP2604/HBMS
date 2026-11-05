@@ -1,7 +1,9 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Collects employee details and account information.
+--%>
 <layout:layout title="Add New Employee" pageCss="employee.css" pageJs="employeeForm.js" useBootstrap="true" bodyClass="hbms-ui-page">
     <div class="hbms-ui ui-shell ui-shell-form ui-employee-workspace">
         <header class="ui-page-heading"><div><p class="ui-eyebrow">STAFF DIRECTORY</p><h1>Add New Employee</h1><p class="ui-description">Enter staff details. Login credentials will be sent to the staff email address.</p></div></header>

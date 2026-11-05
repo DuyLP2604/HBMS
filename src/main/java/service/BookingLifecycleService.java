@@ -20,10 +20,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import util.PersistenceManager;
 
+/** Handles booking status changes and cancellation results. */
 public class BookingLifecycleService
 {
     private static final Logger LOGGER = Logger.getLogger(BookingLifecycleService.class.getName());
 
+    /** Load confirmed, assigned, and checked-in bookings for staff views. */
     public List<Booking> getOperationalBookings()
     {
         try (EntityManager em = PersistenceManager.createEntityManager())
@@ -64,13 +66,14 @@ public class BookingLifecycleService
         cancelByCustomerWithResult(bookingID, userID);
     }
 
+    /** Cancel a booking when the guest misses check-in and the no-show rules allow it. */
     public void cancelNoShow(String bookingID, int actorUserID)
     {
         String id = requireBookingID(bookingID);
         requireUserID(actorUserID);
         try
         {
-            // SQL verifies staff role, 14:15 deadline and the current status under lock.
+            // SP_CANCEL_BOOKING checks staff permission, the 14:15 cutoff, and the booking status.
             new BookingDAO().cancelBooking(id, actorUserID, "NO_SHOW");
         }
         catch (BookingDAO.BookingOperationException exception)
@@ -79,6 +82,7 @@ public class BookingLifecycleService
         }
     }
 
+    /** Cancel an owned booking and return the refund and booking access details. */
     public Map<String, Object> cancelByCustomerWithResult(String bookingID, int userID)
     {
         String id = requireBookingID(bookingID);
@@ -92,7 +96,7 @@ public class BookingLifecycleService
         boolean alreadyCancelled = "CANCELLED".equals(booking.getBookingStatus());
         try
         {
-            // SQL handles the refund, wallet credit and cancellation counters in one transaction.
+            // SP_CANCEL_BOOKING cancels the booking, credits eligible refunds, and updates cancellation counts.
             dao.cancelBooking(id, userID, "CUSTOMER_REQUEST");
         }
         catch (BookingDAO.BookingOperationException exception)
@@ -140,13 +144,14 @@ public class BookingLifecycleService
         return result;
     }
 
+    /** Apply the requested stay status and translate database errors. */
     private void updateStayStatus(String bookingID, String status, int actorUserID)
     {
         String id = requireBookingID(bookingID);
         requireUserID(actorUserID);
         try
         {
-            // SQL checks staff role, assigned room counts and full settlement before check-out.
+            // SP_SET_BOOKING_STATUS checks staff permission and the rules for the new status.
             new BookingDAO().updateStatus(id, status, actorUserID);
         }
         catch (BookingDAO.BookingOperationException exception)
@@ -155,6 +160,7 @@ public class BookingLifecycleService
         }
     }
 
+    /** Read the booking again to confirm a cancellation after an error. */
     private boolean isCancellationConfirmed(BookingDAO dao, String bookingID, int userID)
     {
         try
@@ -174,6 +180,7 @@ public class BookingLifecycleService
         return booking != null && booking.getCustomerID() != null && booking.getCustomerID().getUserID() != null && Integer.valueOf(userID).equals(booking.getCustomerID().getUserID().getUserID());
     }
 
+    /** Explain the cancellation, any refund, and any temporary booking restriction. */
     private String cancellationMessage(Map<String, Object> summary, Map<String, Object> access, boolean alreadyCancelled)
     {
         StringBuilder message = new StringBuilder(alreadyCancelled ? "Your booking was already cancelled." : "Your booking was cancelled successfully.");
@@ -183,6 +190,7 @@ public class BookingLifecycleService
         }
         else
         {
+            // Show the refund already credited by SQL, or explain why no refund applies.
             Object refunded = summary.get("refundedAmount");
             Object paid = summary.get("totalPaidAmount");
             if (refunded instanceof BigDecimal && ((BigDecimal) refunded).signum() > 0)

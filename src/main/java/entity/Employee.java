@@ -19,6 +19,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Collection;
 
+/** Maps an employee profile and its linked staff account. */
 @Entity
 @Table(name = "EMPLOYEE")
 @XmlRootElement

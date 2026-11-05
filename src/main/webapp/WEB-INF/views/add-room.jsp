@@ -7,7 +7,7 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Collects the details for a new physical room. --%>
 <layout:layout title="Add New Room" pageCss="room.css" useBootstrap="true" bodyClass="hbms-ui-page room-management-page">
     <div class="hbms-ui ui-shell room-workspace room-form-workspace">
         <header class="room-page-header">

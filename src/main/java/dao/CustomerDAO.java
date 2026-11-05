@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import util.PersistenceManager;
 
+/** Reads customer records and saves customer profiles and accounts. */
 public class CustomerDAO {
 
     @SuppressWarnings("unchecked")
@@ -96,6 +97,7 @@ public class CustomerDAO {
         return 0;
     }
 
+    /** Load one page of customer records matching the search text. */
     public List<Customer> getCustomersPage(String keyword, int offset, int pageSize) {
         boolean filtered = keyword != null && !keyword.trim().isEmpty();
         try (EntityManager em = PersistenceManager.createEntityManager()) {
@@ -217,6 +219,7 @@ public class CustomerDAO {
         return false;
     }
 
+    /** Find the customer profile linked to a sign-in account. */
     public Customer getCustomerByUserId(int userId) {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
             String jpql = "SELECT c FROM Customer c WHERE c.userID.userID = :userId";
@@ -248,6 +251,7 @@ public class CustomerDAO {
         return null;
     }
 
+    /** Save the customer profile and its user account together. */
     public boolean insertCustomerWithAccount(Customer customer, String username, String password) {
         if (customer == null || customer.getCustomerID() == null || customer.getCustomerID().isBlank()) {
             return false;

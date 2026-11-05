@@ -1,3 +1,4 @@
+// Shows the full-payment rule for same-day counter bookings.
 (function () {
     'use strict';
     const checkInDate = document.getElementById('checkInDate');

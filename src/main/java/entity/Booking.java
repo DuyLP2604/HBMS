@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 
+/** Maps the reservation dates, status, totals, and links to the customer and booking lines. */
 @Entity
 @Table(name = "BOOKING")
 @XmlRootElement

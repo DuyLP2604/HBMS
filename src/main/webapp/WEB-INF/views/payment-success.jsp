@@ -1,7 +1,9 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows the successful booking payment and updated balance.
+--%>
 <fmt:setLocale value="en_US" />
 <c:url var="successBookingUrl" value="/my-bookings"><c:param name="bookingID" value="${bookingID}" /></c:url>
 <c:url var="balancePaymentUrl" value="/payment"><c:param name="bookingID" value="${bookingID}" /></c:url>

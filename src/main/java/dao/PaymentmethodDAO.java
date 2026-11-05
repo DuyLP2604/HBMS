@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import util.PersistenceManager;
 
+/** Loads the payment methods configured in the database. */
 public class PaymentmethodDAO {
 
     public List<Paymentmethod> getBookingMethods() {

@@ -13,6 +13,7 @@ import java.security.MessageDigest;
 import java.util.Map;
 import service.BookingLifecycleService;
 
+/** Handles customer requests to cancel their own bookings. */
 @WebServlet(name = "CancelBookingServlet", urlPatterns = {"/my-bookings/cancel"})
 public class CancelBookingServlet extends HttpServlet
 {
@@ -25,6 +26,7 @@ public class CancelBookingServlet extends HttpServlet
         response.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED, "Use the cancellation form to cancel a booking.");
     }
 
+    /** Cancel the customer's booking and show the refund result in My Bookings. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -56,6 +58,7 @@ public class CancelBookingServlet extends HttpServlet
         String bookingID = request.getParameter("bookingID");
         try
         {
+            // Cancel as the signed-in customer and let SQL decide whether a refund applies.
             Map<String, Object> result = lifecycleService.cancelByCustomerWithResult(bookingID, userID);
             session.removeAttribute("customerBookingError");
             session.setAttribute("customerBookingSuccess", result.get("message"));

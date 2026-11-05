@@ -2,7 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Shows details about one physical room. --%>
 <layout:layout title="Room Details" pageCss="room.css" useBootstrap="true" bodyClass="hbms-ui-page room-management-page">
     <div class="hbms-ui ui-shell room-workspace">
         <div class="room-detail">

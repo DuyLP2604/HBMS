@@ -1,7 +1,9 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Lets a staff member replace the temporary password before signing in.
+--%>
 <layout:layout title="Set New Password" pageCss="forgotPassword.css" bodyClass="forgot-password-page" showNavbar="false" showFooter="false">
     <div class="password-reset-container">
         <div class="password-reset-card">

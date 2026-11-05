@@ -19,6 +19,7 @@ import util.flash.Flash;
 import util.security.OtpGenerator;
 import util.security.PasswordResetSession;
 
+/** Starts password recovery by finding an eligible account and sending an OTP. */
 @WebServlet(
         name = "ForgotPasswordServlet",
         urlPatterns = {"/forgot-password"}
@@ -53,6 +54,7 @@ public class ForgotPasswordServlet extends HttpServlet {
     private static final long RATE_LIMIT_WINDOW
             = 15 * 60 * 1000L;
 
+    /** Show the password reset request form. */
     @Override
     protected void doGet(
             HttpServletRequest request,
@@ -74,6 +76,7 @@ public class ForgotPasswordServlet extends HttpServlet {
                 .forward(request, response);
     }
 
+    /** Find the account and email an OTP when the send limits allow it. */
     @Override
     protected void doPost(
             HttpServletRequest request,
@@ -83,11 +86,7 @@ public class ForgotPasswordServlet extends HttpServlet {
         request.setCharacterEncoding("UTF-8");
 
 
-        /*
-         * =========================
-         * VALIDATE INPUT
-         * =========================
-         */
+        // Validate the account details entered by the customer or staff member.
         String identifier
                 = request.getParameter("identifier");
 
@@ -111,11 +110,7 @@ public class ForgotPasswordServlet extends HttpServlet {
                 = identifier.trim();
 
 
-        /*
-         * =========================
-         * FIND AN ELIGIBLE ACCOUNT
-         * =========================
-         */
+        // Find an account that can receive an OTP by email.
         String accountType = request.getParameter("accountType");
         // Preserve the previous customer form contract when accountType is absent.
         if (accountType == null) {
@@ -125,10 +120,7 @@ public class ForgotPasswordServlet extends HttpServlet {
         Account account = resetDAO.findAccount(identifier, accountType);
 
 
-        /*
-         * Do not reveal whether
-         * an account exists.
-         */
+        // Use the same response when no eligible account is found.
         if (account == null) {
             PasswordResetSession.clear(request.getSession(false));
 
@@ -157,11 +149,7 @@ public class ForgotPasswordServlet extends HttpServlet {
                 = request.getSession();
 
 
-        /*
-         * Synchronizing on this user's session prevents
-         * multiple simultaneous POST requests from
-         * sending several OTP emails at once.
-         */
+        // Lock the session to prevent multiple OTP requests from sending at once.
         synchronized (session) {
 
             if (!resetDAO.isEligible(account)) {
@@ -175,11 +163,7 @@ public class ForgotPasswordServlet extends HttpServlet {
                     = System.currentTimeMillis();
 
 
-            /*
-             * =========================
-             * 60 SECOND COOLDOWN
-             * =========================
-             */
+            // Wait at least 60 seconds between OTP emails.
             Long lastSent
                     = (Long) session.getAttribute(
                             "resetOtpLastSent"
@@ -214,12 +198,7 @@ public class ForgotPasswordServlet extends HttpServlet {
             }
 
 
-            /*
-             * =========================
-             * RATE LIMIT
-             * 5 OTP EMAILS / 15 MINUTES
-             * =========================
-             */
+            // Allow up to five OTP emails in 15 minutes.
             Long windowStart
                     = (Long) session.getAttribute(
                             "resetOtpRateWindowStart"
@@ -290,11 +269,7 @@ public class ForgotPasswordServlet extends HttpServlet {
             }
 
 
-            /*
-             * =========================
-             * GENERATE OTP
-             * =========================
-             */
+            // Generate a new OTP.
             String otp
                     = OtpGenerator.generate();
 
@@ -302,11 +277,7 @@ public class ForgotPasswordServlet extends HttpServlet {
                     = createEmailService();
 
 
-            /*
-             * =========================
-             * SEND EMAIL
-             * =========================
-             */
+            // Send the OTP to the email on the account.
             boolean sent
                     = emailService
                             .sendPasswordResetOtp(
@@ -315,11 +286,7 @@ public class ForgotPasswordServlet extends HttpServlet {
                             );
 
 
-            /*
-             * Email failed:
-             * do not consume rate limit
-             * and do not replace old OTP.
-             */
+            // If email fails, keep the old OTP and the send count.
             if (!sent) {
 
                 Flash.error(
@@ -337,11 +304,7 @@ public class ForgotPasswordServlet extends HttpServlet {
             }
 
 
-            /*
-             * =========================
-             * EMAIL SENT SUCCESSFULLY
-             * =========================
-             */
+            // Save the new OTP in the session only after the email is sent.
  /*
              * Account being reset
              */
@@ -426,11 +389,7 @@ public class ForgotPasswordServlet extends HttpServlet {
         }
 
 
-        /*
-         * =========================
-         * GO TO OTP PAGE
-         * =========================
-         */
+        // Open the OTP verification page.
         response.sendRedirect(
                 request.getContextPath()
                 + "/verify-otp"

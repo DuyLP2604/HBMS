@@ -1,3 +1,4 @@
+// Checks customer form fields and updates the form before submission.
 document.addEventListener("DOMContentLoaded", function ()
 {
     const form = document.getElementById("addCustomerForm");

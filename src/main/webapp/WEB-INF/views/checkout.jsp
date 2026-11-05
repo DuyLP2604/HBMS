@@ -2,7 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Shows the invoice workspace for bookings and paid invoices. --%>
 <fmt:setLocale value="vi_VN" scope="page" />
 
 <layout:layout title="Invoices Management"

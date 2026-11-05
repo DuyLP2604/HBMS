@@ -24,6 +24,7 @@ import service.PayOsService;
 import service.CheckInService.CheckInRequest;
 import util.security.CsrfTokens;
 
+/** Handles guest identity details and any room payment required before check-in. */
 @WebServlet(name = "ProcessCheckInServlet", urlPatterns = {"/process-checkin"})
 public class ProcessCheckInServlet extends HttpServlet {
     private static final String REQUESTS = "checkInPaymentRequests";
@@ -32,6 +33,7 @@ public class ProcessCheckInServlet extends HttpServlet {
     protected CheckInService createCheckInService() { return new CheckInService(); }
     protected UserDAO createUserDAO() { return new UserDAO(); }
 
+    /** Prepare the check-in form and show any room balance due. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -85,6 +87,7 @@ public class ProcessCheckInServlet extends HttpServlet {
         }
     }
 
+    /** Route check-in confirmation, direct payment, or QR payment requests. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -146,6 +149,7 @@ public class ProcessCheckInServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/staff/stays");
     }
 
+    /** Record the selected direct payment and complete the guest check-in. */
     private void collectAndCheckIn(HttpServletRequest request, CheckInRequest payment, String method) {
         Integer walletOwner = null;
         if (payment.getRoomAmount().signum() > 0 && "PT02".equals(method)) {
@@ -156,6 +160,7 @@ public class ProcessCheckInServlet extends HttpServlet {
                 walletOwner, request.getParameter("bankReference"));
     }
 
+    /** Complete check-in after the QR payment has been confirmed. */
     private void completePaidCheckIn(HttpServletRequest request, CheckInRequest payment) throws SQLException {
         String bookingID = payment.getBookingID();
         Order order = payOsOrders.findCheckInOrder(bookingID, CounterPaymentSupport.parseOrderCode(request.getParameter("payOsOrderCode")));
@@ -173,6 +178,7 @@ public class ProcessCheckInServlet extends HttpServlet {
                 null, false, null, null);
     }
 
+    /** Open a PayOS order for the remaining room balance. */
     private void createPayOsOrder(HttpServletRequest request, HttpServletResponse response, CheckInRequest payment)
             throws IOException {
         response.setHeader("Cache-Control", "no-store");
@@ -191,6 +197,7 @@ public class ProcessCheckInServlet extends HttpServlet {
         CounterPaymentSupport.writeOrder(request, response, order, "/process-checkin");
     }
 
+    /** Return the status or image for the check-in QR order. */
     private void showPayOsOrder(HttpServletRequest request, HttpServletResponse response, String bookingID, boolean image)
             throws IOException {
         try {
@@ -209,6 +216,7 @@ public class ProcessCheckInServlet extends HttpServlet {
         }
     }
 
+    /** Verify the customer's credentials before charging their wallet. */
     private int authorizeWallet(HttpServletRequest request, CheckInRequest payment) {
         HttpSession session = request.getSession(false);
         synchronized (session) {

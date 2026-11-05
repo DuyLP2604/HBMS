@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 
 /**
+ * Identifies a booked service by booking ID and service ID.
  *
  * @author Asus
  */

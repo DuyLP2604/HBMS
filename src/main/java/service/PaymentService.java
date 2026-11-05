@@ -26,11 +26,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import util.PersistenceManager;
 
+/** Calculates booking payments and records wallet or external payments. */
 public class PaymentService {
 
     private static final Logger LOGGER = Logger.getLogger(PaymentService.class.getName());
     private final PayOsService payOsService = new PayOsService();
 
+    /** Load the booking only if it belongs to the customer. */
     public Booking getBookingForPayment(String bookingID, int userID) {
         if (bookingID == null || bookingID.isBlank() || userID <= 0) {
             return null;
@@ -46,6 +48,7 @@ public class PaymentService {
         }
     }
 
+    /** Read the payment summary for a booking owned by the customer. */
     public Map<String, Object> getPaymentSummary(String bookingID, int userID) {
         Booking booking = getBookingForPayment(bookingID, userID);
         if (booking == null) {
@@ -62,6 +65,7 @@ public class PaymentService {
         return summary;
     }
 
+    /** Calculate the amount due for the current booking stage and read the wallet balance. */
     public PaymentRequest createPaymentRequest(String bookingID, int userID) {
         Map<String, Object> summary = getPaymentSummary(bookingID, userID);
         String status = String.valueOf(summary.get("bookingStatus"));
@@ -103,10 +107,12 @@ public class PaymentService {
         return processPayment(paymentRequest, methodID, userID, false);
     }
 
+    /** Record a payment requested by the booking customer. */
     public Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet) {
         return processPayment(paymentRequest, methodID, userID, useWallet, userID, false);
     }
 
+    /** Record a receptionist payment using the customer's authorization when required. */
     public Payment collectAtCounter(PaymentRequest paymentRequest, String methodID, int actorUserID,
             boolean useWallet, boolean walletAuthorized, String reference) {
         if (paymentRequest == null) {
@@ -142,12 +148,12 @@ public class PaymentService {
     private Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID,
             boolean useWallet, int actorUserID, boolean walletAuthorized) {
 
-        // 1. Kiểm tra đầu vào và xác định phương thức thanh toán
+        // Check the payment request and calculate the wallet contribution.
         String selectedMethod = validateAndResolveMethod(paymentRequest, methodID, userID, useWallet, actorUserID);
         BigDecimal walletAmount = calculateWalletAmount(paymentRequest, selectedMethod, useWallet);
 
         synchronized (paymentRequest) {
-            // 2. Kiểm tra tính đồng nhất của request và trạng thái booking
+            // A retry must use the same method and wallet amount.
             if (paymentRequest.methodID != null && (!paymentRequest.methodID.equals(selectedMethod) || paymentRequest.walletAmount.compareTo(walletAmount) != 0)) {
                 throw new IllegalStateException("This request already uses another payment method. Reload the payment page to change it.");
             }
@@ -165,17 +171,17 @@ public class PaymentService {
                 throw new IllegalArgumentException("The selected payment method does not exist.");
             }
 
-            // 3. Ghi nhận dữ liệu vào request object
+            // Keep the payer and wallet owner so SQL can check authorization.
             paymentRequest.actorUserID = actorUserID;
             paymentRequest.walletAuthorizedBy = walletAuthorized ? userID : null;
             paymentRequest.methodID = selectedMethod;
             paymentRequest.walletAmount = walletAmount;
 
-            // 4. Thực thi transaction trong cơ sở dữ liệu
             return executePaymentTransaction(paymentRequest, booking, method);
         }
     }
 
+    /** Check the payment method and decide whether the wallet can cover the amount. */
     private String validateAndResolveMethod(PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet, int actorUserID) {
         if (paymentRequest == null || paymentRequest.getUserID() != userID || userID <= 0) {
             throw new IllegalArgumentException("The payment request is invalid. Reload the payment page.");
@@ -208,6 +214,7 @@ public class PaymentService {
         return selectedMethod;
     }
 
+    /** Return the wallet portion of this payment. */
     private BigDecimal calculateWalletAmount(PaymentRequest paymentRequest, String selectedMethod, boolean useWallet) {
         if ("PT02".equals(selectedMethod)) {
             return paymentRequest.getAmount();
@@ -215,17 +222,19 @@ public class PaymentService {
         return useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
     }
 
+    /** Record the payment and any wallet debit in one transaction. */
     private Payment executePaymentTransaction(PaymentRequest paymentRequest, Booking booking, Paymentmethod method) {
         try (Connection connection = openConnection()) {
             connection.setAutoCommit(false);
             try {
-                // Xin khóa Application Lock tránh xung đột thanh toán song song
+                // Use sp_getapplock to prevent concurrent payment and wallet writes.
                 execute(connection, "SELECT TOP (1) UserID FROM dbo.USERS; DECLARE @LockResult int; EXEC @LockResult = sys.sp_getapplock @Resource = N'HBMS:booking-wallet-write', @LockMode = 'Exclusive', @LockOwner = 'Transaction', @LockTimeout = 10000; IF @LockResult < 0 THROW 51000, 'System busy. Please retry the request.', 1;", null);
 
                 if (paymentRequest.paymentID == null || isIDUsedByAnotherRequest(connection, paymentRequest)) {
                     paymentRequest.paymentID = generatePaymentID(connection);
                 }
 
+                // SP_RECORD_PAYMENT checks the live balance and records any wallet debit.
                 execute(connection, "EXEC dbo.SP_RECORD_PAYMENT @PaymentID = ?, @BookingID = ?, @ActorUserID = ?, @PaymentType = ?, @Amount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAmount = ?, @WalletAuthorizedBy = ?, @TransactionID = ?;", paymentRequest);
                 Payment payment = readPayment(connection, paymentRequest, booking, method);
 
@@ -250,6 +259,7 @@ public class PaymentService {
         }
     }
 
+    /** Read the current balance of the customer's wallet. */
     protected BigDecimal loadWalletBalance(int userID) {
         WalletSummary wallet = new WalletDAO().getWalletByUserID(userID);
         return wallet == null ? null : wallet.getBalance();
@@ -273,6 +283,7 @@ public class PaymentService {
         PersistenceManager.getEMF().getCache().evictAll();
     }
 
+    /** Check whether another request already used this payment ID. */
     private boolean isIDUsedByAnotherRequest(Connection connection, PaymentRequest request) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT p.BookingID, p.PaymentType, p.Amount, p.WalletAmount, p.MethodID, t.TransactionCode FROM dbo.PAYMENT AS p LEFT JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = p.TransactionID WHERE p.PaymentID = ?")) {
             statement.setString(1, request.paymentID);
@@ -286,6 +297,7 @@ public class PaymentService {
         }
     }
 
+    /** Generate the next sequential payment ID. */
     private String generatePaymentID(Connection connection) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT COALESCE(MAX(TRY_CONVERT(int, SUBSTRING(PaymentID, 3, 4))), 0) FROM dbo.PAYMENT WHERE PaymentID LIKE 'PM[0-9][0-9][0-9][0-9]'"); ResultSet result = statement.executeQuery()) {
             if (!result.next() || result.getInt(1) >= 9999) {
@@ -479,6 +491,7 @@ public class PaymentService {
         }
 
         public BigDecimal getOfferedWalletAmount() {
+            // Limit the wallet contribution to the amount due.
             return walletBalance == null ? BigDecimal.ZERO : walletBalance.max(BigDecimal.ZERO).min(amount);
         }
     }

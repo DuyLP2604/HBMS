@@ -11,8 +11,10 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Set;
 
+/** Returns the PayOS order status for the customer who owns it. */
 @WebServlet("/payment-status")
 public class PaymentStatusServlet extends HttpServlet {
+    /** Return the status of a PayOS order owned by the signed-in customer. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setHeader("Cache-Control", "no-store");

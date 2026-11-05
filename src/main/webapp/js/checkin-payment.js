@@ -1,3 +1,4 @@
+// Toggles the front desk payment form and polls for PayOS confirmation.
 (function () {
     'use strict';
     const form = document.getElementById('checkInForm');

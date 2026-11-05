@@ -2,6 +2,7 @@ package dto;
 
 import java.io.Serializable;
 
+/** Holds the customer count for one country on the dashboard. */
 public class CustomerSource implements Serializable {
 
     private static final long serialVersionUID = 1L;

@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 
 /**
+ * Maps a service offered by the hotel and its unit price.
  *
  * @author Asus
  */

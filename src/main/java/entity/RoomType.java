@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 
 /**
+ * Maps a room category, its capacity, and its price.
  *
  * @author Asus
  */

@@ -1,7 +1,9 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Lets staff edit the selected customer profile.
+--%>
 <layout:layout title="Update Customer Information" pageCss="customer.css" useBootstrap="true" bodyClass="hbms-ui-page">
     <div class="hbms-ui ui-shell ui-shell-form">
         <header class="ui-page-heading"><div><p class="ui-eyebrow">GUEST DIRECTORY</p><h1>Update Customer Information</h1><p class="ui-description">Review and update the customer's personal details.</p></div></header>

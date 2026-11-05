@@ -1,3 +1,4 @@
+// Updates payment countdowns and reloads the booking list when a deadline passes.
 document.addEventListener("DOMContentLoaded", function ()
 {
     const countdownElements = document.querySelectorAll(".payment-countdown");

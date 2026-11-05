@@ -5,6 +5,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Response;
 
 /**
+ * Provides the sample Jakarta REST endpoint.
  *
  * @author 
  */

@@ -24,6 +24,7 @@ import java.math.BigDecimal;
 import java.util.Date;
 
 /**
+ * Maps a booking payment and its linked transaction and payment method.
  *
  * @author Asus
  */

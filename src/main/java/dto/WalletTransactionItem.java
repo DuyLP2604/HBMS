@@ -3,6 +3,7 @@ package dto;
 import java.math.BigDecimal;
 import java.util.Date;
 
+/** Holds one wallet credit or debit shown in the transaction list. */
 public final class WalletTransactionItem
 {
     private final long walletTransactionID;

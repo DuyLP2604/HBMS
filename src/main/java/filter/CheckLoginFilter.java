@@ -16,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import entity.Users;
 
+/** Checks access to protected pages before running the servlet. */
 @WebFilter(
         filterName = "CheckLoginFilter",
         urlPatterns = {
@@ -44,6 +45,7 @@ public class CheckLoginFilter implements Filter {
         }
     }
 
+    /** Redirect users who need to sign in before opening a protected page. */
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) servletRequest;

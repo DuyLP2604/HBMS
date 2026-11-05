@@ -15,8 +15,10 @@ import util.security.CsrfTokens;
 import util.security.LoginSession;
 import util.security.LoginSession.PendingStaffLogin;
 
+/** Lets staff replace their temporary password on first login. */
 @WebServlet(name = "SetNewPasswordServlet", urlPatterns = {"/set-new-password"})
 public class SetNewPasswordServlet extends HttpServlet {
+    /** Show the first-login password form for a staff account with temporary credentials. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         PendingStaffLogin pending = LoginSession.pending(request.getSession(false));
@@ -30,6 +32,7 @@ public class SetNewPasswordServlet extends HttpServlet {
         request.getRequestDispatcher("/WEB-INF/views/set-new-password.jsp").forward(request, response);
     }
 
+    /** Save the staff member's new password and finish signing in. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
@@ -56,6 +59,7 @@ public class SetNewPasswordServlet extends HttpServlet {
         }
         Users user;
         try {
+            // Replace the temporary password if the first-login request is still valid.
             user = createUserDAO().completeFirstLogin(pending.getUserId(), pending.getPasswordHash(), password);
         } catch (IllegalArgumentException exception) {
             Flash.error(request, exception.getMessage());

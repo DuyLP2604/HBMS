@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import util.PersistenceManager;
 
+/** Reads booking data and calls database procedures for booking updates. */
 public class BookingDAO extends DAOFramework<Booking>
 {
     public BookingDAO()
@@ -30,6 +31,7 @@ public class BookingDAO extends DAOFramework<Booking>
         super(Booking.class);
     }
 
+    /** Load one booking with the details needed for booking operations. */
     public Booking getByIdWithDetails(String bookingID)
     {
         if (bookingID == null || bookingID.isBlank())
@@ -70,6 +72,7 @@ public class BookingDAO extends DAOFramework<Booking>
         }
     }
 
+    /** List bookings linked to the customer's login account. */
     public List<Booking> getByAccountUserId(int userID)
     {
         requireActor(userID);
@@ -109,6 +112,7 @@ public class BookingDAO extends DAOFramework<Booking>
         }
     }
 
+    /** Pass the booking and requested rooms to SQL and reload the saved booking. */
     public Booking createBooking(Booking booking, List<BookingDetail> rooms, int actorUserID)
     {
         requireActor(actorUserID);
@@ -146,6 +150,7 @@ public class BookingDAO extends DAOFramework<Booking>
             }
             roomTypes.add(type);
         }
+        // Put room types, room counts, and guest counts in the @Rooms table parameter.
         StringBuilder sql = new StringBuilder("DECLARE @Rooms dbo.BOOKING_ROOM_INPUT; INSERT INTO @Rooms (RoomTypeID, Quantity, GuestCount) VALUES ");
         for (int index = 0; index < rooms.size(); index++)
         {
@@ -155,6 +160,7 @@ public class BookingDAO extends DAOFramework<Booking>
             }
             sql.append("(?, ?, ?)");
         }
+        // SP_CREATE_BOOKING checks availability and saves the booking and room details together.
         sql.append("; EXEC dbo.SP_CREATE_BOOKING @BookingID = ?, @CustomerID = ?, @ActorUserID = ?, @CheckInDate = ?, @CheckOutDate = ?, @PaymentOption = ?, @Rooms = @Rooms, @PaymentDeadline = ?;");
         execute(sql.toString(), statement ->
         {
@@ -252,6 +258,7 @@ public class BookingDAO extends DAOFramework<Booking>
         return cancelBooking(bookingID, actorUserID, "CUSTOMER_REQUEST");
     }
 
+    /** Cancel a booking with the requested reason and reload its status. */
     public Booking cancelBooking(String bookingID, int actorUserID, String reason)
     {
         requireActor(actorUserID);
@@ -261,6 +268,7 @@ public class BookingDAO extends DAOFramework<Booking>
         {
             throw new IllegalArgumentException("Use expirePendingBookings for payment timeouts.");
         }
+        // SP_CANCEL_BOOKING cancels the booking and credits eligible refunds to the wallet.
         execute("EXEC dbo.SP_CANCEL_BOOKING @BookingID = ?, @ActorUserID = ?, @Reason = ?, @ReturnResult = 0;", statement ->
         {
             statement.setString(1, id);
@@ -270,6 +278,7 @@ public class BookingDAO extends DAOFramework<Booking>
         return getByIdWithDetails(id);
     }
 
+    /** Submit a stay status change for the authenticated staff member. */
     public void updateStatus(String bookingID, String bookingStatus, int actorUserID)
     {
         requireActor(actorUserID);
@@ -279,6 +288,7 @@ public class BookingDAO extends DAOFramework<Booking>
         {
             throw new IllegalArgumentException("Use createBooking, payment procedures or cancelBooking for this status.");
         }
+        // SP_SET_BOOKING_STATUS validates the requested stay status change.
         execute("EXEC dbo.SP_SET_BOOKING_STATUS @BookingID = ?, @NewStatus = ?, @ActorUserID = ?;", statement ->
         {
             statement.setString(1, id);
@@ -298,9 +308,11 @@ public class BookingDAO extends DAOFramework<Booking>
         return expirePendingBookings(null);
     }
 
+    /** Expire unpaid bookings after their deadline and return the count. */
     public int expirePendingBookings(String customerID)
     {
         String id = customerID == null ? null : required(customerID, "Customer ID", 6);
+        // SP_EXPIRE_PENDING_BOOKINGS cancels overdue unpaid bookings and releases rooms.
         Map<String, Object> result = execute("EXEC dbo.SP_EXPIRE_PENDING_BOOKINGS @CustomerID = ?, @ReturnResult = 1;", statement ->
         {
             if (id == null)
@@ -321,9 +333,11 @@ public class BookingDAO extends DAOFramework<Booking>
     }
     
     
+    /** Read payment status and remaining room and service balances for one booking. */
     public Map<String, Object> getPaymentSummary(String bookingID)
     {
         String id = required(bookingID, "Booking ID", 6);
+        // Use the payment and balance views to separate unpaid room and service charges.
         return execute("SELECT ps.*, c.UserID AS CustomerUserID, room.RoomTotal, room.ServiceTotal, room.RoomPaidAmount, "
                 + "room.RoomRemainingAmount, room.ServiceRemainingAmount "
                 + "FROM dbo.V_BOOKING_PAYMENT_SUMMARY ps "
@@ -332,6 +346,7 @@ public class BookingDAO extends DAOFramework<Booking>
                 + "WHERE ps.BookingID = ?", statement -> statement.setString(1, id), false);
     }
 
+    /** Read the customer's current booking restrictions. */
     public Map<String, Object> getBookingAccess(int userID)
     {
         requireActor(userID);

@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Defines hotel time rules for booking dates, check-in, and no-shows. */
 public final class BookingTimePolicy
 {
     public static final ZoneId HOTEL_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");

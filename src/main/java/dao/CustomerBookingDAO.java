@@ -14,8 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 import util.PersistenceManager;
 
+/** Queries the customer's booking list, details, and refund information. */
 public class CustomerBookingDAO {
 
+    /** Load the customer's bookings for the My Bookings list. */
     public List<CustomerBookingView> getByUserID(
             int userID) {
 
@@ -69,6 +71,7 @@ public class CustomerBookingDAO {
         }
     }
 
+    /** Load an owned booking with its room types, prices, and assigned room numbers. */
     public CustomerBookingView getDetail(
             String bookingID,
             int userID) {
@@ -89,6 +92,7 @@ public class CustomerBookingDAO {
             CustomerBookingView view
                     = mapBooking(em, booking);
 
+            // Load the quantity, price, and assigned room numbers for each booking detail.
             String detailJpql
                     = "SELECT bd FROM BookingDetail bd "
                     + "WHERE bd.bookingID = :booking "
@@ -257,6 +261,7 @@ public class CustomerBookingDAO {
         return view;
     }
 
+    /** List the room numbers assigned to one booking detail. */
     private List<String> loadAssignedRoomNumbers(
             EntityManager em,
             BookingDetail detail) {

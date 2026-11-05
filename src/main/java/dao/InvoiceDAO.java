@@ -15,11 +15,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import util.PersistenceManager;
 
+/** Reads invoice data and completes checkout through SP_CHECKOUT_WITH_INVOICE. */
 public class InvoiceDAO
 {
     private static final Logger LOGGER = Logger.getLogger(InvoiceDAO.class.getName());
     private static final String HOTEL_NAME = "(SELECT TOP (1) HotelName FROM dbo.HOTEL)";
 
+    /** Load checked-in stays and their assigned rooms. */
     public List<Map<String, String>> getOccupiedRooms()
     {
         String sql = "SELECT b.BookingID AS bookingID, c.FullName AS customerName, n.NationalityName AS nationality, " + HOTEL_NAME + " AS hotelName, CONVERT(VARCHAR(10), b.CheckInDate, 23) AS checkInDate, CONVERT(VARCHAR(10), b.CheckOutDate, 23) AS checkOutDate FROM dbo.BOOKING b JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID LEFT JOIN dbo.NATIONALITY n ON n.NationalityID = c.NationalityID WHERE b.BookingStatus = 'CHECKED_IN' ORDER BY b.CheckInDate, b.BookingID";
@@ -31,6 +33,7 @@ public class InvoiceDAO
         return rooms;
     }
 
+    /** Load valid invoices for fully paid bookings that have checked out. */
     public List<Map<String, String>> getPaidInvoices()
     {
         String sql = "SELECT i.InvoiceID AS invoiceID, i.BookingID AS bookingID, c.FullName AS customerName, " + HOTEL_NAME + " AS hotelName, i.TotalAmount AS totalAmount, CONVERT(VARCHAR(10), i.InvoiceDate, 23) AS invoiceDate, CONVERT(VARCHAR(10), b.CheckInDate, 23) AS checkInDate, CONVERT(VARCHAR(10), b.CheckOutDate, 23) AS checkOutDate FROM dbo.INVOICE i JOIN dbo.BOOKING b ON b.BookingID = i.BookingID JOIN dbo.CUSTOMER c ON c.CustomerID = b.CustomerID JOIN dbo.V_BOOKING_PAYMENT_SUMMARY ps ON ps.BookingID = b.BookingID WHERE i.Status = N'Có hiệu lực' AND b.BookingStatus = 'CHECKED_OUT' AND ps.PaymentStatus = 'FULLY_PAID' ORDER BY i.InvoiceDate DESC, i.InvoiceID DESC";
@@ -43,6 +46,7 @@ public class InvoiceDAO
         return invoices;
     }
 
+    /** Find the issued invoice for a booking. */
     public Map<String, String> getInvoiceByBooking(String bookingID)
     {
         String id = requireBookingID(bookingID);
@@ -72,6 +76,7 @@ public class InvoiceDAO
         return query(sql, requireBookingID(bookingID));
     }
 
+    /** Load the service charge lines for the booking. */
     public List<Map<String, String>> getServicesByBooking(String bookingID)
     {
         return query("SELECT bs.ServiceID AS serviceID, s.ServiceName AS serviceName, bs.Quantity AS quantity, bs.UnitPrice AS unitPrice, bs.Subtotal AS subtotal FROM dbo.BOOKING_SERVICE bs JOIN dbo.SERVICE s ON s.ServiceID = bs.ServiceID WHERE bs.BookingID = ? ORDER BY s.ServiceName, bs.ServiceID", requireBookingID(bookingID));
@@ -89,6 +94,7 @@ public class InvoiceDAO
         return room;
     }
 
+    /** Call SP_CHECKOUT_WITH_INVOICE to close the stay and issue its invoice. */
     public boolean processCheckout(String bookingID, int actorUserID)
     {
         String id = requireBookingID(bookingID);

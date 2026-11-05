@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+/** Holds the booking information shown on a customer's detail page. */
 public class CustomerBookingView implements Serializable {
 
     private static final long serialVersionUID = 1L;

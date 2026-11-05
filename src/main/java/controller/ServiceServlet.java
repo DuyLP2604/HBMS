@@ -12,9 +12,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
+/** Manages the service catalog and service orders for bookings. */
 @WebServlet(name = "ServiceServlet", urlPatterns = {"/service"})
 public class ServiceServlet extends HttpServlet {
 
+    /** Show the service catalog, the admin form, or the staff order list. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         Users currentUser = getCurrentUser(request);
@@ -65,6 +67,7 @@ public class ServiceServlet extends HttpServlet {
         }
     }
 
+    /** Update the catalog, order a service, or mark an order complete. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         Users currentUser = getCurrentUser(request);
@@ -187,6 +190,7 @@ public class ServiceServlet extends HttpServlet {
         return "Admin".equalsIgnoreCase(user.getRole()) || "Staff".equalsIgnoreCase(user.getRole());
     }
 
+    /** Find a booking the signed-in user can use to order a service. */
     private Booking resolveTargetBooking(HttpServletRequest request, Users currentUser, BookingDAO bookingDAO) {
         String inputBookingID = request.getParameter("bookingID");
         if (inputBookingID != null && !inputBookingID.trim().isEmpty()) {

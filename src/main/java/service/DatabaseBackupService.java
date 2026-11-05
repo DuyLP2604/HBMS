@@ -20,6 +20,7 @@ public class DatabaseBackupService {
 
     protected Connection openConnection() throws SQLException { return PersistenceManager.openConnection(); }
 
+    /** Write the configured database tables to an Excel workbook. */
     public void exportDB(OutputStream output) throws Exception {
         try (Connection connection = openConnection(); Workbook workbook = new XSSFWorkbook()) {
             connection.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
@@ -64,6 +65,7 @@ public class DatabaseBackupService {
         }
     }
 
+    /** Validate the workbook and restore the database data in one transaction. */
     public void importDB(InputStream input) throws Exception {
         try (Workbook workbook = WorkbookFactory.create(input); Connection connection = openConnection()) {
             if (TABLES.stream().noneMatch(name -> workbook.getSheet(name) != null)) {
@@ -94,6 +96,7 @@ public class DatabaseBackupService {
 
     protected void clearCache() { PersistenceManager.getEMF().getCache().evictAll(); }
 
+    /** Match the sheet headers to database columns and restore its rows. */
     private void importSheet(Connection connection, String table, Sheet sheet) throws Exception {
         Row header = sheet.getRow(0);
         if (header == null) return;
@@ -245,6 +248,7 @@ public class DatabaseBackupService {
         return result;
     }
     private static void lock(Connection connection) throws SQLException {
+        // Use SP_HBMS_ACQUIRE_WRITE_LOCK before restoring booking and wallet data.
         execute(connection, "SELECT TOP (1) UserID FROM dbo.USERS; EXEC dbo.SP_HBMS_ACQUIRE_WRITE_LOCK;");
     }
     private static void execute(Connection connection, String sql) throws SQLException {
@@ -262,6 +266,7 @@ public class DatabaseBackupService {
     private static void rollback(Connection connection, Exception exception) {
         try { connection.rollback(); } catch (SQLException rollback) { exception.addSuppressed(rollback); }
     }
+    /** Check that restored payments, refunds, and wallet entries match their transactions. */
     private static void validateLedger(Connection connection) throws SQLException {
         execute(connection,
                 "IF EXISTS (SELECT 1 FROM dbo.PAYMENT p LEFT JOIN dbo.[TRANSACTION] t ON t.TransactionID = p.TransactionID "

@@ -13,10 +13,12 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 import service.CounterPaymentService;
 
+/** Writes the order status and QR image used by front desk payment forms. */
 final class CounterPaymentSupport {
     private CounterPaymentSupport() {
     }
 
+    /** Return the order code, status, and QR image URL as JSON. */
     static void writeOrder(HttpServletRequest request, HttpServletResponse response, Order order, String path)
             throws IOException {
         JsonObject body = new JsonObject();
@@ -33,6 +35,7 @@ final class CounterPaymentSupport {
         writeJson(response, body);
     }
 
+    /** Render the PayOS QR payload as a PNG image. */
     static void writeQrImage(HttpServletResponse response, Order order) throws IOException, WriterException {
         if (order == null || !"PENDING".equals(CounterPaymentService.status(order))) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);

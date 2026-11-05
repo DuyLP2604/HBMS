@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import util.PersistenceManager;
 
+/** Checks room availability and saves assignments for a booking. */
 public class RoomAssignmentService {
 
     private static final List<String> BLOCKING_STATUSES
@@ -38,6 +39,7 @@ public class RoomAssignmentService {
         return PersistenceManager.createEntityManager();
     }
 
+    /** List bookings shown on the room assignment page. */
     public List<Booking> getWaitingBookings() {
         EntityManager em = createEntityManager();
 
@@ -84,6 +86,7 @@ public class RoomAssignmentService {
         }
     }
 
+    /** Load the room types and quantities requested for one booking. */
     public List<BookingDetail> getBookingDetails(
             String bookingID) {
 
@@ -116,6 +119,7 @@ public class RoomAssignmentService {
         }
     }
 
+    /** Find rooms of the requested type that are free during the stay. */
     public List<Room> getAvailableRooms(
             Integer bookingDetailID) {
 
@@ -133,6 +137,7 @@ public class RoomAssignmentService {
 
             Booking booking = detail.getBookingID();
 
+            // Find active rooms of the requested type with no overlapping assignments.
             String jpql
                     = "SELECT r FROM Room r "
                     + "WHERE r.roomTypeID = :roomType "
@@ -191,6 +196,7 @@ public class RoomAssignmentService {
         }
     }
 
+    /** Check the room choices and save the complete assignment. */
     public void assignRooms(String bookingID, Map<Integer, List<String>> selectedRooms, int userID) {
         if (!employeeDAO.isReceptionistByUserId(userID)) {
             throw new SecurityException("Only receptionists can assign rooms.");
@@ -199,6 +205,7 @@ public class RoomAssignmentService {
         if (details.isEmpty() || selectedRooms == null || selectedRooms.size() != details.size()) {
             throw new IllegalArgumentException("Select rooms for every requested room type.");
         }
+        // Select the exact number of rooms and use each room only once.
         Set<String> unique = new HashSet<>();
         for (BookingDetail detail : details) {
             List<String> rooms = selectedRooms.get(detail.getBookingDetailID());
@@ -225,11 +232,12 @@ public class RoomAssignmentService {
         }
     }
 
+    /** Save all room assignments and update the booking status in one transaction. */
     void writeAssignments(java.sql.Connection connection, String bookingID, List<BookingDetail> details,
             Map<Integer, List<String>> selectedRooms, int userID) throws java.sql.SQLException {
         connection.setAutoCommit(false);
         try {
-            // Reading a real table starts the SQL Server JDBC implicit transaction before the transaction-owned lock.
+            // Read a table to start the transaction, then use sp_getapplock to lock booking writes.
             executeAssignment(connection,
                     "SELECT TOP (1) UserID FROM dbo.USERS; "
                     + "DECLARE @LockResult int; "
@@ -239,11 +247,13 @@ public class RoomAssignmentService {
                     null, null, userID);
             for (BookingDetail detail : details) {
                 for (String room : selectedRooms.get(detail.getBookingDetailID())) {
+                    // SP_ASSIGN_ROOM validates and saves each room assignment.
                     executeAssignment(connection,
                             "EXEC dbo.SP_ASSIGN_ROOM @BookingDetailID=?, @RoomID=?, @ActorUserID=?",
                             detail.getBookingDetailID(), room.trim(), userID);
                 }
             }
+            // SP_SET_BOOKING_STATUS marks the booking ASSIGNED once all rooms are assigned.
             try (java.sql.PreparedStatement statement = connection.prepareStatement(
                     "EXEC dbo.SP_SET_BOOKING_STATUS @BookingID=?, @NewStatus='ASSIGNED', @ActorUserID=?")) {
                 statement.setString(1, bookingID);

@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import util.flash.Flash;
+/** Shows and updates the signed-in customer's profile. */
 @WebServlet(name = "ProfileServlet", urlPatterns = {"/profile"})
 public class ProfileServlet extends HttpServlet
 {
@@ -48,6 +49,7 @@ public class ProfileServlet extends HttpServlet
         request.getRequestDispatcher("/WEB-INF/views/updateProfile.jsp").forward(request, response);
     }
 
+    /** Show the signed-in customer's profile or edit form. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -88,6 +90,7 @@ public class ProfileServlet extends HttpServlet
         }
     }
 
+    /** Validate and save changes to the signed-in customer's profile. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {

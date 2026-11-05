@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
+ * Maps the shared transaction record referenced by payments, refunds, and invoices.
  *
  * @author Asus
  */

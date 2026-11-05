@@ -13,6 +13,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+/** Creates PayOS payment links and verifies webhook signatures. */
 public class PayOsService {
 
     private static final HttpClient HTTP = HttpClient.newBuilder()
@@ -23,6 +24,7 @@ public class PayOsService {
         return ThreadLocalRandom.current().nextLong(1_000_000_000_000L, 10_000_000_000_000L);
     }
 
+    /** Use the configured public URL when PayOS needs to reach the application. */
     public static String publicBaseUrl(String localBaseUrl) {
         String configured = System.getProperty("PAYOS_PUBLIC_BASE_URL");
         if (configured == null || configured.isBlank()) {
@@ -44,6 +46,7 @@ public class PayOsService {
         public String paymentLinkId, bin, accountNumber, accountName, checkoutUrl, qrCode, description;
     }
 
+    /** Create a signed PayOS checkout request for a booking payment. */
     public Link createPaymentLink(long orderCode, BigDecimal amount, String description,
             String returnUrl, String cancelUrl, long expiredAtEpochSeconds) throws Exception {
 
@@ -81,6 +84,7 @@ public class PayOsService {
                 link.bin, link.accountNumber, cleanAmount, encodedDesc, encodedName);
     }
 
+    /** Rebuild the signature from the webhook data and compare it with the received signature. */
     public boolean verifyWebhook(JsonObject root) {
         if (!isValidWebhookPayload(root)) {
             return false;
@@ -103,6 +107,7 @@ public class PayOsService {
         );
     }
 
+    /** Build the checkout payload and sign the fields required by PayOS. */
     private JsonObject buildRequestBody(long orderCode, long amt, String description,
             String returnUrl, String cancelUrl, long expiredAtEpochSeconds) {
 

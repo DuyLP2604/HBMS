@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpSession;
 import util.flash.Flash;
 import util.security.LoginSession;
 
+/** Signs in customers and staff and starts first-login setup when needed. */
 @WebServlet(
         name = "LoginServlet",
         urlPatterns = {"/login"}
@@ -22,6 +23,7 @@ public class LoginServlet extends HttpServlet {
         return new UserDAO();
     }
 
+    /** Show the login form or route a user with an active session. */
     @Override
     protected void doGet(
             HttpServletRequest request,
@@ -54,6 +56,7 @@ public class LoginServlet extends HttpServlet {
         ).forward(request, response);
     }
 
+    /** Check credentials and send the user to the correct page or first-login setup. */
     @Override
     protected void doPost(
             HttpServletRequest request,

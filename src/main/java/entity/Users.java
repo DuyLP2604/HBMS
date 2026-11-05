@@ -24,6 +24,7 @@ import java.io.Serializable;
 import java.util.Collection;
 
 /**
+ * Maps sign-in credentials, account roles, and staff first-login state.
  *
  * @author Asus
  */

@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Holds a room line shown in the customer booking details. */
 public class CustomerBookingItem implements Serializable {
 
     private static final long serialVersionUID = 1L;

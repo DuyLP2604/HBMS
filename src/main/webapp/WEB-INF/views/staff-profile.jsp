@@ -2,7 +2,9 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows the signed-in employee's profile.
+--%>
 <c:set var="profileName" value="${empty fn:trim(employee.fullName) ? sessionScope.user.username : employee.fullName}" />
 <c:url var="dashboardUrl" value="/staff/dashboard" />
 <c:url var="changePasswordUrl" value="/change-password" />

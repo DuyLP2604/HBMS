@@ -10,6 +10,7 @@ import jakarta.persistence.TypedQuery;
 import util.PersistenceManager;
 
 /**
+ * Provides database access for individual hotel rooms.
  *
  * @author Lenovo
  */
@@ -19,6 +20,7 @@ public class RoomDAO extends DAOFramework<Room> {
         super(Room.class);
     }
 
+    /** Generate the next ID for a hotel room. */
     public String generateRoomID() {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
             // Lấy số lớn nhất từ chuỗi mã phòng (cắt từ vị trí số 2 vì ký tự đầu là 'R')

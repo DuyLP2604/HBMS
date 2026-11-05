@@ -17,6 +17,7 @@ import util.security.OtpGenerator;
 import util.security.PasswordResetSession;
 
 
+/** Handles OTP verification and resend requests for password recovery. */
 @WebServlet(
         name = "VerifyOtpServlet",
         urlPatterns = {"/verify-otp"}
@@ -46,6 +47,7 @@ public class VerifyOtpServlet extends HttpServlet {
             15 * 60 * 1000L;
 
 
+    /** Show the OTP form and the wait time before another email can be sent. */
     @Override
     protected void doGet(
             HttpServletRequest request,
@@ -143,6 +145,7 @@ public class VerifyOtpServlet extends HttpServlet {
     }
 
 
+    /** Route the request to OTP verification or resend. */
     @Override
     protected void doPost(
             HttpServletRequest request,
@@ -181,11 +184,7 @@ public class VerifyOtpServlet extends HttpServlet {
     }
 
 
-    /*
-     * ===============================
-     * VERIFY OTP
-     * ===============================
-     */
+    /** Check the submitted code and allow a password reset if it is valid. */
     private void verifyOtp(
             HttpServletRequest request,
             HttpServletResponse response
@@ -206,10 +205,7 @@ public class VerifyOtpServlet extends HttpServlet {
         }
 
 
-        /*
-         * Synchronize session to prevent parallel requests
-         * from bypassing the attempt counter.
-         */
+        // Lock the session so concurrent requests cannot skip the attempt count.
         synchronized (session) {
 
             if (!requireEligibleAccount(request, response, session)) {
@@ -264,9 +260,7 @@ public class VerifyOtpServlet extends HttpServlet {
             }
 
 
-            /*
-             * OTP expired
-             */
+            // Reject an expired OTP.
             if (System.currentTimeMillis() > expiry) {
 
                 clearResetFlow(session);
@@ -310,9 +304,7 @@ public class VerifyOtpServlet extends HttpServlet {
                     );
 
 
-            /*
-             * Incorrect OTP
-             */
+            // Count failed attempts and end this reset flow when the limit is reached.
             if (!correctOtp) {
 
                 attempts++;
@@ -370,11 +362,7 @@ public class VerifyOtpServlet extends HttpServlet {
             }
 
 
-            /*
-             * ===============================
-             * OTP VERIFIED
-             * ===============================
-             */
+            // A valid OTP allows a password reset for the next 10 minutes.
 
             session.setAttribute(
                     "resetOtpVerified",
@@ -389,9 +377,7 @@ public class VerifyOtpServlet extends HttpServlet {
             );
 
 
-            /*
-             * OTP becomes unusable immediately.
-             */
+            // Remove the OTP after successful verification so it cannot be reused.
             session.removeAttribute("resetOtp");
             session.removeAttribute("resetOtpExpiry");
             session.removeAttribute("resetOtpAttempts");
@@ -405,11 +391,7 @@ public class VerifyOtpServlet extends HttpServlet {
     }
 
 
-    /*
-     * ===============================
-     * RESEND OTP
-     * ===============================
-     */
+    /** Send a replacement OTP after checking the account and send limits. */
     private void resendOtp(
             HttpServletRequest request,
             HttpServletResponse response
@@ -430,13 +412,7 @@ public class VerifyOtpServlet extends HttpServlet {
         }
 
 
-        /*
-         * Synchronize all resend operations for
-         * this browser session.
-         *
-         * This prevents several concurrent POST
-         * requests from sending several emails.
-         */
+        // Lock the session so resend requests run one at a time.
         synchronized (session) {
 
             if (!requireEligibleAccount(request, response, session)) {
@@ -500,11 +476,7 @@ public class VerifyOtpServlet extends HttpServlet {
                     System.currentTimeMillis();
 
 
-            /*
-             * ===============================
-             * 60 SECOND COOLDOWN
-             * ===============================
-             */
+            // Wait at least 60 seconds between OTP emails.
 
             Long lastSent =
                     (Long) session.getAttribute(
@@ -544,12 +516,7 @@ public class VerifyOtpServlet extends HttpServlet {
             }
 
 
-            /*
-             * ===============================
-             * GLOBAL OTP RATE LIMIT
-             * 5 EMAILS / 15 MINUTES
-             * ===============================
-             */
+            // Allow up to five OTP emails in 15 minutes, including resends.
 
             Long windowStart =
                     (Long) session.getAttribute(
@@ -628,11 +595,7 @@ public class VerifyOtpServlet extends HttpServlet {
             }
 
 
-            /*
-             * ===============================
-             * GENERATE AND SEND NEW OTP
-             * ===============================
-             */
+            // Generate and send a replacement OTP.
 
             String newOtp =
                     OtpGenerator.generate();
@@ -650,12 +613,7 @@ public class VerifyOtpServlet extends HttpServlet {
                             );
 
 
-            /*
-             * SMTP failed.
-             *
-             * Keep old OTP valid and do not consume
-             * rate-limit quota.
-             */
+            // If email fails, keep the old OTP and the send count.
             if (!sent) {
 
                 Flash.error(
@@ -753,17 +711,7 @@ public class VerifyOtpServlet extends HttpServlet {
     }
 
 
-    /*
-     * ===============================
-     * CLEAR PASSWORD RESET FLOW
-     * ===============================
-     *
-     * IMPORTANT:
-     *
-     * Do NOT remove rate-limit information here.
-     * Otherwise users could deliberately fail the
-     * reset process to bypass anti-spam protection.
-     */
+    /** Clear the reset session data while keeping the email send limits. */
     private void clearResetFlow(
             HttpSession session
     ) {
@@ -781,6 +729,7 @@ public class VerifyOtpServlet extends HttpServlet {
     }
 
 
+    /** Check that the account still qualifies for password reset. */
     private boolean requireEligibleAccount(HttpServletRequest request,
             HttpServletResponse response, HttpSession session) throws IOException {
         if (PasswordResetSession.isEligible(session, createPasswordResetDAO())) {

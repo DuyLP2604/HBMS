@@ -2,7 +2,9 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Lets reception select rooms, create a booking, and collect the initial payment.
+--%>
 <layout:layout title="Book for Customer" useBootstrap="true" pageCss="shared-ui.css" pageJs="checkin-payment.js" bodyClass="hbms-ui-page">
     <div class="hbms-ui ui-shell">
         <header class="ui-page-heading">

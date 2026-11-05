@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 /**
+ * Stores one-time messages for the next page.
  *
  * @author default
  */

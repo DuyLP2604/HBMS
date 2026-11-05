@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Date;
 
 /**
+ * Maps an issued invoice and its link to the booking and transaction.
  *
  * @author Asus
  */

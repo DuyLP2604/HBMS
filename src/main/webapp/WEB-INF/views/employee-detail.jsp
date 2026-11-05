@@ -2,7 +2,9 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows the selected employee and staff account information.
+--%>
 <layout:layout title="Employee Details" pageCss="employee.css" useBootstrap="true" bodyClass="hbms-ui-page">
     <fmt:setLocale value="vi_VN" scope="page" />
     <div class="hbms-ui ui-shell ui-shell-detail ui-employee-workspace">
