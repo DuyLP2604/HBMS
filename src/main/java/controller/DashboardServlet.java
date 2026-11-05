@@ -16,9 +16,11 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
+/** Builds the admin dashboard for revenue, customers, and room usage. */
 @WebServlet(name = "DashboardServlet", urlPatterns = {"/dashboard"})
 public class DashboardServlet extends HttpServlet {
 
+    /** Load admin dashboard data for the selected date range. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!hasPermission(request.getSession())) {
@@ -66,6 +68,7 @@ public class DashboardServlet extends HttpServlet {
         doGet(request, response);
     }
 
+    /** Read the reporting period from the dashboard request. */
     private LocalDate[] parseDateRange(HttpServletRequest request) {
         String fromValue = request.getParameter("from");
         String toValue = request.getParameter("to");

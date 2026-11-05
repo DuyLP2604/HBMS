@@ -14,9 +14,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import util.flash.Flash;
 
+/** Validates registration details and creates a customer account. */
 @WebServlet(name = "RegisterServlet", urlPatterns = {"/register"})
 public class RegisterServlet extends HttpServlet {
 
+    /** Load the registration form with the available nationalities. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if ("checkUsername".equals(request.getParameter("action"))) {
@@ -45,6 +47,7 @@ public class RegisterServlet extends HttpServlet {
         request.getRequestDispatcher("/WEB-INF/views/registerCustomer.jsp").forward(request, response);
     }
 
+    /** Validate the form and create the customer profile and user account. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");

@@ -22,6 +22,7 @@ import java.util.Map;
 import util.PersistenceManager;
 import util.RoomUsageCalculator;
 
+/** Queries the revenue, customer, and room usage figures used by the admin dashboard. */
 public class DashboardDAO {
 
     // DashboardServlet sends this date as the start of the "All Time" range.
@@ -43,6 +44,7 @@ public class DashboardDAO {
         return getPaidRevenue(today, today).longValue();
     }
 
+    /** Calculate paid revenue for the requested dates. */
     public long getRevenueByDateRange(LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
         return getPaidRevenue(startDate, endDate).longValue();
@@ -124,6 +126,7 @@ public class DashboardDAO {
     }
 
     // ĐÃ SỬA: Biểu đồ tự động chia nhóm
+    /** Group paid revenue into points for the dashboard chart. */
     public List<RevenueChart> getRevenueChartData(LocalDate startDate, LocalDate endDate) {
         validateDateRange(startDate, endDate);
         EntityManager em = PersistenceManager.createEntityManager();
@@ -221,6 +224,7 @@ public class DashboardDAO {
         }
     }
 
+    /** Group customers by the source recorded for the dashboard. */
     public List<CustomerSource> getCustomerSource() {
         EntityManager em = PersistenceManager.createEntityManager();
         try {

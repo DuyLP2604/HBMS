@@ -1,3 +1,4 @@
+// Dismisses the one-time message after it has been shown.
 document.addEventListener("DOMContentLoaded", () => {
 
     const flash = document.querySelector("#flash-message");

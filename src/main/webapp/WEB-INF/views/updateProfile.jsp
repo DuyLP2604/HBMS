@@ -1,7 +1,9 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Lets a customer edit their own contact information.
+--%>
 <c:set var="editName" value="${empty fn:trim(customerUpdate.fullName) ? sessionScope.user.username : customerUpdate.fullName}" />
 <c:url var="profileViewUrl" value="/profile"><c:param name="action" value="view" /></c:url>
 <layout:layout title="Edit Profile" pageCss="updateProfile.css" bodyClass="profile-edit-body">

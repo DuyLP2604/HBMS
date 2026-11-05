@@ -2,7 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Shows available room types for the selected dates and guest count. --%>
 <layout:layout title="Search Rooms" useBootstrap="true"
                pageCss="guest-room-catalog.css" bodyClass="hbms-ui-page">
     <div class="hbms-ui ui-shell room-catalog">

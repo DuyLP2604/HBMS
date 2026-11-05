@@ -13,11 +13,13 @@ import java.time.Instant;
 import service.CheckInService.CheckInRequest;
 import service.PaymentService.PaymentRequest;
 
+/** Coordinates cash and PayOS payments at the front desk. */
 public class CounterPaymentService {
     private final PayOsOrderDAO orders = new PayOsOrderDAO();
     private final PaymentService payments = new PaymentService();
     private final PayOsService gateway = new PayOsService();
 
+    /** Open or reuse a PayOS order for the room balance due at check-in. */
     public Order openCheckInOrder(CheckInRequest request, String returnUrl) throws Exception {
         if (!request.isPayOsRoomBalance()) {
             throw new IllegalArgumentException("VietQR at check-in requires a paid deposit and an outstanding room balance.");
@@ -37,6 +39,7 @@ public class CounterPaymentService {
         });
     }
 
+    /** Open or reuse a PayOS order for the initial counter payment. */
     public Order openInitialOrder(PaymentRequest shown, String returnUrl) throws Exception {
         String bookingID = shown.getBookingID();
         return orders.withCounterPaymentLock(bookingID, connection -> {
@@ -49,6 +52,7 @@ public class CounterPaymentService {
         });
     }
 
+    /** Record the cash payment after checking for an active QR order. */
     public Payment collectInitialCash(PaymentRequest shown, int staffUserID) throws Exception {
         return orders.withCounterPaymentLock(shown.getBookingID(), connection -> {
             validateInitialPayment(shown);
@@ -57,12 +61,14 @@ public class CounterPaymentService {
         });
     }
 
+    /** Block another initial payment while a PayOS order is open for the booking. */
     private void requireNoOpenInitialOrder(Connection connection, PaymentRequest shown) throws Exception {
         if (orders.hasOpenPaymentOrder(connection, shown.getBookingID(), shown.getPaymentType(), true)) {
             throw new IllegalStateException("Check the existing VietQR payment before collecting or generating another code.");
         }
     }
 
+    /** Read the latest booking balance and check that it matches the amount shown to reception. */
     private long validateInitialPayment(PaymentRequest shown) {
         Booking booking = payments.getBookingForPayment(shown.getBookingID(), shown.getUserID());
         if (booking == null || !"PENDING_PAYMENT".equals(booking.getBookingStatus()) || booking.getPaymentDeadline() == null) {

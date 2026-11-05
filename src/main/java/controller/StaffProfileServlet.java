@@ -11,11 +11,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
+/** Shows the signed-in employee's profile. */
 @WebServlet(name = "StaffProfileServlet", urlPatterns = {"/staff/profile"})
 public class StaffProfileServlet extends HttpServlet {
 
     private final EmployeeDAO employeeDAO = new EmployeeDAO();
 
+    /** Load the employee profile linked to the signed-in account. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

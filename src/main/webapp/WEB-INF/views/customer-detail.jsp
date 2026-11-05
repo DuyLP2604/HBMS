@@ -1,6 +1,8 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows customer information for staff.
+--%>
 <layout:layout title="Customer Details" pageCss="customer.css" useBootstrap="true" bodyClass="hbms-ui-page">
     <div class="hbms-ui ui-shell ui-shell-detail">
         <header class="ui-page-heading"><div><p class="ui-eyebrow">GUEST DIRECTORY</p><h1>Customer Details</h1><p class="ui-description">Personal and contact information.</p></div></header>

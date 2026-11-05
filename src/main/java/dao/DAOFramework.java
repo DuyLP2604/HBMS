@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import util.PersistenceManager;
 
+/** Provides shared JPA operations for saving, loading, and importing entities. */
 public class DAOFramework<T> {
 
     private static final Set<String> PROCEDURE_TABLES = Set.of("BOOKING", "BOOKING_DETAIL", "BOOKING_SERVICE", "ROOM_ASSIGNMENT", "PAYMENT", "CUSTOMER_WALLET", "BOOKING_REFUND", "REFUND_PAYMENT", "WALLET_TRANSACTION", "USER_BOOKING_CONTROL", "BOOKING_LOCK_HISTORY", "TRANSACTION", "INVOICE_TRANSACTION", "INVOICE");
@@ -32,6 +33,7 @@ public class DAOFramework<T> {
         return em.find(entityClass, id.trim());
     }
 
+    /** Read the table from the database and refresh the JPA cache. */
     public List<T> getAllBypassCache(EntityManager em) {
         String entityName = em.getMetamodel().entity(entityClass).getName();
         return em.createQuery("SELECT x FROM " + entityName + " x", entityClass)
@@ -148,6 +150,7 @@ public class DAOFramework<T> {
         }
     }
 
+    /** Save a batch of entities using the caller's entity manager. */
     public boolean saveAll(List<T> entities, boolean isImport, EntityManager em) {
         if (entities == null || entities.isEmpty()) {
             return true;
@@ -190,6 +193,7 @@ public class DAOFramework<T> {
 
     }
 
+    /** Block direct changes to tables managed by stored procedures. */
     private void requireDirectWriteAllowed() {
         Table table = entityClass.getAnnotation(Table.class);
         String tableName = table == null || table.name().isBlank() ? entityClass.getSimpleName() : table.name();

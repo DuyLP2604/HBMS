@@ -20,9 +20,11 @@ import java.util.stream.Collectors;
 import util.flash.Flash;
 import util.security.CsrfTokens;
 
+/** Handles guest complaints and staff replies. */
 @WebServlet(name = "ComplaintServlet", urlPatterns = {"/complaint"})
 public class ComplaintServlet extends HttpServlet {
 
+    /** Open the complaint form, the staff list, or an accessible complaint detail. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         Users user = getLoggedInUser(request);
@@ -78,6 +80,7 @@ public class ComplaintServlet extends HttpServlet {
         }
     }
 
+    /** Submit a guest complaint or save a staff reply. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
@@ -173,6 +176,7 @@ public class ComplaintServlet extends HttpServlet {
         return "Admin".equalsIgnoreCase(user.getRole()) || "Staff".equalsIgnoreCase(user.getRole());
     }
 
+    /** Allow staff to view complaints and guests to view their own complaints. */
     private boolean canViewComplaint(Users user, Complaint complaint) {
         if (canManageComplaints(user)) {
             return true;

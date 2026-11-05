@@ -65,6 +65,7 @@ FROM dbo.PAYOS_ORDER o JOIN dbo.PAYMENT p
 WHERE o.Status = 'PAID' AND o.PaymentID IS NULL AND p.Status IN ('PAID', 'REFUNDED');
 GO
 
+-- Match the PayOS transfer to an order and record the payment once.
 CREATE OR ALTER PROCEDURE dbo.SP_CONFIRM_PAYOS_ORDER
     @OrderCode BIGINT, @PaymentLinkId VARCHAR(100), @ExternalAmount DECIMAL(12,2), @Reference VARCHAR(100)
 AS

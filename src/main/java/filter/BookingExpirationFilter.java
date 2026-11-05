@@ -10,6 +10,7 @@ import jakarta.servlet.annotation.WebFilter;
 import java.io.IOException;
 import service.BookingExpirationService;
 
+/** Runs overdue booking cleanup as requests reach the application. */
 @WebFilter(filterName = "BookingExpirationFilter", urlPatterns = {"/room-types", "/booking-wish-list", "/checkout", "/payment", "/my-bookings", "/my-bookings/*"})
 public class BookingExpirationFilter implements Filter
 {
@@ -20,6 +21,7 @@ public class BookingExpirationFilter implements Filter
     {
     }
 
+    /** Run booking expiration checks before continuing the request. */
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException
     {

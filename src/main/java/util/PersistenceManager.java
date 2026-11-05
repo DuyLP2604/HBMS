@@ -18,6 +18,7 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 
+/** Creates JPA entity managers and JDBC connections. */
 public class PersistenceManager {
 
     private static final String UNIT_NAME = "my_persistence_unit";
@@ -31,6 +32,7 @@ public class PersistenceManager {
         return emf;
     }
 
+    /** Open a JDBC connection with the settings used by the persistence unit. */
     public static Connection openConnection() throws SQLException {
         Map<String, Object> settings = readConnectionSettings();
         Object source = setting(settings, "jakarta.persistence.nonJtaDataSource", "javax.persistence.nonJtaDataSource");

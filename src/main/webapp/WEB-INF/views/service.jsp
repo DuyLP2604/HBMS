@@ -3,7 +3,7 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Lets a guest choose a hotel service and quantity for a booking. --%>
 <layout:layout title="Hotel Services" pageCss="group5.css" useBootstrap="true" bodyClass="hbms-ui-page group5-page">
     <div class="hbms-ui ui-shell g5-workspace">
         <header class="g5-heading"><h1>Dịch vụ khách sạn</h1></header>

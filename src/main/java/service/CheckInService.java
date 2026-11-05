@@ -20,6 +20,7 @@ import util.PersistenceManager;
 public class CheckInService {
     private static final Logger LOGGER = Logger.getLogger(CheckInService.class.getName());
 
+    /** Prepare check-in with the booking owner and current unpaid room charges. */
     public CheckInRequest createRequest(String bookingID, int actorUserID, Map<String, Object> summary) {
         if (bookingID == null || bookingID.isBlank() || bookingID.trim().length() > 6 || actorUserID <= 0) {
             throw new IllegalArgumentException("A valid booking and staff account are required.");
@@ -27,6 +28,7 @@ public class CheckInService {
         if (!"ASSIGNED".equals(summary.get("bookingStatus"))) {
             throw new IllegalStateException("Assign all rooms before opening check-in.");
         }
+        // Collect only unpaid room charges at check-in. Service charges are due at checkout.
         Object amount = summary.get("roomRemainingAmount");
         if (!(amount instanceof BigDecimal) || ((BigDecimal) amount).signum() < 0) {
             throw new IllegalStateException("Room payment details are unavailable. Run the check-in payment database migration.");
@@ -39,6 +41,7 @@ public class CheckInService {
         return new CheckInRequest(bookingID.trim(), actorUserID, ((Number) owner).intValue(), (BigDecimal) amount, deposit);
     }
 
+    /** Check guest documents and payment details before confirming check-in. */
     public void confirm(CheckInRequest request, int actorUserID, String[] documents,
             String methodID, boolean collectionConfirmed, Integer walletAuthorizedBy, String bankReference) {
         if (request == null || actorUserID <= 0 || request.actorUserID != actorUserID) {
@@ -95,9 +98,11 @@ public class CheckInService {
         }
     }
 
+    /** Save guest documents, any room payment, and check-in together. */
     void writeCheckIn(Connection connection, CheckInRequest request, String documents,
             String method, String reference, Integer walletAuthorizedBy) throws SQLException {
         connection.setAutoCommit(false);
+        // SP_CHECKIN_WITH_ROOM_PAYMENT saves guest documents, collects room charges if due, and checks in the guest.
         try (PreparedStatement statement = connection.prepareStatement(
                 "EXEC dbo.SP_CHECKIN_WITH_ROOM_PAYMENT @BookingID = ?, @ActorUserID = ?, "
                 + "@GuestDocuments = ?, @ExpectedRoomAmount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAuthorizedBy = ?, @TransactionID = ?;")) {
@@ -133,6 +138,7 @@ public class CheckInService {
         }
     }
 
+    /** Validate and format the guest identity numbers. */
     static String validateDocuments(String[] documents) {
         if (documents == null || documents.length == 0) {
             throw new IllegalArgumentException("Enter guest identity documents before check-in.");

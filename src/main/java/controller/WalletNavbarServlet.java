@@ -11,9 +11,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
+/** Returns the signed-in customer's wallet summary for the navigation bar. */
 @WebServlet(name = "WalletNavbarServlet", urlPatterns = {"/wallet-navbar"})
 public class WalletNavbarServlet extends HttpServlet
 {
+    /** Load the signed-in customer's balance for the navbar. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -33,6 +35,7 @@ public class WalletNavbarServlet extends HttpServlet
         request.removeAttribute("navbarWalletBalance");
         try
         {
+            // The navbar shows the balance without loading the transaction history.
             WalletSummary wallet = new WalletDAO().getWalletByUserID(user.getUserID());
             if (wallet != null)
             {

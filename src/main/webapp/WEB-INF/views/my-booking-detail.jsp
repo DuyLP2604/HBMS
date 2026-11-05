@@ -2,12 +2,15 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows rooms, payments, and cancellation options for one customer booking.
+--%>
 <fmt:setLocale value="en_GB" scope="page" />
 <fmt:setTimeZone value="Asia/Ho_Chi_Minh" scope="page" />
 <c:set var="bookingState" value="${bookingSummary.bookingStatus}" />
 <c:set var="paymentState" value="${bookingSummary.paymentStatus}" />
 <c:set var="canCancel" value="${bookingState eq 'PENDING_PAYMENT' or bookingState eq 'CONFIRMED' or bookingState eq 'ASSIGNED'}" />
+<%-- Before check-in, collect the room balance. After check-in, the balance can include services. --%>
 <c:set var="canPayRemaining" value="${not empty bookingSummary.firstPaidAt and ((bookingSummary.roomRemainingAmount gt 0 and (bookingState eq 'CONFIRMED' or bookingState eq 'ASSIGNED')) or (bookingState eq 'CHECKED_IN' and bookingSummary.remainingAmount gt 0))}" />
 <c:set var="roomCount" value="${0}" />
 <c:forEach var="item" items="${booking.items}"><c:set var="roomCount" value="${roomCount + item.quantity}" /></c:forEach>

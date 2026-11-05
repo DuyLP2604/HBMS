@@ -1,3 +1,4 @@
+// Shows the payment deadline countdown on the booking review page.
 (() => {
     'use strict';
     const page = document.querySelector('[data-checkout-page]');
@@ -6,6 +7,7 @@
     const deadlineTime = Number(deadline.dataset.checkoutDeadline);
     const serverTime = Number(deadline.dataset.checkoutServerNow);
     if (!Number.isFinite(deadlineTime) || !Number.isFinite(serverTime)) return;
+    // Use server time for the countdown so the guest's clock does not affect it.
     const startedAt = performance.now();
     const remainingAtLoad = deadlineTime - serverTime;
     const outputs = page.querySelectorAll('[data-checkout-countdown]');

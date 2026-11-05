@@ -21,6 +21,7 @@ import util.flash.Flash;
 import util.security.CsrfTokens;
 import util.security.TemporaryPasswordGenerator;
 
+/** Manages staff profiles and sends account credentials by email. */
 @WebServlet(name = "EmployeeServlet", urlPatterns = {"/employee"})
 public class EmployeeServlet extends HttpServlet {
 
@@ -64,6 +65,7 @@ public class EmployeeServlet extends HttpServlet {
         }
     }
 
+    /** Handle employee updates, new staff accounts, and requests to resend credentials. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
@@ -80,6 +82,7 @@ public class EmployeeServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid employee action.");
             return;
         }
+        // Only admins can create staff accounts or resend login details.
         boolean provisioning = "add".equalsIgnoreCase(action) || "resendCredentials".equalsIgnoreCase(action);
         if (provisioning && !isAdmin(request)) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only administrators can create or resend staff credentials.");
@@ -158,6 +161,7 @@ public class EmployeeServlet extends HttpServlet {
         employeeDAO.updateEmployee(employee);
     }
 
+    /** Create the staff account and send its temporary credentials by email. */
     private boolean addEmployee(HttpServletRequest request) {
         EmployeeDAO employeeDAO = createEmployeeDAO();
         Employee employee = new Employee();
@@ -184,12 +188,14 @@ public class EmployeeServlet extends HttpServlet {
         user.setUsername(username);
         user.setPassword(createUserDAO().hashMD5(password));
         user.setRole("Staff");
+        // Require a password change at the first login.
         user.setMustChangePassword(true);
-        // Commit both records before sending email: SMTP failures do not leave partial records.
+        // Save the account and employee profile before sending the login email.
         employeeDAO.insertEmployeeWithUser(employee, user);
         return deliverCredentials(emailService, employee, user, password);
     }
 
+    /** Replace and email the temporary password for an account awaiting first login. */
     private boolean resendCredentials(HttpServletRequest request) {
         String employeeID = requireParameter(request, "id", "Employee ID is required.");
         Employee employee = createEmployeeDAO().getEmployeeById(employeeID);
@@ -203,12 +209,14 @@ public class EmployeeServlet extends HttpServlet {
         }
         EmailService emailService = configuredEmailService();
         String password = TemporaryPasswordGenerator.generate();
+        // Renew the temporary password only while first-login setup is pending.
         if (!createUserDAO().renewStaffTemporaryPassword(user.getUserID(), password)) {
             throw new IllegalArgumentException("This account has already completed password setup. Its password was not changed.");
         }
         return deliverCredentials(emailService, employee, user, password);
     }
 
+    /** Send the login email and report whether delivery succeeded. */
     private boolean deliverCredentials(EmailService emailService, Employee employee, Users user, String password) {
         try {
             return emailService.sendStaffCredentials(employee.getEmail(), employee.getFullName(), user.getUsername(), password);
@@ -218,6 +226,7 @@ public class EmployeeServlet extends HttpServlet {
         }
     }
 
+    /** Check that email delivery is configured before creating credentials. */
     private EmailService configuredEmailService() {
         EmailService service = createEmailService();
         if (!service.isConfigured()) {

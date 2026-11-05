@@ -11,6 +11,7 @@ import java.util.List;
 import util.PersistenceManager;
 
 /**
+ * Loads the nationalities used in customer forms.
  *
  * @author default
  */

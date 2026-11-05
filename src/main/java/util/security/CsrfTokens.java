@@ -7,6 +7,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 
+/** Creates and verifies session tokens for protected form submissions. */
 public final class CsrfTokens {
     private static final String KEY = "staffAccountCsrf";
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -27,6 +28,7 @@ public final class CsrfTokens {
         }
     }
 
+    /** Compare the submitted token with the one stored in the session. */
     public static boolean isValid(HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         String sent = request.getParameter("csrfToken");

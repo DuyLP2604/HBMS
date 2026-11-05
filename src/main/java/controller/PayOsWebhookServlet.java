@@ -16,11 +16,13 @@ import java.sql.SQLException;
 import service.PayOsService;
 import util.PersistenceManager;
 
+/** Verifies PayOS transfer notifications and forwards them for payment confirmation. */
 @WebServlet("/payos-webhook")
 public class PayOsWebhookServlet extends HttpServlet {
     private static final int MAX_BODY_BYTES = 32 * 1024;
     private final PayOsService payOsService = new PayOsService();
 
+    /** Verify the PayOS signature and confirm the matching booking payment. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
         byte[] body = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);

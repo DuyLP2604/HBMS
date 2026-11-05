@@ -17,12 +17,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+/** Lets reception review stay charges and complete checkout with an invoice. */
 @WebServlet(name = "CheckoutEmployeeServlet", urlPatterns = {"/CheckoutEmployee"})
 public class CheckoutEmployeeServlet extends HttpServlet
 {
     private final InvoiceDAO invoiceDAO = new InvoiceDAO();
     private final BookingDAO bookingDAO = new BookingDAO();
 
+    /** Open the reception checkout list or the details for one booking. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -46,6 +48,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
         }
     }
 
+    /** Load checked-in stays and issued invoices for reception. */
     private void showCheckoutList(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
         List<Map<String, String>> occupiedRooms;
@@ -77,6 +80,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
         request.getRequestDispatcher("/WEB-INF/views/checkout-employee.jsp").forward(request, response);
     }
 
+    /** Load room and service charges and determine whether the stay can be closed. */
     private void showCheckoutDetail(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
         String bookingID = request.getParameter("bookingID");
@@ -143,6 +147,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
         request.getRequestDispatcher("/WEB-INF/views/checkout-detail.jsp").forward(request, response);
     }
 
+    /** Check the booking balance and issue the invoice when checkout can proceed. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {

@@ -1,7 +1,9 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows a complaint, its status, and the staff reply.
+--%>
 <layout:layout
     title="Complaint Details"
     pageCss="group5.css"

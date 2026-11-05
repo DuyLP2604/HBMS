@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import util.PersistenceManager;
 
+/** Reads the service catalog and updates the services booked by guests. */
 public class ServiceDAO {
 
     public List<Service> getAllServices() {
@@ -37,6 +38,7 @@ public class ServiceDAO {
         }
     }
 
+    /** Load the services ordered for a booking. */
     public List<BookingService> getServicesByBookingId(String bookingID) {
         if (bookingID == null || bookingID.trim().isEmpty()) {
             return Collections.emptyList();
@@ -103,6 +105,7 @@ public class ServiceDAO {
         }
     }
 
+    /** Save a service with the next catalog ID. */
     public void createService(String serviceName, double unitPrice) {
         if (serviceName == null || serviceName.trim().isEmpty()) {
             throw new IllegalArgumentException("Tên dịch vụ không được để trống.");
@@ -180,6 +183,7 @@ public class ServiceDAO {
         }
     }
 
+    /** Add a service to the booking or increase the quantity already ordered. */
     public void insertBookingService(String bookingID, String serviceID, int quantity) {
         if (quantity <= 0) {
             throw new IllegalArgumentException("Số lượng dịch vụ phải lớn hơn 0.");
@@ -217,6 +221,7 @@ public class ServiceDAO {
         }
     }
 
+    /** Mark a service as complete and save the staff member who performed it. */
     public boolean completeBookingService(String bookingId, String serviceId, String staffId) {
         EntityManager em = PersistenceManager.createEntityManager();
         try {

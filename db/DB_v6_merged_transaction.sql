@@ -567,6 +567,7 @@ CREATE UNIQUE INDEX UQ_PAYMENT_TransactionID
 ON PAYMENT(TransactionID) WHERE TransactionID IS NOT NULL;
 GO
 
+-- Check that a payment points to a matching transaction.
 CREATE TRIGGER TR_PAYMENT_ValidateTransaction ON PAYMENT AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
@@ -579,6 +580,7 @@ BEGIN
 END;
 GO
 
+-- Check that a refund points to a matching refund transaction.
 CREATE TRIGGER TR_REFUND_ValidateTransaction ON BOOKING_REFUND AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
@@ -590,6 +592,7 @@ BEGIN
 END;
 GO
 
+-- Check the transaction linked to each wallet entry.
 CREATE TRIGGER TR_WALLET_ValidateTransaction ON WALLET_TRANSACTION AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
@@ -607,6 +610,7 @@ BEGIN
 END;
 GO
 
+-- Check that each invoice transaction is valid for the invoice.
 CREATE TRIGGER TR_INVOICE_TRANSACTION_Validate ON INVOICE_TRANSACTION AFTER INSERT, UPDATE AS
 BEGIN
     SET NOCOUNT ON;
@@ -617,6 +621,7 @@ BEGIN
 END;
 GO
 
+-- Prevent transaction updates that would invalidate existing references.
 CREATE TRIGGER TR_TRANSACTION_ValidateReferences ON dbo.[TRANSACTION] AFTER UPDATE AS
 BEGIN
     SET NOCOUNT ON;
@@ -630,6 +635,7 @@ BEGIN
 END;
 GO
 
+-- Create the wallet and booking control records for a new customer.
 CREATE TRIGGER TR_CUSTOMER_CreateWalletAndControl ON CUSTOMER AFTER INSERT AS
 BEGIN
     SET NOCOUNT ON;
@@ -638,6 +644,7 @@ BEGIN
 END;
 GO
 
+-- Check guest capacity and the room line subtotal.
 CREATE TRIGGER TR_BOOKING_DETAIL_Validate
 ON BOOKING_DETAIL
 AFTER INSERT, UPDATE
@@ -670,6 +677,7 @@ BEGIN
 END;
 GO
 
+-- Update the booking total when its room lines change.
 CREATE TRIGGER TR_BOOKING_DETAIL_RecalculateTotal
 ON BOOKING_DETAIL
 AFTER INSERT, UPDATE, DELETE
@@ -701,6 +709,7 @@ BEGIN
 END;
 GO
 
+-- Update the booking total when its service lines change.
 CREATE TRIGGER TR_BOOKING_SERVICE_RecalculateTotal
 ON BOOKING_SERVICE
 AFTER INSERT, UPDATE, DELETE
@@ -732,6 +741,7 @@ BEGIN
 END;
 GO
 
+-- Check that assigned rooms match the booking and do not overlap other stays.
 CREATE TRIGGER TR_ROOM_ASSIGNMENT_Validate
 ON ROOM_ASSIGNMENT
 AFTER INSERT, UPDATE
@@ -1476,6 +1486,7 @@ VALUES (
 );
 GO
 
+-- Count available rooms by room type for the requested stay dates.
 CREATE PROCEDURE SP_GET_ROOM_TYPE_AVAILABILITY
     @CheckInDate DATE,
     @CheckOutDate DATE
@@ -1633,6 +1644,7 @@ ALTER TABLE BOOKING ADD CONSTRAINT CK_BOOKING_CancellationData CHECK (
 );
 GO
 
+-- Calculate the wallet balance from refund credits minus payment debits.
 CREATE VIEW V_WALLET_BALANCE AS
 SELECT w.WalletID, w.CustomerID, w.CreatedAt,
     CAST(COALESCE(SUM(CASE WHEN t.TransactionType = 'REFUND_CREDIT'
@@ -1641,6 +1653,7 @@ FROM CUSTOMER_WALLET AS w LEFT JOIN WALLET_TRANSACTION AS t ON t.WalletID = w.Wa
 GROUP BY w.WalletID, w.CustomerID, w.CreatedAt;
 GO
 
+-- Summarize booking charges, payments, and the balance due.
 CREATE VIEW V_BOOKING_PAYMENT_SUMMARY AS
 SELECT b.BookingID, b.CustomerID, b.BookingStatus, b.PaymentOption, b.TotalAmount,
     b.BookingAmountAtFirstPayment, b.FirstPaidAt, b.RefundDeadline,
@@ -1665,6 +1678,7 @@ OUTER APPLY (
 ) AS p LEFT JOIN BOOKING_REFUND AS r ON r.BookingID = b.BookingID;
 GO
 
+-- Calculate the room balance separately from service charges.
 CREATE OR ALTER VIEW dbo.V_BOOKING_ROOM_BALANCE AS
 SELECT ps.BookingID, charges.RoomTotal, charges.ServiceTotal,
     CAST(CASE WHEN ps.TotalPaidAmount >= charges.RoomTotal THEN charges.RoomTotal
@@ -1684,6 +1698,7 @@ CROSS APPLY (
 ) charges;
 GO
 
+-- Show pending bookings and limits on creating a new booking.
 CREATE VIEW V_USER_BOOKING_ACCESS AS
 SELECT c.UserID, cu.CustomerID,
     CASE WHEN c.WindowStartedAt IS NULL OR DATEADD(DAY, 1, c.WindowStartedAt) <= SYSDATETIME()
@@ -1702,6 +1717,7 @@ FROM USER_BOOKING_CONTROL AS c JOIN CUSTOMER AS cu ON cu.UserID = c.UserID
 LEFT JOIN BOOKING AS pending ON pending.CustomerID = cu.CustomerID AND pending.BookingStatus = 'PENDING_PAYMENT';
 GO
 
+-- Use sp_getapplock to serialize writes that affect bookings and wallets.
 CREATE PROCEDURE SP_HBMS_ACQUIRE_WRITE_LOCK AS
 BEGIN
     SET NOCOUNT ON;
@@ -1712,6 +1728,7 @@ BEGIN
 END;
 GO
 
+-- Clear the booking restriction for the selected user or for all users.
 CREATE PROCEDURE SP_RESET_BOOKING_CONTROL @UserID INT = NULL AS
 BEGIN
     SET NOCOUNT ON;
@@ -1724,6 +1741,7 @@ BEGIN
 END;
 GO
 
+-- Cancel the booking, release rooms, and credit the wallet when a refund is due.
 CREATE PROCEDURE SP_CANCEL_BOOKING
     @BookingID CHAR(6),
     @ActorUserID INT = NULL,
@@ -1822,6 +1840,7 @@ BEGIN
 END;
 GO
 
+-- Cancel pending bookings that have passed their payment deadline.
 CREATE PROCEDURE SP_EXPIRE_PENDING_BOOKINGS
     @CustomerID CHAR(6) = NULL, @ReturnResult BIT = 1
 AS
@@ -1869,6 +1888,7 @@ CREATE TYPE BOOKING_ROOM_INPUT AS TABLE (
 );
 GO
 
+-- Validate the stay and create the booking with its room lines.
 CREATE PROCEDURE SP_CREATE_BOOKING
     @BookingID CHAR(6), @CustomerID CHAR(6), @ActorUserID INT,
     @CheckInDate DATE, @CheckOutDate DATE, @PaymentOption VARCHAR(10),
@@ -1942,6 +1962,7 @@ BEGIN
 END;
 GO
 
+-- Validate and record a booking payment and its wallet changes.
 CREATE PROCEDURE SP_RECORD_PAYMENT
     @PaymentID CHAR(6), @BookingID CHAR(6), @ActorUserID INT,
     @PaymentType VARCHAR(10), @Amount DECIMAL(12,2), @MethodID CHAR(4),
@@ -2076,6 +2097,7 @@ BEGIN
 END;
 GO
 
+-- Add a service charge or increase the quantity on an existing service line.
 CREATE PROCEDURE SP_ADD_BOOKING_SERVICE
     @BookingID CHAR(6), @ServiceID CHAR(4), @Quantity INT, @ActorUserID INT,
     @UnitPrice DECIMAL(12,2) = NULL
@@ -2123,6 +2145,7 @@ BEGIN
 END;
 GO
 
+-- Validate and apply the requested booking status change.
 CREATE PROCEDURE dbo.SP_SET_BOOKING_STATUS
     @BookingID CHAR(6), @NewStatus VARCHAR(30), @ActorUserID INT
 AS
@@ -2191,6 +2214,7 @@ BEGIN
 END;
 GO
 
+-- Save guest documents and check in a booking with assigned rooms.
 CREATE OR ALTER PROCEDURE dbo.SP_COUNTER_CHECKIN
     @BookingID CHAR(6), @ActorUserID INT, @GuestDocuments VARCHAR(500)
 AS
@@ -2218,6 +2242,7 @@ BEGIN
 END;
 GO
 
+-- Assign an available physical room to a reserved room type line.
 CREATE PROCEDURE SP_ASSIGN_ROOM
     @BookingDetailID INT, @RoomID CHAR(3), @ActorUserID INT
 AS
@@ -2410,6 +2435,7 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
 
+-- Check payment, close the stay, and issue the invoice.
 CREATE OR ALTER PROCEDURE dbo.SP_CHECKOUT_WITH_INVOICE
     @BookingID CHAR(6), @ActorUserID INT
 AS
@@ -2500,6 +2526,7 @@ BEGIN CATCH
 END CATCH;
 GO
 
+-- Check wallet funds and record a debit in the same transaction as the payment.
 ALTER PROCEDURE dbo.SP_RECORD_PAYMENT
     @PaymentID CHAR(6), @BookingID CHAR(6), @ActorUserID INT,
     @PaymentType VARCHAR(10), @Amount DECIMAL(12,2), @MethodID CHAR(4),
@@ -2643,6 +2670,7 @@ BEGIN
 END;
 GO
 
+-- Settle the room balance and save guest documents before checking in.
 CREATE OR ALTER PROCEDURE dbo.SP_CHECKIN_WITH_ROOM_PAYMENT
     @BookingID CHAR(6), @ActorUserID INT, @GuestDocuments VARCHAR(500),
     @ExpectedRoomAmount DECIMAL(12,2), @MethodID CHAR(4) = NULL,
@@ -2729,12 +2757,14 @@ SET XACT_ABORT ON;
 BEGIN TRY
     BEGIN TRANSACTION;
     EXEC dbo.SP_HBMS_ACQUIRE_WRITE_LOCK;
+    -- Return the current local time at the hotel.
     EXEC(N'CREATE OR ALTER FUNCTION dbo.FN_HBMS_VIETNAM_NOW()
 RETURNS DATETIME2(3)
 AS
 BEGIN
     RETURN DATEADD(MINUTE, 420, SYSUTCDATETIME());
 END;');
+    -- Advance the earliest booking date after the same-day cutoff.
     EXEC(N'CREATE OR ALTER FUNCTION dbo.FN_HBMS_MIN_CHECKIN_DATE(@Now DATETIME2(3))
 RETURNS DATE
 AS
@@ -2742,6 +2772,7 @@ BEGIN
     RETURN CASE WHEN CAST(@Now AS TIME) < CAST(''10:00:00'' AS TIME)
         THEN CAST(@Now AS DATE) ELSE DATEADD(DAY, 1, CAST(@Now AS DATE)) END;
 END;');
+    -- Use a 24-hour refund window from booking creation if it ends before check-in.
     EXEC(N'CREATE OR ALTER FUNCTION dbo.FN_HBMS_REFUND_ELIGIBLE(
     @BookedAt DATETIME2(3), @CheckInDate DATE, @CancelledAt DATETIME2(3))
 RETURNS BIT
@@ -2772,6 +2803,7 @@ ALTER TABLE dbo.BOOKING WITH CHECK ADD CONSTRAINT CK_BOOKING_CancellationReason 
     CancellationReason IS NULL OR CancellationReason IN
     (''CUSTOMER_REQUEST'', ''STAFF_REQUEST'', ''PAYMENT_TIMEOUT'', ''NO_SHOW'')
 );');
+    -- Add no-show and refund details to the booking payment summary.
     EXEC(N'ALTER VIEW dbo.V_BOOKING_PAYMENT_SUMMARY AS
 SELECT b.BookingID, b.CustomerID, b.BookingStatus, b.PaymentOption, b.TotalAmount,
     b.BookingAmountAtFirstPayment, b.FirstPaidAt, b.RefundDeadline,
@@ -2799,6 +2831,7 @@ OUTER APPLY (
     SELECT CAST(COALESCE(SUM(Amount), 0) AS DECIMAL(12,2)) AS TotalPaidAmount
     FROM PAYMENT WHERE BookingID = b.BookingID AND Status IN (''PAID'', ''REFUNDED'')
 ) AS p LEFT JOIN BOOKING_REFUND AS r ON r.BookingID = b.BookingID;');
+    -- Apply the hotel time rules when validating the booking dates.
     EXEC(N'ALTER PROCEDURE dbo.SP_CREATE_BOOKING
     @BookingID CHAR(6), @CustomerID CHAR(6), @ActorUserID INT,
     @CheckInDate DATE, @CheckOutDate DATE, @PaymentOption VARCHAR(10),
@@ -2882,6 +2915,7 @@ BEGIN
         THROW;
     END CATCH;
 END;');
+    -- For an eligible cancellation, credit all paid amounts to the customer's wallet.
     EXEC(N'ALTER PROCEDURE dbo.SP_CANCEL_BOOKING
     @BookingID CHAR(6),
     @ActorUserID INT = NULL,
@@ -3038,6 +3072,7 @@ IF EXISTS (SELECT 1 FROM V_WALLET_BALANCE WHERE Balance < 0)
     THROW 51124, 'Internal wallet cannot have a negative balance.', 1;
 GO
 
+-- Show the transactions attached to each invoice.
 CREATE VIEW V_INVOICE_TRANSACTION_DETAILS AS
 SELECT i.InvoiceID, i.InvoiceDate, i.BookingID, i.Status AS InvoiceStatus,
     i.TotalAmount AS InvoiceAmount, t.id AS TransactionRowID, t.TransactionID,
@@ -3102,6 +3137,7 @@ IF NOT EXISTS (SELECT 1 FROM PAYMENTMETHOD WHERE MethodID = 'PT01' AND MethodNam
 PRINT N'QLKS merged: central transactions, VietQR/internal wallet/cash, counter bookings, room settlement at check-in and released rooms after checkout.';
 GO
 
+-- Match the PayOS transfer to an order and record the payment once.
 CREATE OR ALTER PROCEDURE dbo.SP_CONFIRM_PAYOS_ORDER
     @OrderCode BIGINT, @PaymentLinkId VARCHAR(100), @ExternalAmount DECIMAL(12,2), @Reference VARCHAR(100)
 AS

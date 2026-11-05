@@ -5,6 +5,7 @@
 package util.flash;
 
 /**
+ * Holds the text and level of a one-time message.
  *
  * @author default
  */

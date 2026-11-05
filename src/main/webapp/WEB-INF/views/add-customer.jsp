@@ -1,7 +1,9 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Creates a customer record at the front desk.
+--%>
 <layout:layout title="Add New Customer" pageCss="customer.css" pageJs="addCustomer.js" useBootstrap="true" bodyClass="hbms-ui-page">
     <div class="hbms-ui ui-shell ui-shell-form">
         <header class="ui-page-heading"><div><p class="ui-eyebrow">GUEST DIRECTORY</p><h1>Add New Customer</h1><p class="ui-description">Enter the customer's personal and contact information.</p></div></header>

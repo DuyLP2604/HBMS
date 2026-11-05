@@ -10,6 +10,7 @@ import java.util.Random;
 import java.util.List;
 import util.PersistenceManager;
 
+/** Looks up payment transactions by their internal or external identifiers. */
 public class TransactionDAO extends DAOFramework<Transaction> {
 
     public TransactionDAO() {
@@ -51,11 +52,10 @@ public class TransactionDAO extends DAOFramework<Transaction> {
     }
 
     /**
-     * Tạo Transaction ID tối ưu hiệu suất (Không cần query DB). Format:
-     * [PREFIX][YYMMDDHHMMSS][4 Số ngẫu nhiên] Ví dụ: VQR2610241830451234
+     * Build a transaction ID from its payment type, timestamp, and random suffix.
      *
-     * @param paymentType Truyền vào "VIETQR", "CASH", hoặc "WALLET"
-     * @return Chuỗi Transaction ID duy nhất
+     * @param paymentType the payment method type
+     * @return the generated transaction ID
      */
     public String generateTransactionID(String paymentType) {
         String prefix;

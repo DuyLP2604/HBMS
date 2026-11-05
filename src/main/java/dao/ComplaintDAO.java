@@ -7,6 +7,7 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import util.PersistenceManager;
 
+/** Loads complaints and saves replies and status changes. */
 public class ComplaintDAO extends DAOFramework<Complaint> {
 
     public ComplaintDAO() {
@@ -17,6 +18,7 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
         return PersistenceManager.createEntityManager();
     }
 
+    /** Load one complaint by its ID. */
     public Complaint getComplaintById(int id) {
         EntityManager em = createEntityManager();
         try {

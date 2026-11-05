@@ -14,11 +14,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Shows the customer's wallet balance and transaction history. */
 @WebServlet(name = "WalletServlet", urlPatterns = {"/wallet"})
 public class WalletServlet extends HttpServlet
 {
     private static final int PAGE_SIZE = 20;
 
+    /** Show the customer's wallet balance and one page of transaction history. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -58,6 +60,7 @@ public class WalletServlet extends HttpServlet
         }
         try
         {
+            // Load the signed-in customer's balance and one page of wallet history.
             WalletDAO dao = new WalletDAO();
             WalletSummary wallet = dao.getWalletByUserID(user.getUserID());
             List<WalletTransactionItem> items = wallet == null ? new ArrayList<>() : dao.getTransactionsByUserID(user.getUserID(), page, PAGE_SIZE);

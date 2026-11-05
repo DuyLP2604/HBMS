@@ -29,7 +29,7 @@
 <%@ attribute name="showFooter"
               required="false"
               type="java.lang.Boolean" %>
-
+<%-- Wraps page content with the shared navigation, assets, and footer. --%>
 
 <!DOCTYPE html>
 

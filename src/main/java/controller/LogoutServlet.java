@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpSession;
 import util.flash.Flash;
 
 /**
+ * Clears the sign-in session and returns the user to the login page.
  *
  * @author default
  */
@@ -23,7 +24,7 @@ public class LogoutServlet extends HttpServlet {
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
-     * Handles the HTTP <code>GET</code> method.
+     * End the current session and redirect the user.
      *
      * @param request servlet request
      * @param response servlet response

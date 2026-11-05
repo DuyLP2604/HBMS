@@ -1,3 +1,4 @@
+// Updates the payment preview and checks room selection before checkout.
 (() => {
     'use strict';
     const page = document.querySelector('[data-wishlist-page]');

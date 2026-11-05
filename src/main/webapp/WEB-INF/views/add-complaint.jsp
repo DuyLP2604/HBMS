@@ -2,7 +2,7 @@
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-
+<%-- Lets the guest submit a complaint. --%>
 <layout:layout title="Submit Complaint" pageCss="group5.css" useBootstrap="true" bodyClass="hbms-ui-page group5-page">
     <div class="hbms-ui ui-shell g5-workspace">
         <div class="row g-4">

@@ -1,3 +1,4 @@
+// Toggles password visibility on the form.
 
 const passwordInput = document.getElementById("password");
 const togglePassword = document.getElementById("togglePassword");

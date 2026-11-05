@@ -18,6 +18,7 @@ import java.util.UUID;
 import service.RoomAssignmentService;
 import util.BookingTimePolicy;
 
+/** Shows bookings and booking details to reception staff. */
 @WebServlet(
         name = "StaffBookingServlet",
         urlPatterns = {"/staff/bookings"}
@@ -27,6 +28,7 @@ public class StaffBookingServlet extends HttpServlet {
     private final RoomAssignmentService assignmentService
             = new RoomAssignmentService();
 
+    /** Show bookings for room assignment or available rooms for one booking. */
     @Override
     protected void doGet(
             HttpServletRequest request,
@@ -101,6 +103,7 @@ public class StaffBookingServlet extends HttpServlet {
                                 bookingID.trim()
                         );
 
+        // List the actual rooms that can be assigned to each booking detail.
         Map<Integer, List<Room>> availableRoomMap
                 = new HashMap<>();
 

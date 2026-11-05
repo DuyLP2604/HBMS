@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.util.Collection;
 
 /**
+ * Maps an individual room and its room type.
  *
  * @author Asus
  */

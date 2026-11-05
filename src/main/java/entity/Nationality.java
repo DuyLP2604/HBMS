@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.util.Collection;
 
 /**
+ * Maps a nationality available in customer forms.
  *
  * @author Asus
  */

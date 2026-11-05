@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 /**
+ * Passes one-time messages from the session to the next page.
  *
  * @author default
  */
@@ -94,11 +95,11 @@ public class FlashMessageFilter implements Filter {
     }
 
     /**
+     * Move saved flash messages into the request before rendering the next page.
      *
      * @param request The servlet request we are processing
      * @param response The servlet response we are creating
      * @param chain The filter chain we are processing
-     *
      * @exception IOException if an input/output error occurs
      * @exception ServletException if a servlet error occurs
      */

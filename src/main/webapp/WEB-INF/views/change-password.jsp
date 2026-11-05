@@ -1,7 +1,9 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Collects the current and new passwords for a signed-in account.
+--%>
 <c:url var="changePasswordUrl" value="/change-password" />
 <c:url var="forgotPasswordUrl" value="/forgot-password">
     <c:param name="accountType" value="${staffPassword ? 'Staff' : 'Customer'}" />

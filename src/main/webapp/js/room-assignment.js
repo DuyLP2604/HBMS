@@ -1,3 +1,4 @@
+// Updates available room choices while reception assigns rooms.
 (() => {
     'use strict';
     const form = document.querySelector('[data-room-assignment]');

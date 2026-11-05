@@ -1,7 +1,9 @@
  <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Shows the wallet balance and paginated transaction history.
+--%>
 <fmt:setLocale value="en_US" />
 <c:url var="walletRefreshUrl" value="/wallet"><c:param name="page" value="${walletPage}" /></c:url>
 <layout:layout title="My Wallet" pageCss="wallet.css" useBootstrap="true" bodyClass="wallet-body">

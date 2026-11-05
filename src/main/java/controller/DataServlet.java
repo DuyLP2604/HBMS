@@ -14,6 +14,7 @@ import service.ExportDataService;
 import service.ImportDataService;
 import util.flash.Flash;
 
+/** Lets admins export and restore database data with Excel workbooks. */
 @WebServlet(name = "DataServlet", urlPatterns = {"/data"})
 @MultipartConfig(
         fileSizeThreshold = 1024 * 1024 * 2,
@@ -22,6 +23,7 @@ import util.flash.Flash;
 )
 public class DataServlet extends HttpServlet {
 
+    /** Download the database backup as an Excel workbook for an admin. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!requireAdmin(request.getSession())) {
@@ -44,6 +46,7 @@ public class DataServlet extends HttpServlet {
         }
     }
 
+    /** Read the uploaded workbook and restore the database for an admin. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!requireAdmin(request.getSession())) {

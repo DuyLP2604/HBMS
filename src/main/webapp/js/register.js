@@ -1,3 +1,4 @@
+// Moves between the steps of the customer registration form.
 function showStep(step)
 {
     document.getElementById("step1").classList.toggle("register-step-hidden", step !== 1);

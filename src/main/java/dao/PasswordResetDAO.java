@@ -6,7 +6,9 @@ import jakarta.persistence.Query;
 import java.util.List;
 import util.PersistenceManager;
 
+/** Finds accounts for OTP recovery and writes verified password resets. */
 public class PasswordResetDAO {
+    /** Find one eligible customer or staff account by email or phone. */
     public Account findAccount(String identifier, String role) {
         String table = accountTable(role);
         if (table == null || identifier == null || identifier.isBlank()) {
@@ -34,6 +36,7 @@ public class PasswordResetDAO {
         }
     }
 
+    /** Check that the verified account still has the same email and password. */
     public boolean isEligible(Account account) {
         String table = account == null ? null : accountTable(account.getRole());
         if (table == null) {
@@ -50,6 +53,7 @@ public class PasswordResetDAO {
         }
     }
 
+    /** Update the password only if the verified account details still match. */
     public boolean resetPassword(Account account, String password) {
         String table = account == null ? null : accountTable(account.getRole());
         if (table == null || password == null || password.isBlank()) {
@@ -59,7 +63,7 @@ public class PasswordResetDAO {
         EntityManager em = createEntityManager();
         try {
             em.getTransaction().begin();
-            // Check the flag and original credentials in the UPDATE itself to close races.
+            // The UPDATE checks that the account details still match the verified reset request.
             Query query = em.createNativeQuery(
                     "UPDATE USERS SET Password = ? WHERE UserID = ? AND Role = ?"
                     + " AND Password = ?" + staffCondition(account.getRole(), "")
@@ -102,6 +106,7 @@ public class PasswordResetDAO {
         return null;
     }
 
+    // Staff must finish first-login setup before they can reset a forgotten password.
     private String staffCondition(String role, String prefix) {
         return "Staff".equals(role) ? " AND " + prefix + "MustChangePassword = 0" : "";
     }

@@ -3,6 +3,7 @@ package util;
 import dto.BookingWishList;
 import jakarta.servlet.http.HttpSession;
 
+/** Keeps the room wishlist in the customer's session. */
 public final class BookingWishListSession {
 
     public static final String ATTRIBUTE_NAME = "bookingWishList";
@@ -10,6 +11,7 @@ public final class BookingWishListSession {
     private BookingWishListSession() {
     }
 
+    /** Load the current room wishlist or create it in the session. */
     public static BookingWishList getOrCreate(HttpSession session) {
         if (session == null) {
             throw new IllegalArgumentException("HTTP session is required.");

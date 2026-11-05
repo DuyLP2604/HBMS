@@ -1,3 +1,4 @@
+// Switches the input used by the employee search form.
 document.addEventListener("DOMContentLoaded", function () {
 
     const searchType = document.getElementById("searchType");

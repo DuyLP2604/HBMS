@@ -2,7 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Shows daily reception tasks and shortcuts. --%>
 <layout:layout title="Staff Dashboard" useBootstrap="true"
                pageCss="staff-dashboard.css" bodyClass="staff-dashboard-page">
     <c:choose>

@@ -23,6 +23,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 /**
+ * Links a physical room to the reserved room type line.
  *
  * @author Asus
  */

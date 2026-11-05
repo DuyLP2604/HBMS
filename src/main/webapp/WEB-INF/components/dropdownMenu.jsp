@@ -1,6 +1,6 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-
+<%-- Shows account and workspace links based on the user's role. --%>
 <div class="user-menu">
     <c:choose>
         <c:when test="${not empty sessionScope.user}">

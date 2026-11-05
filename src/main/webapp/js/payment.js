@@ -1,3 +1,4 @@
+// Updates the online payment summary and checks for PayOS confirmation.
 document.addEventListener("DOMContentLoaded", function () {
     const pending = document.getElementById("payos-pending");
     if (pending) {

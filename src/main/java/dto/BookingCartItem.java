@@ -3,6 +3,7 @@ package dto;
 import java.io.Serializable;
 import java.math.BigDecimal;
 
+/** Holds a selected room type, its price, and the requested quantity. */
 public class BookingCartItem implements Serializable {
 
     private static final long serialVersionUID = 1L;

@@ -3,7 +3,7 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Shows admin reports and Excel backup controls. --%>
 <layout:layout
     title="Dashboard"
     pageCss="dashboard.css"

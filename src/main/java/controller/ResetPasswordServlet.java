@@ -13,8 +13,10 @@ import util.EmployeeValidator;
 import util.flash.Flash;
 import util.security.PasswordResetSession;
 
+/** Lets a user set a new password after OTP verification. */
 @WebServlet(name = "ResetPasswordServlet", urlPatterns = {"/reset-password"})
 public class ResetPasswordServlet extends HttpServlet {
+    /** Show the new password form after OTP verification. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -27,6 +29,7 @@ public class ResetPasswordServlet extends HttpServlet {
         request.getRequestDispatcher("/WEB-INF/views/reset-password.jsp").forward(request, response);
     }
 
+    /** Validate the new password, save it, and end the reset session. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -37,7 +40,7 @@ public class ResetPasswordServlet extends HttpServlet {
             rejectReset(request, response, null);
             return;
         }
-        // Consume a verified grant once, including concurrent submissions in the same session.
+        // Use the verified password reset permission only once.
         synchronized (session) {
             if (!isResetAllowed(session)) {
                 rejectReset(request, response, session);
@@ -79,6 +82,7 @@ public class ResetPasswordServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/login");
     }
 
+    /** Check that OTP verification is still valid and the account can be reset. */
     private boolean isResetAllowed(HttpSession session) {
         if (session == null || !Boolean.TRUE.equals(session.getAttribute("resetOtpVerified"))) {
             return false;

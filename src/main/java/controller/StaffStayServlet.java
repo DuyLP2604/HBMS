@@ -16,11 +16,13 @@ import java.util.UUID;
 import service.BookingLifecycleService;
 import util.BookingTimePolicy;
 
+/** Shows guest stays and handles no-show cancellations. */
 @WebServlet(name = "StaffStayServlet", urlPatterns = {"/staff/stays"})
 public class StaffStayServlet extends HttpServlet
 {
     private final BookingLifecycleService lifecycleService = new BookingLifecycleService();
 
+    /** List active stays and mark bookings that need no-show review. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -32,6 +34,7 @@ public class StaffStayServlet extends HttpServlet
         List<Booking> bookings;
         try
         {
+            // Show confirmed, room-assigned, and checked-in bookings in Guest Stay.
             bookings = lifecycleService.getOperationalBookings();
         }
         catch (RuntimeException ex)
@@ -47,11 +50,13 @@ public class StaffStayServlet extends HttpServlet
                 session.setAttribute("bookingCsrfToken", UUID.randomUUID().toString());
             }
         }
+        // Flag overdue arrivals using Vietnam time.
         request.setAttribute("noShowBookings", BookingTimePolicy.prepareStaffList(bookings, BookingTimePolicy.now()));
         request.setAttribute("bookings", bookings);
         request.getRequestDispatcher("/WEB-INF/views/staff-stays.jsp").forward(request, response);
     }
 
+    /** Handle a stay action such as opening check-in or cancelling a no-show. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -83,6 +88,7 @@ public class StaffStayServlet extends HttpServlet
             }
             else if ("checkIn".equals(action))
             {
+                // Open the form for guest documents and any unpaid room charges.
                 response.sendRedirect(request.getContextPath() + "/process-checkin?bookingID="
                         + java.net.URLEncoder.encode(bookingID, java.nio.charset.StandardCharsets.UTF_8));
                 return;

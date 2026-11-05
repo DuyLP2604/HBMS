@@ -1,7 +1,9 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Lets an admin edit an employee profile.
+--%>
 <c:set var="isPost" value="${pageContext.request.method eq 'POST'}" />
 <c:set var="selectedPosition" value="${isPost ? param.position : employee.position}" />
 <c:set var="selectedShift" value="${isPost ? param.shift : employee.shift}" />

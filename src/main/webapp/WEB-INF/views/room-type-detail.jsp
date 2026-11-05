@@ -2,7 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
+<%-- Shows a room type's description, capacity, and price. --%>
 <layout:layout title="${roomType.typeName} - Room Details" useBootstrap="true"
                pageCss="guest-room-catalog.css" bodyClass="hbms-ui-page">
     <div class="hbms-ui ui-shell room-catalog">

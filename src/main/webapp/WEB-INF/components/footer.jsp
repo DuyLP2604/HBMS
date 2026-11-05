@@ -1,5 +1,5 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
-
+<%-- Displays the shared hotel footer. --%>
 <footer class="bg-dark text-white text-center py-4">
 
     <h5>

@@ -15,12 +15,14 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+/** Shows issued invoices and prepares the printable invoice view. */
 @WebServlet(name = "InvoiceServlet", urlPatterns = {"/invoice"})
 public class InvoiceServlet extends HttpServlet {
 
     private final InvoiceDAO invoiceDAO = new InvoiceDAO();
     private final BookingDAO bookingDAO = new BookingDAO();
 
+    /** Load the invoice workspace or prepare the print view for one booking. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -98,6 +100,7 @@ public class InvoiceServlet extends HttpServlet {
         request.getRequestDispatcher(view).forward(request, response);
     }
 
+    /** Request invoice creation for the selected booking. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

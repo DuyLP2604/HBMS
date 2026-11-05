@@ -23,6 +23,7 @@ import java.io.InputStream;
 import util.flash.Flash;
 
 /**
+ * Shows hotel rooms and lets admins add or edit them.
  *
  * @author Lenovo
  */
@@ -34,7 +35,7 @@ public class RoomServlet extends HttpServlet {
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
     /**
-     * Handles the HTTP <code>GET</code> method.
+     * Show the room list, room details, or a room maintenance form.
      *
      * @param request servlet request
      * @param response servlet response
@@ -123,7 +124,7 @@ public class RoomServlet extends HttpServlet {
     }
 
     /**
-     * Post method for admin only
+     * Save the room details and any uploaded image.
      *
      * @param request servlet request
      * @param response servlet response
@@ -243,11 +244,13 @@ public class RoomServlet extends HttpServlet {
         return u != null && "admin".equalsIgnoreCase(u.getRole());
     }
 
+    /** Load room records for the room list. */
     private void viewList(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setAttribute("roomList", new RoomDAO().getAll());
         request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response);
     }
 
+    /** Load one room and its information for the detail view. */
     private void viewDetail(HttpServletRequest request, HttpServletResponse response, String id) throws ServletException, IOException {
         request.setAttribute("room", new RoomDAO().getById(id));
         request.getRequestDispatcher("/WEB-INF/views/room-detail.jsp").forward(request, response);

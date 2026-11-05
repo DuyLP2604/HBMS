@@ -1,6 +1,8 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
+    Confirms customer creation and links to the next front desk step.
+--%>
 <layout:layout title="Customer Created Successfully" pageCss="customer.css" useBootstrap="true" bodyClass="hbms-ui-page">
     <div class="hbms-ui ui-shell ui-shell-success">
         <section class="ui-panel ui-success-panel" aria-labelledby="customerSuccessTitle">

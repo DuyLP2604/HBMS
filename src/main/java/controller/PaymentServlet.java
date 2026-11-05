@@ -26,6 +26,7 @@ import service.PayOsService;
 import service.PaymentService;
 import service.PaymentService.PaymentRequest;
 
+/** Handles online booking payments, PayOS redirects, and the payment result. */
 @WebServlet(name = "PaymentServlet", urlPatterns = {"/payment"})
 public class PaymentServlet extends HttpServlet {
 
@@ -44,6 +45,7 @@ public class PaymentServlet extends HttpServlet {
         }
     }
 
+    /** Open the payment form, show a receipt, or handle the return from PayOS. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         response.setHeader("Cache-Control", "no-store");
@@ -73,6 +75,7 @@ public class PaymentServlet extends HttpServlet {
         request.getRequestDispatcher("/WEB-INF/views/payment.jsp").forward(request, response);
     }
 
+    /** Load the booking, amount due, and available payment methods. */
     private PaymentPageData loadPaymentPageData(String bookingID, int userID, HttpServletResponse response) throws ServletException, IOException {
         PaymentService service = createPaymentService();
         try {
@@ -100,6 +103,7 @@ public class PaymentServlet extends HttpServlet {
         }
     }
 
+    /** Store the payment request in the session and return its token. */
     private String setupPaymentSession(HttpSession session, HttpServletRequest request, PaymentRequest paymentRequest) {
         String token = UUID.randomUUID().toString();
         synchronized (session) {
@@ -118,6 +122,7 @@ public class PaymentServlet extends HttpServlet {
         return token;
     }
 
+    /** Prepare the payment form with the balance and usable wallet amount. */
     private void setupPaymentAttributes(HttpServletRequest request, PaymentPageData data, String token) {
         PaymentRequest paymentRequest = data.paymentRequest;
         BigDecimal walletBalance = paymentRequest.getWalletBalance();
@@ -139,6 +144,7 @@ public class PaymentServlet extends HttpServlet {
         request.setAttribute("transferReference", paymentRequest.getTransferReference());
     }
 
+    /** Validate the payment form and start a direct payment or PayOS payment. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
@@ -197,6 +203,7 @@ public class PaymentServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + redirectPath);
     }
 
+    /** Match the submitted token to the customer and booking in the session. */
     private PaymentRequest getValidPaymentRequest(HttpSession session, String token, int userID, String bookingID) {
         PaymentRequest paymentRequest;
         synchronized (session) {
@@ -209,6 +216,7 @@ public class PaymentServlet extends HttpServlet {
         return paymentRequest;
     }
 
+    /** Record a direct payment and choose the next page. */
     private String processDirectPayment(HttpSession session, PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet, String bookingID) {
         try {
             Payment payment = createPaymentService().processPayment(paymentRequest, methodID, userID, useWallet);
@@ -282,6 +290,7 @@ public class PaymentServlet extends HttpServlet {
         return requests;
     }
 
+    /** Load the receipt and booking details for the completed payment. */
     private void showSuccess(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user) throws ServletException, IOException {
         if (!extractSessionPaymentData(session, request, user)) {
             response.sendRedirect(request.getContextPath() + "/my-bookings");
@@ -312,6 +321,7 @@ public class PaymentServlet extends HttpServlet {
         return "Customer deposit, full payment and balance payment servlet";
     }
 
+    /** Read the PayOS order and show its receipt or pending status. */
     private boolean handlePayOsReturn(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user)
             throws ServletException, IOException {
         String orderCodeParam = request.getParameter("orderCode");
@@ -371,6 +381,7 @@ public class PaymentServlet extends HttpServlet {
         return true;
     }
 
+    /** Create a PayOS payment link and save its order before redirecting the customer. */
     private boolean handlePayOsCheckout(HttpServletRequest request, HttpServletResponse response, HttpSession session,
             PaymentRequest paymentRequest, boolean useWallet) throws IOException {
         String bookingID = paymentRequest.getBookingID();
@@ -378,7 +389,7 @@ public class PaymentServlet extends HttpServlet {
         BigDecimal walletAmount = useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
         BigDecimal shortfall = paymentRequest.getAmount().subtract(walletAmount);
 
-        // Use the wallet flow if it covers the full amount.
+        // PayOS collects only the amount left after the wallet contribution.
         if (shortfall.signum() <= 0) {
             return false;
         }
@@ -469,6 +480,7 @@ public class PaymentServlet extends HttpServlet {
         session.removeAttribute("successfulPaymentUserID");
     }
 
+    /** Reload the customer's wallet balance when a payment used wallet funds. */
     private void populateWalletSummaryIfUsed(HttpServletRequest request, int userID) {
         Object walletAmount = request.getAttribute("walletAmount");
         if (walletAmount instanceof java.math.BigDecimal && ((java.math.BigDecimal) walletAmount).signum() > 0) {

@@ -19,12 +19,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/** Shows the signed-in customer's booking history and booking details. */
 @WebServlet(name = "MyBookingServlet", urlPatterns = {"/my-bookings"})
 public class MyBookingServlet extends HttpServlet
 {
     private final CustomerBookingDAO bookingDAO = new CustomerBookingDAO();
     private final BookingDAO coreBookingDAO = new BookingDAO();
 
+    /** Open the signed-in customer's booking list or the requested booking detail. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
@@ -62,6 +64,7 @@ public class MyBookingServlet extends HttpServlet
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "Your customer profile was not found.");
                 return;
             }
+            // Expire unpaid bookings before showing the list or details.
             coreBookingDAO.expirePendingBookings(customer.getCustomerID());
             Map<String, Object> access = coreBookingDAO.getBookingAccess(userID);
             request.setAttribute("bookingAccess", access);
@@ -90,8 +93,10 @@ public class MyBookingServlet extends HttpServlet
         }
     }
 
+    /** Load the customer's bookings and their payment summaries. */
     private void showBookingList(HttpServletRequest request, HttpServletResponse response, int userID) throws ServletException, IOException
     {
+        // Show each booking with the amount paid and the remaining balance.
         Map<String, Map<String, Object>> summaries = new LinkedHashMap<>();
         for (Booking booking : coreBookingDAO.getByAccountUserId(userID))
         {
@@ -110,8 +115,10 @@ public class MyBookingServlet extends HttpServlet
         request.getRequestDispatcher("/WEB-INF/views/my-bookings.jsp").forward(request, response);
     }
 
+    /** Load room details and payment information for a booking owned by the customer. */
     private void showBookingDetail(HttpServletRequest request, HttpServletResponse response, int userID, String bookingID) throws ServletException, IOException
     {
+        // Show details only if this booking belongs to the signed-in customer.
         Booking ownedBooking = coreBookingDAO.getByIdWithDetails(bookingID);
         if (!isOwnedBy(ownedBooking, userID))
         {

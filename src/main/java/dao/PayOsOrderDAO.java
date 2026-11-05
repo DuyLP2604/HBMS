@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.sql.*;
 import util.PersistenceManager;
 
+/** Stores PayOS orders and confirms transfers through SP_CONFIRM_PAYOS_ORDER. */
 public class PayOsOrderDAO {
 
     public static final class Order {
@@ -30,6 +31,7 @@ public class PayOsOrderDAO {
         }
     }
 
+    /** Load a PayOS order by its gateway order code. */
     public Order find(long orderCode) throws SQLException {
         try (Connection c = PersistenceManager.openConnection(); PreparedStatement ps = c.prepareStatement("SELECT BookingID, UserID, PaymentType, Amount, WalletAmount, ExternalAmount, Status, Reference, PaymentID FROM dbo.PAYOS_ORDER WHERE OrderCode = ?")) {
             ps.setLong(1, orderCode);
@@ -151,6 +153,7 @@ public class PayOsOrderDAO {
         T run(Connection connection) throws Exception;
     }
 
+    /** Use sp_getapplock and sp_releaseapplock to serialize front desk payments for one booking. */
     public <T> T withCounterPaymentLock(String bookingID, CounterPaymentOperation<T> operation) throws Exception {
         // Keep one front desk payment active for each booking.
         String resource = "HBMS:checkin-qr:" + bookingID.toUpperCase(java.util.Locale.ROOT);
@@ -174,7 +177,9 @@ public class PayOsOrderDAO {
         }
     }
 
+    /** Confirm a PayOS order using the transfer details received from the webhook. */
     public void confirm(long orderCode, String paymentLinkId, BigDecimal externalAmount, String reference) throws SQLException {
+        // SP_CONFIRM_PAYOS_ORDER confirms the transfer and applies any wallet contribution.
         try (Connection c = PersistenceManager.openConnection();
                 PreparedStatement ps = c.prepareStatement("EXEC dbo.SP_CONFIRM_PAYOS_ORDER ?, ?, ?, ?;")) {
             ps.setLong(1, orderCode);
