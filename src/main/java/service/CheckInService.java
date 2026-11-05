@@ -43,7 +43,7 @@ public class CheckInService {
 
     /** Check guest documents and payment details before confirming check-in. */
     public void confirm(CheckInRequest request, int actorUserID, String[] documents,
-            String methodID, boolean collectionConfirmed, Integer walletAuthorizedBy, String bankReference) {
+            String methodID, boolean collectionConfirmed, String bankReference) {
         if (request == null || actorUserID <= 0 || request.actorUserID != actorUserID) {
             throw new IllegalArgumentException("Reload the check-in form before trying again.");
         }
@@ -54,11 +54,8 @@ public class CheckInService {
             if (!collectionConfirmed) {
                 throw new IllegalArgumentException("Confirm that the outstanding room payment has been collected.");
             }
-            if (method.isEmpty() || method.length() > 4 || !isAvailableMethod(method)) {
-                throw new IllegalArgumentException("Select one of the available booking payment methods.");
-            }
-            if ("PT02".equals(method) && (walletAuthorizedBy == null || walletAuthorizedBy != request.customerUserID)) {
-                throw new IllegalArgumentException("The booking customer must authorize their own wallet payment.");
+            if ((!"PT01".equals(method) && !"PT03".equals(method)) || !isAvailableMethod(method)) {
+                throw new IllegalArgumentException("Select VietQR or cash to pay the room balance.");
             }
         } else {
             method = null;
@@ -69,10 +66,9 @@ public class CheckInService {
                 throw new IllegalArgumentException("Enter the verified bank transaction reference (maximum 100 characters).");
             }
         }
-        Integer authorizedWalletOwner = "PT02".equals(method) ? walletAuthorizedBy : null;
         synchronized (request) {
             try (Connection connection = openConnection()) {
-                writeCheckIn(connection, request, guestDocuments, method, reference, authorizedWalletOwner);
+                writeCheckIn(connection, request, guestDocuments, method, reference);
             } catch (SQLException exception) {
                 throw new IllegalStateException(checkInError(exception), exception);
             } finally {
@@ -100,21 +96,19 @@ public class CheckInService {
 
     /** Save guest documents, any room payment, and check-in together. */
     void writeCheckIn(Connection connection, CheckInRequest request, String documents,
-            String method, String reference, Integer walletAuthorizedBy) throws SQLException {
+            String method, String reference) throws SQLException {
         connection.setAutoCommit(false);
         // SP_CHECKIN_WITH_ROOM_PAYMENT saves guest documents, collects room charges if due, and checks in the guest.
         try (PreparedStatement statement = connection.prepareStatement(
                 "EXEC dbo.SP_CHECKIN_WITH_ROOM_PAYMENT @BookingID = ?, @ActorUserID = ?, "
-                + "@GuestDocuments = ?, @ExpectedRoomAmount = ?, @MethodID = ?, @TransactionCode = ?, @WalletAuthorizedBy = ?, @TransactionID = ?;")) {
+                + "@GuestDocuments = ?, @ExpectedRoomAmount = ?, @MethodID = ?, @TransactionCode = ?, @TransactionID = ?;")) {
             statement.setString(1, request.bookingID);
             statement.setInt(2, request.actorUserID);
             statement.setString(3, documents);
             statement.setBigDecimal(4, request.roomAmount);
             statement.setString(5, method);
             statement.setString(6, reference);
-            if (walletAuthorizedBy == null) statement.setNull(7, java.sql.Types.INTEGER);
-            else statement.setInt(7, walletAuthorizedBy);
-            statement.setString(8, "PT01".equals(method) ? reference : null);
+            statement.setString(7, "PT01".equals(method) ? reference : null);
             boolean result = statement.execute();
             // Nested payment can return a row before a later check-in error. Drain all results.
             while (true) {
@@ -166,15 +160,13 @@ public class CheckInService {
             case 51000: return "The booking is busy. Check its status before trying again.";
             case 51031: case 51060: return "Only authorized staff or admin can check in guests.";
             case 51038: return "This payment reference has already been recorded. Review payment history before retrying.";
-            case 51046: return "The customer's wallet cannot cover the room balance. Select another payment method.";
             case 51210: return "A verified bank transaction reference is required for VietQR.";
-            case 51048: return "A receptionist must record a wallet payment authorized by the booking customer.";
             case 51044: case 51111: return "The room balance changed. Reload check-in and verify payments before collecting money.";
             case 51064: return "Assign all requested rooms before check-in.";
             case 51069: case 51114: return "Enter valid guest identity documents for every assigned room.";
             case 51070: return "An assigned room is unavailable or is still occupied. Review room assignments.";
             case 51110: return "Pay the outstanding room charges before check-in.";
-            case 51112: return "Select an available booking payment method for the room balance.";
+            case 51112: return "Select VietQR or cash to pay the room balance.";
             case 51113: return "The payment ID limit has been reached. Contact the administrator.";
             case 51115: return "Assign all rooms first. Cancelled or completed bookings cannot check in.";
             case 51116: return "The booking has no successful initial payment. Verify its payment history.";

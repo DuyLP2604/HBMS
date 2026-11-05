@@ -4,9 +4,14 @@
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 <%-- Lets a guest choose a hotel service and quantity for a booking. --%>
-<layout:layout title="Hotel Services" pageCss="group5.css" useBootstrap="true" bodyClass="hbms-ui-page group5-page">
+<layout:layout title="Dịch vụ khách sạn" pageCss="group5.css" useBootstrap="true" bodyClass="hbms-ui-page group5-page">
     <div class="hbms-ui ui-shell g5-workspace">
-        <header class="g5-heading"><h1>Dịch vụ khách sạn</h1></header>
+        <header class="g5-heading">
+            <div>
+                <h1>Dịch vụ khách sạn</h1>
+                <p class="ui-description">Đặt dịch vụ bổ sung và theo dõi trạng thái phục vụ.</p>
+            </div>
+        </header>
 
         <c:if test="${not empty sessionScope.successMessage}">
             <div class="alert alert-success alert-dismissible py-2 mb-3 fade show shadow-sm">
@@ -59,10 +64,10 @@
         </div>
 
 
-        <div class="alert alert-success border-success-subtle d-flex align-items-center mb-4 shadow-sm" role="alert">
-            <i class="fa-solid fa-utensils fs-3 text-success me-3"></i>
+        <div class="g5-service-notice mb-4">
+            <i class="fa-solid fa-utensils" aria-hidden="true"></i>
             <div>
-                <strong class="text-success">Đặc quyền lưu trú:</strong>
+                <strong>Đặc quyền lưu trú.</strong>
                 <span>Mọi đơn đặt phòng tại HBMS mặc định đã được tặng kèm <strong>Buffet sáng miễn phí mỗi ngày</strong> cho toàn bộ khách lưu trú.</span>
             </div>
         </div>
@@ -117,8 +122,8 @@
                                                             <span class="badge g5-status-success">Miễn phí</span>
                                                         </c:when>
                                                         <c:otherwise>
-                                                            <span class="fw-semibold text-primary">
-                                                                <fmt:formatNumber value="${service.unitPrice}" type="number" groupingUsed="true" maxFractionDigits="0" /> đ
+                                                            <span class="g5-service-amount">
+                                                                <fmt:formatNumber value="${service.unitPrice}" pattern="#,##0.##" /> VND
                                                             </span>
                                                         </c:otherwise>
                                                     </c:choose>
@@ -135,9 +140,9 @@
                             </div>
 
                             <c:if test="${not empty list}">
-                                <div class="d-flex align-items-center justify-content-between mt-3 p-3 bg-light border rounded">
-                                    <label for="quantity" class="form-label fw-bold mb-0">Số lượng:</label>
-                                    <input id="quantity" class="form-control text-center w-25" type="number" name="quantity" value="1" min="1" max="99" required ${empty currentBooking ? 'disabled' : ''}>
+                                <div class="g5-service-quantity mt-3">
+                                    <label for="quantity" class="form-label fw-semibold mb-0">Số lượng</label>
+                                    <input id="quantity" class="form-control text-center" type="number" name="quantity" value="1" min="1" max="99" required ${empty currentBooking ? 'disabled' : ''}>
                                 </div>
                             </c:if>
 
@@ -157,7 +162,7 @@
                     <div class="card-header g5-section-header">
                         <h2 class="h5 mb-0"><i class="fa-solid fa-clipboard-list me-2"></i>Dịch vụ đã đặt</h2>
                         <c:if test="${not empty currentBooking}">
-                            <span class="badge bg-light text-dark">Booking #${currentBooking.bookingID}</span>
+                            <span class="badge g5-status-neutral g5-service-badge">Booking #<c:out value="${currentBooking.bookingID}" /></span>
                         </c:if>
                     </div>
                     <div class="card-body p-0">
@@ -168,6 +173,7 @@
                                         <th class="text-start">Tên dịch vụ</th>
                                         <th>Đơn giá</th>
                                         <th>Số lượng</th>
+                                        <th>Trạng thái</th>
                                         <th class="text-end">Thành tiền</th>
                                     </tr>
                                 </thead>
@@ -176,7 +182,7 @@
                                     <c:choose>
                                         <c:when test="${empty myServices}">
                                             <tr>
-                                                <td colspan="4" class="text-center text-muted py-5">
+                                                <td colspan="5" class="text-center text-muted py-5">
                                                     <i class="fa-solid fa-bell-concierge fa-3x mb-3 text-secondary opacity-50"></i><br>
                                                     Chưa có dịch vụ bổ sung nào được thêm vào đơn đặt phòng này.
                                                 </td>
@@ -188,22 +194,34 @@
                                                 <c:set var="totalServiceCharges" value="${totalServiceCharges + subtotal}" />
                                                 <tr>
                                                     <td class="text-start fw-bold">
-                                                        <i class="fa-solid fa-check text-success me-1"></i>
                                                         <c:out value="${bs.service.serviceName}" />
                                                     </td>
-                                                    <td>
+                                                    <td class="g5-service-amount">
                                                         <c:choose>
                                                             <c:when test="${bs.unitPrice == 0}">
-                                                                <span class="text-success fw-bold">0 đ</span>
+                                                                <span class="badge g5-status-success g5-service-badge">Miễn phí</span>
                                                             </c:when>
                                                             <c:otherwise>
-                                                                <fmt:formatNumber value="${bs.unitPrice}" type="number" groupingUsed="true" maxFractionDigits="0" /> đ
+                                                                <fmt:formatNumber value="${bs.unitPrice}" pattern="#,##0.##" /> VND
                                                             </c:otherwise>
                                                         </c:choose>
                                                     </td>
-                                                    <td><span class="badge bg-secondary-subtle text-dark px-2 py-1">x<c:out value="${bs.quantity}" /></span></td>
-                                                    <td class="fw-bold text-danger text-end">
-                                                        <fmt:formatNumber value="${subtotal}" type="number" groupingUsed="true" maxFractionDigits="0" /> đ
+                                                    <td><span class="badge g5-status-neutral g5-service-badge">×<c:out value="${bs.quantity}" /></span></td>
+                                                    <td>
+                                                        <c:choose>
+                                                            <c:when test="${bs.serviceStatus eq 'COMPLETED'}">
+                                                                <span class="badge g5-status-success g5-service-badge">Đã phục vụ</span>
+                                                            </c:when>
+                                                            <c:when test="${bs.serviceStatus eq 'IN_PROGRESS'}">
+                                                                <span class="badge g5-status-progress g5-service-badge">Đang thực hiện</span>
+                                                            </c:when>
+                                                            <c:otherwise>
+                                                                <span class="badge g5-status-pending g5-service-badge">Chờ phục vụ</span>
+                                                            </c:otherwise>
+                                                        </c:choose>
+                                                    </td>
+                                                    <td class="text-end g5-service-amount">
+                                                        <fmt:formatNumber value="${subtotal}" pattern="#,##0.##" /> VND
                                                     </td>
                                                 </tr>
                                             </c:forEach>
@@ -213,9 +231,9 @@
                                 <c:if test="${not empty myServices}">
                                     <tfoot class="table-light">
                                         <tr>
-                                            <td colspan="3" class="text-end fw-bold">Tổng tiền dịch vụ:</td>
-                                            <td class="fw-bold text-danger fs-6 text-end">
-                                                <fmt:formatNumber value="${totalServiceCharges}" type="number" groupingUsed="true" maxFractionDigits="0" /> đ
+                                            <td colspan="4" class="text-end fw-semibold">Tổng tiền dịch vụ</td>
+                                            <td class="text-end g5-service-amount">
+                                                <fmt:formatNumber value="${totalServiceCharges}" pattern="#,##0.##" /> VND
                                             </td>
                                         </tr>
                                     </tfoot>

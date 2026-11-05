@@ -5,7 +5,6 @@ import dao.BookingDAO;
 import dao.PayOsOrderDAO;
 import dao.PayOsOrderDAO.Order;
 import dao.PaymentmethodDAO;
-import dao.UserDAO;
 import entity.Booking;
 import entity.Users;
 import java.io.IOException;
@@ -31,7 +30,6 @@ public class ProcessCheckInServlet extends HttpServlet {
     private final PayOsOrderDAO payOsOrders = new PayOsOrderDAO();
     protected BookingDAO createBookingDAO() { return new BookingDAO(); }
     protected CheckInService createCheckInService() { return new CheckInService(); }
-    protected UserDAO createUserDAO() { return new UserDAO(); }
 
     /** Prepare the check-in form and show any room balance due. */
     @Override
@@ -151,13 +149,9 @@ public class ProcessCheckInServlet extends HttpServlet {
 
     /** Record the selected direct payment and complete the guest check-in. */
     private void collectAndCheckIn(HttpServletRequest request, CheckInRequest payment, String method) {
-        Integer walletOwner = null;
-        if (payment.getRoomAmount().signum() > 0 && "PT02".equals(method)) {
-            walletOwner = authorizeWallet(request, payment);
-        }
         createCheckInService().confirm(payment, payment.getActorUserID(), request.getParameterValues("cccd"),
                 method, "true".equals(request.getParameter("collectionConfirmed")),
-                walletOwner, request.getParameter("bankReference"));
+                request.getParameter("bankReference"));
     }
 
     /** Complete check-in after the QR payment has been confirmed. */
@@ -175,7 +169,7 @@ public class ProcessCheckInServlet extends HttpServlet {
             throw new IllegalStateException("The room balance changed. Reload and review the payment.");
         }
         createCheckInService().confirm(current, current.getActorUserID(), request.getParameterValues("cccd"),
-                null, false, null, null);
+                null, false, null);
     }
 
     /** Open a PayOS order for the remaining room balance. */
@@ -213,30 +207,6 @@ public class ProcessCheckInServlet extends HttpServlet {
         } catch (SQLException | WriterException exception) {
             log("Unable to load the PayOS check-in order.", exception);
             response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
-        }
-    }
-
-    /** Verify the customer's credentials before charging their wallet. */
-    private int authorizeWallet(HttpServletRequest request, CheckInRequest payment) {
-        HttpSession session = request.getSession(false);
-        synchronized (session) {
-            Long lockedUntil = (Long) session.getAttribute("counterWalletLockedUntil");
-            if (lockedUntil != null && lockedUntil > System.currentTimeMillis()) {
-                throw new IllegalArgumentException("Too many failed wallet authorizations. Retry in five minutes.");
-            }
-            String username = request.getParameter("walletUsername");
-            Users owner = createUserDAO().login(username == null ? "" : username.trim(), request.getParameter("walletPassword"));
-            if (owner == null || !"Customer".equalsIgnoreCase(owner.getRole())
-                    || owner.getUserID() == null || owner.getUserID() != payment.getCustomerUserID()) {
-                Integer failures = (Integer) session.getAttribute("counterWalletFailures");
-                failures = failures == null ? 1 : failures + 1;
-                session.setAttribute("counterWalletFailures", failures);
-                if (failures >= 5) session.setAttribute("counterWalletLockedUntil", System.currentTimeMillis() + 300000L);
-                throw new IllegalArgumentException("Wallet authorization failed. The booking customer must enter their own credentials.");
-            }
-            session.removeAttribute("counterWalletFailures");
-            session.removeAttribute("counterWalletLockedUntil");
-            return owner.getUserID();
         }
     }
 

@@ -8,6 +8,9 @@
 }
 
 .group5-page .g5-workspace { max-width: 1180px; }
+.group5-page .g5-orders-workspace {
+    width: calc(100% - clamp(24px, 5vw, 96px));
+}
 .group5-page .g5-form-workspace { max-width: 920px; }
 
 .group5-page .g5-heading,
@@ -71,13 +74,66 @@
 .group5-page .g5-status-success { color: #285336; background: #e3efe4; }
 .group5-page .g5-status-pending { color: #6d470f; background: #fff1d6; }
 .group5-page .g5-status-neutral { color: #42554a; background: #eef1ef; }
+.group5-page .g5-status-progress { color: #2c5160; background: #e5eef1; }
+
+.group5-page .g5-service-badge { white-space: nowrap; }
+.group5-page .g5-service-amount {
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.group5-page .g5-service-quantity,
+.group5-page .g5-service-notice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--g5-line);
+    border-radius: 8px;
+    background: var(--g5-surface);
+}
+.group5-page .g5-service-quantity { justify-content: space-between; }
+.group5-page .g5-service-quantity input { max-width: 96px; }
+.group5-page .g5-service-notice { color: var(--g5-ink); }
 
 .group5-page .g5-table-scroll:focus-visible {
     outline: 2px solid #426648;
     outline-offset: -2px;
 }
 .group5-page .g5-table-scroll table { min-width: 520px; }
-.group5-page .g5-table-scroll .g5-orders-table { min-width: 880px; }
+.group5-page .g5-orders-workspace .g5-table-scroll { overflow-x: auto; }
+.group5-page .g5-table-scroll .g5-orders-table {
+    width: 100%;
+    min-width: 1220px;
+    table-layout: fixed;
+}
+.group5-page .g5-orders-table .g5-order-number { width: 40px; }
+.group5-page .g5-orders-table .g5-order-booking { width: 104px; }
+.group5-page .g5-orders-table .g5-order-customer { width: clamp(200px, 18vw, 330px); }
+.group5-page .g5-orders-table .g5-order-price,
+.group5-page .g5-orders-table .g5-order-total { width: clamp(116px, 8.5vw, 160px); }
+.group5-page .g5-orders-table .g5-order-quantity { width: 74px; }
+.group5-page .g5-orders-table .g5-order-status { width: clamp(126px, 9vw, 165px); }
+.group5-page .g5-orders-table .g5-order-staff { width: clamp(140px, 10vw, 190px); }
+.group5-page .g5-orders-table .g5-order-action { width: clamp(144px, 12vw, 220px); }
+.group5-page .g5-orders-table .g5-order-action-cell .btn { min-width: 120px; }
+.group5-page .g5-table-scroll .g5-orders-table :is(th, td) {
+    padding: 10px;
+    overflow-wrap: normal;
+    white-space: nowrap;
+}
+.group5-page .g5-orders-table .g5-order-guest {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+.group5-page .g5-orders-table .g5-order-guest small { flex-shrink: 0; }
+.group5-page .g5-orders-table .g5-order-ellipsis {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .group5-page .g5-table-scroll :is(th, td) {
     padding: 12px;
     border-color: var(--g5-line);
