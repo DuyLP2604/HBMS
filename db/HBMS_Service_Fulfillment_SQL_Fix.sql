@@ -20,6 +20,12 @@ BEGIN TRY
     IF OBJECT_ID(N'dbo.FK_BOOKING_SERVICE_ServedByUser', N'F') IS NULL
         EXEC(N'ALTER TABLE dbo.BOOKING_SERVICE WITH CHECK ADD CONSTRAINT FK_BOOKING_SERVICE_ServedByUser
             FOREIGN KEY (ServedByUserID) REFERENCES dbo.USERS(UserID);');
+    -- Thêm ServiceStatus cho bảng SERVICE
+    IF COL_LENGTH(N'dbo.SERVICE', N'ServiceStatus') IS NULL
+    BEGIN
+        ALTER TABLE dbo.SERVICE ADD ServiceStatus VARCHAR(20) DEFAULT 'ACTIVE';
+        EXEC(N'UPDATE dbo.SERVICE SET ServiceStatus = ''ACTIVE'' WHERE ServiceStatus IS NULL;');
+    END;
 
     -- Choose CREATE or ALTER using the procedures in this database.
     DECLARE @Definition NVARCHAR(MAX);
