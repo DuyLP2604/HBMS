@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package entity;
 
 import jakarta.persistence.Basic;
@@ -21,7 +17,7 @@ import java.math.BigDecimal;
 /**
  * Maps a service ordered for a booking, including its quantity and status.
  *
- * @author Asus
+ * @author Thanh
  */
 @Entity
 @Table(name = "BOOKING_SERVICE")

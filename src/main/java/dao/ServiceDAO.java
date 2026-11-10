@@ -3,7 +3,6 @@ package dao;
 import entity.BookingService;
 import entity.Service;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -14,13 +13,26 @@ import java.util.Collections;
 import java.util.List;
 import util.PersistenceManager;
 
-/** Reads the service catalog and updates the services booked by guests. */
+/**
+ * Reads the service catalog and updates the services booked by guests.
+ */
 public class ServiceDAO {
 
     public List<Service> getAllServices() {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             String jpql = "SELECT s FROM Service s ORDER BY s.serviceID ASC";
+            TypedQuery<Service> query = em.createQuery(jpql, Service.class);
+            return query.getResultList();
+        } finally {
+            close(em);
+        }
+    }
+
+    public List<Service> getActiveServices() {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            String jpql = "SELECT s FROM Service s WHERE s.serviceStatus = 'ACTIVE' ORDER BY s.serviceID ASC";
             TypedQuery<Service> query = em.createQuery(jpql, Service.class);
             return query.getResultList();
         } finally {
@@ -40,7 +52,6 @@ public class ServiceDAO {
         }
     }
 
-    /** Load the services ordered for a booking. */
     public List<BookingService> getServicesByBookingId(String bookingID) {
         if (bookingID == null || bookingID.trim().isEmpty()) {
             return Collections.emptyList();
@@ -107,7 +118,6 @@ public class ServiceDAO {
         }
     }
 
-    /** Save a service with the next catalog ID. */
     public void createService(String serviceName, double unitPrice) {
         if (serviceName == null || serviceName.trim().isEmpty()) {
             throw new IllegalArgumentException("Tên dịch vụ không được để trống.");
@@ -185,11 +195,38 @@ public class ServiceDAO {
         }
     }
 
-    /** Add a service using the booking and payment write lock. */
+    public void toggleServiceStatus(String serviceID) {
+        if (serviceID == null || serviceID.trim().isEmpty()) {
+            throw new IllegalArgumentException("Mã dịch vụ không hợp lệ.");
+        }
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            List<Service> list = em.createQuery("SELECT s FROM Service s WHERE TRIM(s.serviceID) = :sid", Service.class)
+                    .setParameter("sid", serviceID.trim())
+                    .getResultList();
+            if (list.isEmpty()) {
+                throw new IllegalArgumentException("Không tìm thấy dịch vụ: " + serviceID);
+            }
+            Service service = list.get(0);
+            if ("ACTIVE".equalsIgnoreCase(service.getServiceStatus())) {
+                service.setServiceStatus("SUSPENDED");
+            } else {
+                service.setServiceStatus("ACTIVE");
+            }
+            em.getTransaction().commit();
+            PersistenceManager.getEMF().getCache().evictAll();
+        } catch (Exception e) {
+            rollback(em);
+            throw new IllegalStateException("Lỗi cập nhật trạng thái: " + e.getMessage(), e);
+        } finally {
+            close(em);
+        }
+    }
+
     public void insertBookingService(String bookingID, String serviceID, int quantity, int actorUserID) {
         String sql = "EXEC dbo.SP_ADD_BOOKING_SERVICE @BookingID=?, @ServiceID=?, @Quantity=?, @ActorUserID=?";
-        try (Connection connection = PersistenceManager.openConnection();
-                PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = PersistenceManager.openConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, bookingID);
             statement.setString(2, serviceID);
             statement.setInt(3, quantity);
@@ -201,12 +238,10 @@ public class ServiceDAO {
         PersistenceManager.getEMF().getCache().evictAll();
     }
 
-    /** Claim an open service order or finish one claimed by this staff member. */
     public boolean updateBookingServiceStatus(String bookingID, String serviceID, int actorUserID, String status) {
         String sql = "EXEC dbo.SP_UPDATE_BOOKING_SERVICE_STATUS @BookingID=?, @ServiceID=?, @ActorUserID=?, @NewStatus=?";
         boolean changed;
-        try (Connection connection = PersistenceManager.openConnection();
-                PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (Connection connection = PersistenceManager.openConnection(); PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, bookingID);
             statement.setString(2, serviceID);
             statement.setInt(3, actorUserID);
