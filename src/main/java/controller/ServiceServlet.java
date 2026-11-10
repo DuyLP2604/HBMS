@@ -138,8 +138,10 @@ public class ServiceServlet extends HttpServlet {
         }
 
         String selectedServiceID = request.getParameter("selectedService");
+        Booking targetBooking = null;
         String quantityValue = request.getParameter("quantity");
         String inputBookingID = request.getParameter("bookingID");
+
 
         try {
             if (selectedServiceID == null || selectedServiceID.trim().isEmpty()) {
@@ -148,7 +150,7 @@ public class ServiceServlet extends HttpServlet {
             int quantity = parseQuantity(quantityValue);
 
             BookingDAO bookingDAO = new BookingDAO();
-            Booking targetBooking;
+
 
             if (inputBookingID != null && !inputBookingID.trim().isEmpty()) {
                 targetBooking = bookingDAO.getByIdWithDetails(inputBookingID.trim());
@@ -171,6 +173,18 @@ public class ServiceServlet extends HttpServlet {
             if ("CHECKED_OUT".equals(status) || "CANCELLED".equals(status)) {
                 throw new IllegalStateException("Đơn đặt phòng này đã hoàn tất hoặc bị hủy.");
             }
+            if ("Customer".equalsIgnoreCase(currentUser.getRole())) {
+                if ("CHECKED_IN".equalsIgnoreCase(status)) {
+                    throw new IllegalStateException("Quý khách đã nhận phòng. Vui lòng liên hệ nhân viên khách sạn để được phục vụ thêm dịch vụ.");
+                }
+                if (!"CONFIRMED".equalsIgnoreCase(status) && !"ASSIGNED".equalsIgnoreCase(status)) {
+                    throw new IllegalStateException("Đơn đặt phòng không ở trạng thái sẵn sàng để đặt dịch vụ.");
+                }
+            } else if ("Staff".equalsIgnoreCase(currentUser.getRole()) || "Admin".equalsIgnoreCase(currentUser.getRole())) {
+                if (!"CHECKED_IN".equalsIgnoreCase(status)) {
+                    throw new IllegalStateException("Nhân viên chỉ có thể thêm dịch vụ cho khách đang lưu trú tại khách sạn (In-house).");
+                }
+            }
 
             ServiceDAO serviceDAO = new ServiceDAO();
             String serviceID = selectedServiceID.trim();
@@ -184,8 +198,8 @@ public class ServiceServlet extends HttpServlet {
             session.setAttribute("errorMessage", exception.getMessage() != null ? exception.getMessage() : "Không thể thêm dịch vụ.");
         }
 
-        if ("Staff".equalsIgnoreCase(currentUser.getRole()) || "Admin".equalsIgnoreCase(currentUser.getRole())) {
-            response.sendRedirect(request.getContextPath() + "/checkout");
+        if (("Staff".equalsIgnoreCase(currentUser.getRole()) || "Admin".equalsIgnoreCase(currentUser.getRole())) && targetBooking != null) {
+            response.sendRedirect(request.getContextPath() + "/service?bookingID=" + targetBooking.getBookingID().trim());
         } else {
             response.sendRedirect(request.getContextPath() + "/service");
         }
@@ -238,11 +252,9 @@ public class ServiceServlet extends HttpServlet {
         return "Admin".equalsIgnoreCase(user.getRole()) || "Staff".equalsIgnoreCase(user.getRole());
     }
 
-    /**
-     * Find a booking the signed-in user can use to order a service.
-     */
     private Booking resolveTargetBooking(HttpServletRequest request, Users currentUser, BookingDAO bookingDAO) {
         String inputBookingID = request.getParameter("bookingID");
+
         if (inputBookingID != null && !inputBookingID.trim().isEmpty()) {
             Booking booking = bookingDAO.getByIdWithDetails(inputBookingID.trim());
             if (booking != null) {
