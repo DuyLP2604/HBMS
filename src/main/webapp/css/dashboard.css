@@ -280,3 +280,74 @@ body {
         height: 300px;
     }
 }
+
+
+/* Service report */
+.service-highlight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.service-highlight {
+    padding: 18px 22px;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.service-highlight-used {
+    background: rgba(16, 185, 129, 0.08);
+    border-left: 5px solid #10b981;
+}
+
+.service-highlight-cancelled {
+    background: rgba(239, 68, 68, 0.08);
+    border-left: 5px solid #ef4444;
+}
+
+.service-highlight-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.service-highlight-name {
+    font-size: 22px;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 4px;
+}
+
+.service-highlight-meta {
+    font-size: 13px;
+    color: #64748b;
+}
+
+.service-chart {
+    position: relative;
+    height: 300px;
+    margin-top: 24px;
+}
+
+.service-cancel-bar {
+    background-color: #ef4444;
+}
+
+.service-badge-used {
+    background-color: #10b981;
+    font-weight: 600;
+}
+
+.service-badge-cancelled {
+    background-color: #ef4444;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .service-highlight-grid {
+        grid-template-columns: 1fr;
+    }
+}

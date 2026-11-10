@@ -4,6 +4,7 @@ import dao.DashboardDAO;
 import dto.CustomerSource;
 import dto.RevenueChart;
 import dto.RoomUtilizationReport;
+import dto.ServiceUsageReport;
 import entity.Users;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -16,7 +17,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
-/** Builds the admin dashboard for revenue, customers, and room usage. */
+/** Builds the admin dashboard for revenue, customers, room usage, and service usage. */
 @WebServlet(name = "DashboardServlet", urlPatterns = {"/dashboard"})
 public class DashboardServlet extends HttpServlet {
 
@@ -42,6 +43,7 @@ public class DashboardServlet extends HttpServlet {
             List<RevenueChart> revenueChart = dashboardDAO.getRevenueChartData(startDate, endDate); // Đã fix logic
             List<CustomerSource> customerSource = dashboardDAO.getCustomerSource();
             RoomUtilizationReport roomUtilization = dashboardDAO.getRoomUtilization(startDate, endDate);
+            ServiceUsageReport serviceUsage = dashboardDAO.getServiceUsageReport(startDate, endDate);
 
             request.setAttribute("todayRevenue", revenue);
             request.setAttribute("selectedRevenue", revenue);
@@ -51,6 +53,7 @@ public class DashboardServlet extends HttpServlet {
             request.setAttribute("revenueChart", revenueChart);
             request.setAttribute("customerSource", customerSource);
             request.setAttribute("roomUtilization", roomUtilization);
+            request.setAttribute("serviceUsage", serviceUsage);
             request.setAttribute("from", startDate.toString());
             request.setAttribute("to", endDate.toString());
             request.setAttribute("revenueLabel", createRevenueLabel(startDate, endDate));
