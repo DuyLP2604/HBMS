@@ -17,11 +17,9 @@ import java.util.Objects;
 import util.flash.Flash;
 import util.security.CsrfTokens;
 
-/** Manages the service catalog and service orders for bookings. */
 @WebServlet(name = "ServiceServlet", urlPatterns = {"/service"})
 public class ServiceServlet extends HttpServlet {
 
-    /** Show the service catalog, the admin form, or the staff order list. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         Users currentUser = getCurrentUser(request);
@@ -62,7 +60,7 @@ public class ServiceServlet extends HttpServlet {
             ServiceDAO serviceDAO = new ServiceDAO();
             BookingDAO bookingDAO = new BookingDAO();
 
-            request.setAttribute("list", serviceDAO.getAllServices());
+            request.setAttribute("list", serviceDAO.getActiveServices());
 
             Booking targetBooking = resolveTargetBooking(request, currentUser, bookingDAO);
             request.setAttribute("currentBooking", targetBooking);
@@ -77,7 +75,6 @@ public class ServiceServlet extends HttpServlet {
         }
     }
 
-    /** Update the catalog, order a service, or mark an order complete. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         Users currentUser = getCurrentUser(request);
@@ -117,6 +114,17 @@ public class ServiceServlet extends HttpServlet {
                 String serviceID = request.getParameter("serviceID");
                 new ServiceDAO().deleteService(serviceID);
                 session.setAttribute("successMessage", "Xóa dịch vụ thành công!");
+            } catch (Exception e) {
+                session.setAttribute("errorMessage", e.getMessage());
+            }
+            response.sendRedirect(request.getContextPath() + "/service?action=manage");
+            return;
+        }
+        if ("toggleStatus".equalsIgnoreCase(action)) {
+            try {
+                String serviceID = request.getParameter("serviceID");
+                new ServiceDAO().toggleServiceStatus(serviceID);
+                session.setAttribute("successMessage", "Cập nhật trạng thái dịch vụ thành công!");
             } catch (Exception e) {
                 session.setAttribute("errorMessage", e.getMessage());
             }
@@ -230,7 +238,9 @@ public class ServiceServlet extends HttpServlet {
         return "Admin".equalsIgnoreCase(user.getRole()) || "Staff".equalsIgnoreCase(user.getRole());
     }
 
-    /** Find a booking the signed-in user can use to order a service. */
+    /**
+     * Find a booking the signed-in user can use to order a service.
+     */
     private Booking resolveTargetBooking(HttpServletRequest request, Users currentUser, BookingDAO bookingDAO) {
         String inputBookingID = request.getParameter("bookingID");
         if (inputBookingID != null && !inputBookingID.trim().isEmpty()) {

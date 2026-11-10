@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package entity;
 
 import jakarta.persistence.Basic;
@@ -24,7 +20,7 @@ import java.util.Collection;
 /**
  * Maps a service offered by the hotel and its unit price.
  *
- * @author Asus
+ * @author Thanh
  */
 @Entity
 @Table(name = "SERVICE")
@@ -46,7 +42,10 @@ public class Service implements Serializable {
     @Column(name = "UnitPrice")
     private BigDecimal unitPrice;
 
+    @Column(name = "ServiceStatus")
+    private String serviceStatus = "ACTIVE";
     private static final long serialVersionUID = 1L;
+
     @Id
     @Basic(optional = false)
     @NotNull
@@ -95,7 +94,7 @@ public class Service implements Serializable {
 
     @Override
     public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
+
         if (!(object instanceof Service)) {
             return false;
         }
@@ -127,4 +126,11 @@ public class Service implements Serializable {
         this.unitPrice = unitPrice;
     }
 
+    public String getServiceStatus() {
+        return serviceStatus;
+    }
+
+    public void setServiceStatus(String serviceStatus) {
+        this.serviceStatus = serviceStatus;
+    }
 }
