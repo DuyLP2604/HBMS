@@ -187,6 +187,122 @@
             </c:choose>
         </div>
 
+        <!-- Service usage & cancellation report -->
+        <div class="chart-card">
+            <div class="chart-title">
+                <i class="fas fa-concierge-bell"></i> Service Report
+            </div>
+
+            <div class="service-highlight-grid">
+                <div class="service-highlight service-highlight-used">
+                    <div class="service-highlight-label"><i class="fas fa-arrow-trend-up"></i> Most used service</div>
+                    <c:choose>
+                        <c:when test="${not empty serviceUsage.mostUsed}">
+                            <div class="service-highlight-name"><c:out value="${serviceUsage.mostUsed.serviceName}" /></div>
+                            <div class="service-highlight-meta">
+                                <fmt:formatNumber value="${serviceUsage.mostUsed.usedQuantity}" type="number" pattern="#,##0" /> used
+                                in ${serviceUsage.mostUsed.usedBookings} booking(s)
+                                &middot; <fmt:formatNumber value="${serviceUsage.mostUsed.usedRevenue}" type="number" pattern="#,##0" /> VND
+                            </div>
+                        </c:when>
+                        <c:otherwise>
+                            <div class="service-highlight-name text-muted">No data</div>
+                            <div class="service-highlight-meta">No service was used in this period.</div>
+                        </c:otherwise>
+                    </c:choose>
+                </div>
+
+                <div class="service-highlight service-highlight-cancelled">
+                    <div class="service-highlight-label"><i class="fas fa-ban"></i> Most cancelled service</div>
+                    <c:choose>
+                        <c:when test="${not empty serviceUsage.mostCancelled}">
+                            <div class="service-highlight-name"><c:out value="${serviceUsage.mostCancelled.serviceName}" /></div>
+                            <div class="service-highlight-meta">
+                                <fmt:formatNumber value="${serviceUsage.mostCancelled.cancelledQuantity}" type="number" pattern="#,##0" /> cancelled
+                                in ${serviceUsage.mostCancelled.cancelledBookings} booking(s)
+                                &middot; <fmt:formatNumber value="${serviceUsage.mostCancelled.cancelRate}" type="number" minFractionDigits="1" maxFractionDigits="1" />% cancel rate
+                            </div>
+                        </c:when>
+                        <c:otherwise>
+                            <div class="service-highlight-name text-muted">No data</div>
+                            <div class="service-highlight-meta">No service was cancelled in this period.</div>
+                        </c:otherwise>
+                    </c:choose>
+                </div>
+            </div>
+
+            <c:choose>
+                <c:when test="${serviceUsage.totalUsedQuantity == 0 and serviceUsage.totalCancelledQuantity == 0}">
+                    <p class="text-muted mb-0 mt-4">No service orders for this period.</p>
+                </c:when>
+                <c:otherwise>
+                    <div class="service-chart">
+                        <canvas id="serviceChart"></canvas>
+                    </div>
+                    <div class="table-responsive mt-4">
+                        <table class="table table-hover align-middle utilization-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Service</th>
+                                    <th class="text-end">Used</th>
+                                    <th class="text-end">Bookings</th>
+                                    <th class="text-end">Revenue (VND)</th>
+                                    <th class="text-end">Cancelled</th>
+                                    <th style="min-width: 180px;">Cancel rate</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <c:forEach items="${serviceUsage.items}" var="sv">
+                                    <tr>
+                                        <td class="fw-semibold">
+                                            <c:out value="${sv.serviceName}" />
+                                            <c:if test="${sv.serviceID == serviceUsage.mostUsed.serviceID}">
+                                                <span class="badge service-badge-used ms-1">Most used</span>
+                                            </c:if>
+                                            <c:if test="${sv.serviceID == serviceUsage.mostCancelled.serviceID}">
+                                                <span class="badge service-badge-cancelled ms-1">Most cancelled</span>
+                                            </c:if>
+                                        </td>
+                                        <td class="text-end"><fmt:formatNumber value="${sv.usedQuantity}" type="number" pattern="#,##0" /></td>
+                                        <td class="text-end">${sv.usedBookings}</td>
+                                        <td class="text-end"><fmt:formatNumber value="${sv.usedRevenue}" type="number" pattern="#,##0" /></td>
+                                        <td class="text-end">
+                                            <fmt:formatNumber value="${sv.cancelledQuantity}" type="number" pattern="#,##0" />
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 8px;">
+                                                    <div class="progress-bar service-cancel-bar" role="progressbar"
+                                                         style="width: ${sv.cancelRate}%;"
+                                                         aria-valuenow="${sv.cancelRate}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                                <span class="fw-semibold utilization-rate"><fmt:formatNumber value="${sv.cancelRate}" type="number" minFractionDigits="1" maxFractionDigits="1" />%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </c:forEach>
+                            </tbody>
+                            <tfoot>
+                                <tr class="fw-bold">
+                                    <td>Total</td>
+                                    <td class="text-end"><fmt:formatNumber value="${serviceUsage.totalUsedQuantity}" type="number" pattern="#,##0" /></td>
+                                    <td class="text-end"></td>
+                                    <td class="text-end"></td>
+                                    <td class="text-end"><fmt:formatNumber value="${serviceUsage.totalCancelledQuantity}" type="number" pattern="#,##0" /></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <p class="utilization-note">
+                        Based on bookings created in the selected period. "Used" counts confirmed, assigned, checked-in and checked-out bookings;
+                        "Cancelled" counts services of cancelled bookings (including unpaid bookings that expired). Unpaid pending bookings are excluded.
+                        Cancel rate = cancelled quantity / (used + cancelled quantity).
+                    </p>
+                </c:otherwise>
+            </c:choose>
+        </div>
+
         <!-- Customer Source Chart -->
         <div class="chart-card">
             <div class="chart-title">Customer Sources</div>
@@ -253,6 +369,11 @@
         <div id="utilizationData">
             <c:forEach items="${roomUtilization.byRoomType}" var="u">
                 <span class="utilization-data-item" data-type="${fn:escapeXml(u.typeName)}" data-rate="${u.occupancyRate}" data-used="${u.usedRoomDays}" data-available="${u.availableRoomDays}"></span>
+            </c:forEach>
+        </div>
+        <div id="serviceUsageData">
+            <c:forEach items="${serviceUsage.items}" var="sv">
+                <span class="service-data-item" data-name="${fn:escapeXml(sv.serviceName)}" data-used="${sv.usedQuantity}" data-cancelled="${sv.cancelledQuantity}"></span>
             </c:forEach>
         </div>
         <div id="customerSourceData">

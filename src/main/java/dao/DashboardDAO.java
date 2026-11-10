@@ -4,8 +4,11 @@ import dto.CustomerSource;
 import dto.RevenueChart;
 import dto.RoomTypeUtilization;
 import dto.RoomUtilizationReport;
+import dto.ServiceUsageItem;
+import dto.ServiceUsageReport;
 import entity.Payment;
 import entity.RoomType;
+import entity.Service;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TemporalType;
 import jakarta.persistence.TypedQuery;
@@ -18,6 +21,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Comparator;
 import java.util.Map;
 import util.PersistenceManager;
 import util.RoomUsageCalculator;
@@ -332,6 +336,101 @@ public class DashboardDAO {
             return report;
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to load the room utilization report.", exception);
+        } finally {
+            close(em);
+        }
+    }
+
+    /**
+     * Service report for bookings created in [startDate, endDate] (both inclusive).
+     *
+     * A service is "used" when it belongs to a CONFIRMED, ASSIGNED, CHECKED_IN or
+     * CHECKED_OUT booking, and "cancelled" when it belongs to a CANCELLED booking
+     * (cancellation is tracked on the booking; BOOKING_SERVICE rows are kept).
+     * PENDING_PAYMENT bookings are ignored because they are unpaid and may expire.
+     * Services that were never ordered in the period are still listed with zeros.
+     */
+    public ServiceUsageReport getServiceUsageReport(LocalDate startDate, LocalDate endDate) {
+        validateDateRange(startDate, endDate);
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            LocalDate endExclusive = endDate.plusDays(1);
+
+            Map<String, ServiceUsageItem> byService = new LinkedHashMap<>();
+            for (Service service : em.createQuery("SELECT s FROM Service s ORDER BY s.serviceID", Service.class)
+                    .getResultList()) {
+                byService.put(service.getServiceID(), new ServiceUsageItem(service.getServiceID(), service.getServiceName()));
+            }
+
+            // EclipseLink does not accept a List bound to IN (:param), so each status gets its own parameter.
+            String jpql = "SELECT bs.bookingServicePK.serviceID, b.bookingStatus, COUNT(b), SUM(bs.quantity), SUM(bs.subtotal) "
+                    + "FROM BookingService bs JOIN bs.booking b "
+                    + "WHERE b.bookingStatus IN (:s1, :s2, :s3, :s4, :s5) "
+                    + "AND b.bookingDate >= :startDate AND b.bookingDate < :endDate "
+                    + "GROUP BY bs.bookingServicePK.serviceID, b.bookingStatus";
+            List<Object[]> rows = em.createQuery(jpql, Object[].class)
+                    .setParameter("s1", "CONFIRMED")
+                    .setParameter("s2", "ASSIGNED")
+                    .setParameter("s3", "CHECKED_IN")
+                    .setParameter("s4", "CHECKED_OUT")
+                    .setParameter("s5", "CANCELLED")
+                    .setParameter("startDate", Timestamp.valueOf(startDate.atStartOfDay()))
+                    .setParameter("endDate", Timestamp.valueOf(endExclusive.atStartOfDay()))
+                    .getResultList();
+
+            for (Object[] row : rows) {
+                ServiceUsageItem item = byService.get((String) row[0]);
+                if (item == null) {
+                    continue;
+                }
+                long bookings = ((Number) row[2]).longValue();
+                long quantity = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+                BigDecimal amount = row[4] != null ? (BigDecimal) row[4] : BigDecimal.ZERO;
+                if ("CANCELLED".equals(row[1])) {
+                    item.setCancelledBookings(item.getCancelledBookings() + bookings);
+                    item.setCancelledQuantity(item.getCancelledQuantity() + quantity);
+                    item.setCancelledRevenue(item.getCancelledRevenue().add(amount));
+                } else {
+                    item.setUsedBookings(item.getUsedBookings() + bookings);
+                    item.setUsedQuantity(item.getUsedQuantity() + quantity);
+                    item.setUsedRevenue(item.getUsedRevenue().add(amount));
+                }
+            }
+
+            List<ServiceUsageItem> items = new ArrayList<>(byService.values());
+            items.sort(Comparator.comparingLong(ServiceUsageItem::getUsedQuantity).reversed()
+                    .thenComparing(Comparator.comparingLong(ServiceUsageItem::getCancelledQuantity).reversed())
+                    .thenComparing(ServiceUsageItem::getServiceName, String.CASE_INSENSITIVE_ORDER));
+
+            ServiceUsageReport report = new ServiceUsageReport();
+            report.setItems(items);
+            long totalUsed = 0;
+            long totalCancelled = 0;
+            ServiceUsageItem mostUsed = null;
+            ServiceUsageItem mostCancelled = null;
+            for (ServiceUsageItem item : items) {
+                totalUsed += item.getUsedQuantity();
+                totalCancelled += item.getCancelledQuantity();
+                if (item.getUsedQuantity() > 0
+                        && (mostUsed == null || item.getUsedQuantity() > mostUsed.getUsedQuantity()
+                        || (item.getUsedQuantity() == mostUsed.getUsedQuantity()
+                        && item.getUsedRevenue().compareTo(mostUsed.getUsedRevenue()) > 0))) {
+                    mostUsed = item;
+                }
+                if (item.getCancelledQuantity() > 0
+                        && (mostCancelled == null || item.getCancelledQuantity() > mostCancelled.getCancelledQuantity()
+                        || (item.getCancelledQuantity() == mostCancelled.getCancelledQuantity()
+                        && item.getCancelRate() > mostCancelled.getCancelRate()))) {
+                    mostCancelled = item;
+                }
+            }
+            report.setTotalUsedQuantity(totalUsed);
+            report.setTotalCancelledQuantity(totalCancelled);
+            report.setMostUsed(mostUsed);
+            report.setMostCancelled(mostCancelled);
+            return report;
+        } catch (Exception exception) {
+            throw new IllegalStateException("Unable to load the service usage report.", exception);
         } finally {
             close(em);
         }

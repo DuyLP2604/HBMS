@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
     initializeDateRangePicker();
     initializeRevenueChart();
     initializeUtilizationChart();
+    initializeServiceChart();
     initializeCustomerChart();
 
 });
@@ -396,6 +397,115 @@ function initializeUtilizationChart() {
                         callback: function (value) {
                             return value + "%";
                         }
+                    }
+                }
+            }
+        }
+    });
+}
+
+
+function initializeServiceChart() {
+
+    const canvas = document.getElementById("serviceChart");
+
+    if (!canvas || typeof Chart === "undefined") {
+        return;
+    }
+
+    const labels = [];
+    const used = [];
+    const cancelled = [];
+
+    document.querySelectorAll(".service-data-item").forEach(function (item) {
+
+        labels.push(item.dataset.name);
+        used.push(Number(item.dataset.used));
+        cancelled.push(Number(item.dataset.cancelled));
+    });
+
+    new Chart(canvas, {
+
+        type: "bar",
+
+        data: {
+
+            labels: labels,
+
+            datasets: [
+                {
+                    label: "Used",
+                    data: used,
+                    backgroundColor: "rgba(16, 185, 129, 0.75)",
+                    borderColor: "#10b981",
+                    borderWidth: 1,
+                    borderRadius: 6
+                },
+                {
+                    label: "Cancelled",
+                    data: cancelled,
+                    backgroundColor: "rgba(239, 68, 68, 0.75)",
+                    borderColor: "#ef4444",
+                    borderWidth: 1,
+                    borderRadius: 6
+                }
+            ]
+        },
+
+        options: {
+
+            responsive: true,
+            maintainAspectRatio: false,
+
+            plugins: {
+
+                legend: {
+
+                    position: "top",
+
+                    labels: {
+                        color: "#475569",
+                        usePointStyle: true,
+                        pointStyle: "circle"
+                    }
+                },
+
+                tooltip: {
+
+                    mode: "index",
+                    intersect: false,
+
+                    backgroundColor: "#111827",
+                    titleColor: "#ffffff",
+                    bodyColor: "#e5e7eb"
+                }
+            },
+
+            scales: {
+
+                x: {
+
+                    grid: {
+                        display: false
+                    },
+
+                    ticks: {
+                        color: "#64748b"
+                    }
+                },
+
+                y: {
+
+                    beginAtZero: true,
+
+                    grid: {
+                        color: "rgba(148, 163, 184, 0.18)",
+                        drawBorder: false
+                    },
+
+                    ticks: {
+                        color: "#64748b",
+                        precision: 0
                     }
                 }
             }
