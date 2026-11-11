@@ -4,6 +4,7 @@ import dao.BookingDAO;
 import dao.EmployeeDAO;
 import dao.ServiceDAO;
 import entity.Booking;
+import entity.BookingService;
 import entity.Employee;
 import entity.Users;
 import jakarta.servlet.ServletException;
@@ -13,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.util.List;
 import java.util.Objects;
 import util.flash.Flash;
 import util.security.CsrfTokens;
@@ -36,11 +38,37 @@ public class ServiceServlet extends HttpServlet {
             }
             ServiceDAO serviceDAO = new ServiceDAO();
             boolean canFulfill = canFulfillOrders(currentUser);
+            boolean isReceptionistOrAdmin = "Admin".equalsIgnoreCase(currentUser.getRole())
+                    || ("Staff".equalsIgnoreCase(currentUser.getRole()) && new dao.EmployeeDAO().isReceptionistByUserId(currentUser.getUserID()));
             request.setAttribute("canFulfillOrders", canFulfill);
-            if (canFulfill) {
+            request.setAttribute("canCancelService", isReceptionistOrAdmin);
+            if (canFulfill || isReceptionistOrAdmin) {
                 request.setAttribute("serviceOrderCsrfToken", CsrfTokens.getOrCreate(request.getSession()));
             }
-            request.setAttribute("orders", serviceDAO.getAllBookedServices());
+            int requestedPage = 1;
+            try {
+                String pageParam = request.getParameter("page");
+                if (pageParam != null) {
+                    requestedPage = Math.max(1, Integer.parseInt(pageParam.trim()));
+                }
+            } catch (NumberFormatException ignored) {
+            }
+            int pageSize = 10;
+            long totalOrders = serviceDAO.countBookedServices();
+            int totalPages = (int) Math.max(1L, (totalOrders + pageSize - 1L) / pageSize);
+            int currentPage = Math.min(requestedPage, totalPages);
+            int offset = (currentPage - 1) * pageSize;
+            List<BookingService> orders = serviceDAO.getBookedServicesPaged(offset, pageSize);
+
+            request.setAttribute("orders", orders);
+            request.setAttribute("currentPage", currentPage);
+            request.setAttribute("totalPages", totalPages);
+            request.setAttribute("totalOrders", totalOrders);
+            request.setAttribute("pageSize", pageSize);
+            request.setAttribute("startIndex", orders.isEmpty() ? 0 : offset + 1);
+            request.setAttribute("endIndex", orders.isEmpty() ? 0 : offset + orders.size());
+            request.setAttribute("pageStart", Math.max(1, currentPage - 2));
+            request.setAttribute("pageEnd", Math.min(totalPages, currentPage + 2));
             request.getRequestDispatcher("/WEB-INF/views/service-orders.jsp").forward(request, response);
             return;
         }
@@ -68,6 +96,10 @@ public class ServiceServlet extends HttpServlet {
             if (targetBooking != null) {
                 request.setAttribute("myServices", serviceDAO.getServicesByBookingId(targetBooking.getBookingID()));
             }
+
+            boolean isReceptionistOrAdmin = "Admin".equalsIgnoreCase(currentUser.getRole())
+                    || ("Staff".equalsIgnoreCase(currentUser.getRole()) && new dao.EmployeeDAO().isReceptionistByUserId(currentUser.getUserID()));
+            request.setAttribute("canCancelService", isReceptionistOrAdmin);
 
             request.getRequestDispatcher("/WEB-INF/views/service.jsp").forward(request, response);
         } catch (Exception exception) {
@@ -131,6 +163,33 @@ public class ServiceServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/service?action=manage");
             return;
         }
+        if ("cancelOrder".equalsIgnoreCase(action)) {
+            boolean isReceptionistOrAdmin = "Admin".equalsIgnoreCase(currentUser.getRole())
+                    || ("Staff".equalsIgnoreCase(currentUser.getRole()) && new dao.EmployeeDAO().isReceptionistByUserId(currentUser.getUserID()));
+            if (!isReceptionistOrAdmin) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only Receptionist or Admin can cancel services.");
+                return;
+            }
+            String bookingID = request.getParameter("bookingID");
+            String serviceID = request.getParameter("serviceID");
+            String from = request.getParameter("from");
+            try {
+                new ServiceDAO().cancelBookingService(bookingID, serviceID, currentUser.getUserID());
+                session.setAttribute("successMessage", "Service request cancelled successfully.");
+            } catch (Exception e) {
+                session.setAttribute("errorMessage", e.getMessage());
+            }
+            if ("orders".equalsIgnoreCase(from)) {
+                response.sendRedirect(request.getContextPath() + "/service?action=orders");
+                return;
+            }
+            if (bookingID != null && !bookingID.isBlank()) {
+                response.sendRedirect(request.getContextPath() + "/service?bookingID=" + bookingID.trim());
+            } else {
+                response.sendRedirect(request.getContextPath() + "/service");
+            }
+            return;
+        }
         boolean accepting = "acceptOrder".equalsIgnoreCase(action);
         if (accepting || "completeOrder".equalsIgnoreCase(action)) {
             handleServiceOrder(request, response, currentUser, accepting);
@@ -142,7 +201,6 @@ public class ServiceServlet extends HttpServlet {
         String quantityValue = request.getParameter("quantity");
         String inputBookingID = request.getParameter("bookingID");
 
-
         try {
             if (selectedServiceID == null || selectedServiceID.trim().isEmpty()) {
                 throw new IllegalArgumentException("Vui lòng chọn dịch vụ.");
@@ -150,7 +208,6 @@ public class ServiceServlet extends HttpServlet {
             int quantity = parseQuantity(quantityValue);
 
             BookingDAO bookingDAO = new BookingDAO();
-
 
             if (inputBookingID != null && !inputBookingID.trim().isEmpty()) {
                 targetBooking = bookingDAO.getByIdWithDetails(inputBookingID.trim());

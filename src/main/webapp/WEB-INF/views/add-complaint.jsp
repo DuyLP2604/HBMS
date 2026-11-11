@@ -2,7 +2,6 @@
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%-- Lets the guest submit a complaint. --%>
 <layout:layout title="Submit Complaint" pageCss="group5.css" useBootstrap="true" bodyClass="hbms-ui-page group5-page">
     <div class="hbms-ui ui-shell g5-workspace">
         <div class="row g-4">
@@ -25,12 +24,12 @@
 
                             <div class="mb-3">
                                 <label for="complaintTitle" class="form-label">Title <span class="text-danger">*</span></label>
-                                <input type="text" id="complaintTitle" name="title" class="form-control" required placeholder="Tóm tắt vấn đề...">
+                                <input type="text" id="complaintTitle" name="title" class="form-control" required placeholder="Summary of the issue...">
                             </div>
 
                             <div class="mb-3">
                                 <label for="complaintContent" class="form-label">Complaint Details <span class="text-danger">*</span></label>
-                                <textarea id="complaintContent" name="content" class="form-control" rows="6" required placeholder="Mô tả chi tiết sự việc..."></textarea>
+                                <textarea id="complaintContent" name="content" class="form-control" rows="6" required placeholder="Detailed description of the issue..."></textarea>
                             </div>
 
                             <div class="g5-actions mt-2">
@@ -65,13 +64,13 @@
                                                 <div>
                                                     <c:choose>
                                                         <c:when test="${c.status eq 'Đã xử lý'}">
-                                                            <span class="badge g5-status-success w-100">Đã xử lý</span>
+                                                            <span class="badge g5-status-success w-100">Resolved</span>
                                                         </c:when>
                                                         <c:when test="${c.status eq 'Đang xử lý'}">
-                                                            <span class="badge g5-status-pending w-100">Đang xử lý</span>
+                                                            <span class="badge g5-status-pending w-100">In Progress</span>
                                                         </c:when>
                                                         <c:otherwise>
-                                                            <span class="badge g5-status-neutral w-100">Chưa xử lý</span>
+                                                            <span class="badge g5-status-neutral w-100">Pending</span>
                                                         </c:otherwise>
                                                     </c:choose>
                                                 </div>
