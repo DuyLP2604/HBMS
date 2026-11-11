@@ -22,9 +22,12 @@ import java.util.Locale;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import util.BookingTimePolicy;
+import static util.RoleManager.requireAdmin;
 import util.flash.Flash;
 
-/** Handles room type search and room type maintenance. */
+/**
+ * Handles room type search and room type maintenance.
+ */
 @WebServlet(name = "RoomTypeServlet", urlPatterns = {"/room-types"})
 @MultipartConfig(fileSizeThreshold = 1024 * 1024,
         maxFileSize = 1024 * 1024 * 5,
@@ -45,7 +48,7 @@ public class RoomTypeServlet extends HttpServlet {
 
             case "manage":
             case "list": // Trang quản lý danh sách loại phòng dành cho Admin
-                if (!isAdmin(session)) {
+                if (!requireAdmin(session)) {
                     Flash.error(request, "Permission denied! Only Admin can access this page.");
                     response.sendRedirect(request.getContextPath() + "/room-types");
                     return;
@@ -55,7 +58,7 @@ public class RoomTypeServlet extends HttpServlet {
                 break;
 
             case "create":
-                if (!isAdmin(session)) {
+                if (!requireAdmin(session)) {
                     Flash.error(request, "Permission denied! Only Admin can access this page.");
                     response.sendRedirect(request.getContextPath() + "/room-types");
                     return;
@@ -64,7 +67,7 @@ public class RoomTypeServlet extends HttpServlet {
                 break;
 
             case "update":
-                if (!isAdmin(session)) {
+                if (!requireAdmin(session)) {
                     Flash.error(request, "Permission denied! Only Admin can access this page.");
                     response.sendRedirect(request.getContextPath() + "/room-types");
                     return;
@@ -81,7 +84,7 @@ public class RoomTypeServlet extends HttpServlet {
                 break;
 
             case "delete":
-                if (!isAdmin(session)) {
+                if (!requireAdmin(session)) {
                     Flash.error(request, "Permission denied! Only Admin can remove room type.");
                     response.sendRedirect(request.getContextPath() + "/room-types");
                     return;
@@ -112,7 +115,6 @@ public class RoomTypeServlet extends HttpServlet {
                 break;
 
             default:
-                // Trọng tâm trang tìm kiếm phòng cho Khách hàng
                 showSearchPage(request, response, roomTypeDAO);
                 break;
         }
@@ -121,7 +123,7 @@ public class RoomTypeServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         HttpSession session = request.getSession(false);
-        if (!isAdmin(session)) {
+        if (!requireAdmin(session)) {
             Flash.error(request, "Permission denied! Only Admin can modify data.");
             response.sendRedirect(request.getContextPath() + "/room-types");
             return;
@@ -221,12 +223,13 @@ public class RoomTypeServlet extends HttpServlet {
     }
 
     // ================= HELPER METHODS =================
-    /** Validate the stay dates and show availability by room type. */
+    /**
+     * Validate the stay dates and show availability by room type.
+     */
     private void showSearchPage(HttpServletRequest request, HttpServletResponse response, RoomTypeDAO roomTypeDAO) throws ServletException, IOException {
         moveFlashMessage(request);
         LocalDateTime now = BookingTimePolicy.now();
         LocalDate minimumCheckIn = BookingTimePolicy.minimumCheckInDate(now);
-        // JSP uses "today" as the minimum selectable check-in date.
         request.setAttribute("today", minimumCheckIn.toString());
 
         String checkInValue = request.getParameter("checkInDate");
@@ -270,7 +273,9 @@ public class RoomTypeServlet extends HttpServlet {
         request.getRequestDispatcher("/WEB-INF/views/room-type-search.jsp").forward(request, response);
     }
 
-    /** Show the selected room type and availability for the default stay. */
+    /**
+     * Show the selected room type and availability for the default stay.
+     */
     private void showRoomDetail(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String id = request.getParameter("id");
         if (id != null && !id.trim().isEmpty()) {
@@ -301,14 +306,6 @@ public class RoomTypeServlet extends HttpServlet {
             }
         }
         request.getRequestDispatcher("/WEB-INF/views/room-type-detail.jsp").forward(request, response);
-    }
-
-    private boolean isAdmin(HttpSession session) {
-        if (session == null) {
-            return false;
-        }
-        Users u = (Users) session.getAttribute("user");
-        return u != null && "admin".equalsIgnoreCase(u.getRole());
     }
 
     private void moveFlashMessage(HttpServletRequest request) {

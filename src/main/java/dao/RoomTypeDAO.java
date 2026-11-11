@@ -13,7 +13,10 @@ import java.util.ArrayList;
 import java.util.List;
 import util.PersistenceManager;
 
-/** Queries room types and checks availability through SP_GET_ROOM_TYPE_AVAILABILITY. */
+/**
+ * Queries room types and checks availability through
+ * SP_GET_ROOM_TYPE_AVAILABILITY.
+ */
 public class RoomTypeDAO extends DAOFramework<RoomType> {
 
     public RoomTypeDAO() {
@@ -30,24 +33,17 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
 
     private boolean isRemovable(String id) {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
-            // Query đếm số lượng Room đang thuộc RoomType này
             String jpql = "SELECT COUNT(r) FROM Room r WHERE r.roomTypeID.roomTypeID = :id";
-
-            Long count = em.createQuery(jpql, Long.class)
-                    .setParameter("id", id)
-                    .getSingleResult();
-
-            // Nếu count == 0 nghĩa là không còn phòng nào -> cho phép xóa (trả về true)
+            Long count = em.createQuery(jpql, Long.class).setParameter("id", id).getSingleResult();
             return count != null && count == 0;
         } catch (Exception e) {
+            System.out.println(e.getMessage());
         }
-        // Nếu xảy ra lỗi hệ thống/DB, mặc định trả về false để đảm bảo an toàn dữ liệu
         return false;
     }
 
     public String generateRoomTypeID() {
         try (EntityManager em = PersistenceManager.createEntityManager()) {
-            // Lấy số lớn nhất từ chuỗi mã loại phòng (cắt từ vị trí số 3 vì 2 ký tự đầu là 'RT')
             String jpql = "SELECT MAX("
                     + "CAST(SUBSTRING(rt.roomTypeID, 3, LENGTH(rt.roomTypeID)) AS Integer)"
                     + ") FROM RoomType rt";
@@ -55,18 +51,21 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
             Integer maxId = query.getSingleResult();
 
             if (maxId != null) {
-                return String.format("RT%02d", maxId + 1); // Trả về RT01, RT02, RT03...
+                return String.format("RT%02d", maxId + 1);
             }
         } catch (Exception e) {
-            e.printStackTrace(); // In ra lỗi để dễ debug nếu có vấn đề với Database
         }
-        return "RT01"; // ID mặc định nếu bảng RoomType đang trống
+        return "RT01";
     }
 
-    /** Load room counts for each type in the requested date range. */
-    public List<RoomTypeAvailability> getAvailability(
-            LocalDate checkInDate,
-            LocalDate checkOutDate) {
+    /**
+     * Load room counts for each type in the requested date range.
+     *
+     * @param checkInDate
+     * @param checkOutDate
+     * @return
+     */
+    public List<RoomTypeAvailability> getAvailability(LocalDate checkInDate, LocalDate checkOutDate) {
 
         validateDateRange(checkInDate, checkOutDate);
 
@@ -74,38 +73,15 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
 
         try {
             // SP_GET_ROOM_TYPE_AVAILABILITY returns free room counts by type and stay dates.
-            StoredProcedureQuery query
-                    = em.createStoredProcedureQuery(
-                            "SP_GET_ROOM_TYPE_AVAILABILITY"
-                    );
+            StoredProcedureQuery query = em.createStoredProcedureQuery("SP_GET_ROOM_TYPE_AVAILABILITY");
+            query.registerStoredProcedureParameter("CheckInDate", Date.class, ParameterMode.IN);
+            query.registerStoredProcedureParameter("CheckOutDate", Date.class, ParameterMode.IN);
+            query.setParameter("CheckInDate", Date.valueOf(checkInDate));
+            query.setParameter("CheckOutDate", Date.valueOf(checkOutDate));
 
-            query.registerStoredProcedureParameter(
-                    "CheckInDate",
-                    Date.class,
-                    ParameterMode.IN
-            );
-
-            query.registerStoredProcedureParameter(
-                    "CheckOutDate",
-                    Date.class,
-                    ParameterMode.IN
-            );
-
-            query.setParameter(
-                    "CheckInDate",
-                    Date.valueOf(checkInDate)
-            );
-
-            query.setParameter(
-                    "CheckOutDate",
-                    Date.valueOf(checkOutDate)
-            );
-
-            @SuppressWarnings("unchecked")
             List<Object[]> rows = query.getResultList();
 
-            List<RoomTypeAvailability> result
-                    = new ArrayList<>();
+            List<RoomTypeAvailability> result = new ArrayList<>();
 
             for (Object[] row : rows) {
                 result.add(mapAvailability(row));
@@ -124,16 +100,21 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         }
     }
 
-    /** Keep only the room types with availability. */
+    /**
+     * Keep only the room types with availability.
+     *
+     * @param checkInDate
+     * @param checkOutDate
+     * @return
+     */
     public List<RoomTypeAvailability> getAvailableRoomTypes(
             LocalDate checkInDate,
             LocalDate checkOutDate) {
 
-        List<RoomTypeAvailability> availability
-                = getAvailability(
-                        checkInDate,
-                        checkOutDate
-                );
+        List<RoomTypeAvailability> availability = getAvailability(
+                checkInDate,
+                checkOutDate
+        );
 
         List<RoomTypeAvailability> availableTypes
                 = new ArrayList<>();
@@ -147,24 +128,16 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         return availableTypes;
     }
 
-    /** Convert one availability row into a result for the search page. */
+    /**
+     * Convert one availability row into a result for the search page.
+     */
     private RoomTypeAvailability mapAvailability(Object[] row) {
 
-        String roomTypeID = row[0] == null
-                ? null
-                : row[0].toString().trim();
-
-        String typeName = row[1] == null
-                ? null
-                : row[1].toString();
-
+        String roomTypeID = row[0] == null ? null : row[0].toString().trim();
+        String typeName = row[1] == null ? null : row[1].toString();
         int capacity = toInt(row[2]);
-
         BigDecimal price = toBigDecimal(row[3]);
-
-        String roomTypeImage = row[4] == null
-                ? null
-                : row[4].toString();
+        String roomTypeImage = row[4] == null ? null : row[4].toString();
 
         long totalActiveRooms = toLong(row[5]);
         long reservedRooms = toLong(row[6]);
@@ -182,20 +155,13 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         );
     }
 
-    private void validateDateRange(
-            LocalDate checkInDate,
-            LocalDate checkOutDate) {
-
+    private void validateDateRange(LocalDate checkInDate, LocalDate checkOutDate) {
         if (checkInDate == null || checkOutDate == null) {
-            throw new IllegalArgumentException(
-                    "Check-in date and check-out date are required."
-            );
+            throw new IllegalArgumentException("Check-in date and check-out date are required.");
         }
 
         if (!checkOutDate.isAfter(checkInDate)) {
-            throw new IllegalArgumentException(
-                    "Check-out date must be later than check-in date."
-            );
+            throw new IllegalArgumentException("Check-out date must be later than check-in date.");
         }
     }
 
@@ -203,7 +169,6 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         if (value == null) {
             return 0;
         }
-
         return ((Number) value).intValue();
     }
 
@@ -211,7 +176,6 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         if (value == null) {
             return 0L;
         }
-
         return ((Number) value).longValue();
     }
 
@@ -219,11 +183,9 @@ public class RoomTypeDAO extends DAOFramework<RoomType> {
         if (value == null) {
             return BigDecimal.ZERO;
         }
-
         if (value instanceof BigDecimal) {
             return (BigDecimal) value;
         }
-
         return new BigDecimal(value.toString());
     }
 

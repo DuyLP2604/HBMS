@@ -30,7 +30,9 @@ import java.util.Collection;
 @Table(name = "ROOM_TYPE")
 @XmlRootElement
 @NamedQueries({
+    //Get all roomType
     @NamedQuery(name = "RoomType.findAll", query = "SELECT r FROM RoomType r"),
+    //Get room type by Id
     @NamedQuery(name = "RoomType.findByRoomTypeID", query = "SELECT r FROM RoomType r WHERE r.roomTypeID = :roomTypeID"),
     @NamedQuery(name = "RoomType.findByTypeName", query = "SELECT r FROM RoomType r WHERE r.typeName = :typeName"),
     @NamedQuery(name = "RoomType.findByCapacity", query = "SELECT r FROM RoomType r WHERE r.capacity = :capacity"),
@@ -93,7 +95,6 @@ public class RoomType implements Serializable {
     public void setRoomTypeID(String roomTypeID) {
         this.roomTypeID = roomTypeID;
     }
-
 
     @XmlTransient
     public Collection<BookingDetail> getBookingDetailCollection() {
