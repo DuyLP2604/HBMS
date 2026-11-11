@@ -3,7 +3,6 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-<%-- Lets a guest choose a hotel service and quantity for a booking. --%>
 <layout:layout title="Dịch vụ khách sạn" pageCss="group5.css" useBootstrap="true" bodyClass="hbms-ui-page group5-page">
     <div class="hbms-ui ui-shell g5-workspace">
         <header class="g5-heading">
@@ -42,6 +41,29 @@
                                         <fmt:formatDate value="${currentBooking.checkInDate}" pattern="dd/MM/yyyy" /> - <fmt:formatDate value="${currentBooking.checkOutDate}" pattern="dd/MM/yyyy" />
                                     </span>
                                 </div>
+                                <c:set var="canOrder" value="false" />
+                                <c:if test="${not empty currentBooking}">
+                                    <c:choose>
+                                        <c:when test="${sessionScope.user.role eq 'Customer'}">
+                                            <c:set var="canOrder" value="${currentBooking.bookingStatus eq 'CONFIRMED' or currentBooking.bookingStatus eq 'ASSIGNED'}" />
+                                        </c:when>
+                                        <c:otherwise>
+                                            <c:set var="canOrder" value="${currentBooking.bookingStatus eq 'CHECKED_IN'}" />
+                                        </c:otherwise>
+                                    </c:choose>
+                                </c:if>
+                                <c:if test="${sessionScope.user.role eq 'Customer' and currentBooking.bookingStatus eq 'CHECKED_IN'}">
+                                    <div class="alert alert-warning mt-3 mb-0 py-2">
+                                        <i class="fa-solid fa-bell me-2"></i>
+                                        <strong>Quý khách đã nhận phòng.</strong> Để yêu cầu dịch vụ phòng, quý khách vui lòng liên hệ nhân viên phục vụ để được phục vụ chu đáo nhất.
+                                    </div>
+                                </c:if>
+                                <c:if test="${sessionScope.user.role ne 'Customer' and currentBooking.bookingStatus ne 'CHECKED_IN'}">
+                                    <div class="alert alert-warning mt-3 mb-0 py-2">
+                                        <i class="fa-solid fa-circle-exclamation me-2"></i>
+                                        Chỉ có thể thêm dịch vụ cho khách đang lưu trú tại khách sạn (In-house).
+                                    </div>
+                                </c:if>
                             </c:when>
                             <c:otherwise>
                                 <div class="text-warning-emphasis">
@@ -68,7 +90,7 @@
             <i class="fa-solid fa-utensils" aria-hidden="true"></i>
             <div>
                 <strong>Đặc quyền lưu trú.</strong>
-                <span>Mọi đơn đặt phòng tại HBMS mặc định đã được tặng kèm <strong>Buffet sáng miễn phí mỗi ngày</strong> cho toàn bộ khách lưu trú.</span>
+                <span>Mọi đơn đặt phòng tại HBMS mặc định đã được tặng kèm <strong>Buffet ăn tối mỗi ngày</strong> cho toàn bộ khách lưu trú.</span>
             </div>
         </div>
 
@@ -106,8 +128,7 @@
                                                             <span class="text-success fw-bold fs-5" title="Đã được tặng kèm theo phòng">✓</span>
                                                         </c:when>
                                                         <c:otherwise>
-                                                            <input class="form-check-input" type="radio" name="selectedService" value="${service.serviceID}" required ${empty currentBooking ? 'disabled' : ''}>
-                                                        </c:otherwise>
+                                                            <input class="form-check-input" type="radio" name="selectedService" value="${service.serviceID}" required ${not canOrder ? 'disabled' : ''}>                                                        </c:otherwise>
                                                     </c:choose>
                                                 </td>
                                                 <td>
@@ -142,16 +163,12 @@
                             <c:if test="${not empty list}">
                                 <div class="g5-service-quantity mt-3">
                                     <label for="quantity" class="form-label fw-semibold mb-0">Số lượng</label>
-                                    <input id="quantity" class="form-control text-center" type="number" name="quantity" value="1" min="1" max="99" required ${empty currentBooking ? 'disabled' : ''}>
+                                    <input id="quantity" class="form-control text-center" type="number" name="quantity" value="1" min="1" max="99" required ${not canOrder ? 'disabled' : ''}>                                </c:if>
+                                    <div class="g5-actions justify-content-between mt-3">
+                                        <a href="${pageContext.request.contextPath}/" class="btn g5-secondary px-4">Quay lại</a>
+                                    <button type="submit" class="btn g5-primary px-4" ${empty list or not canOrder ? "disabled" : ""}>                                        <i class="fa-solid fa-plus me-1"></i>Thêm dịch vụ
+                                    </button>
                                 </div>
-                            </c:if>
-
-                            <div class="g5-actions justify-content-between mt-3">
-                                <a href="${pageContext.request.contextPath}/" class="btn g5-secondary px-4">Quay lại</a>
-                                <button type="submit" class="btn g5-primary px-4" ${empty list || empty currentBooking ? "disabled" : ""}>
-                                    <i class="fa-solid fa-plus me-1"></i>Thêm dịch vụ
-                                </button>
-                            </div>
                         </form>
                     </div>
                 </div>
