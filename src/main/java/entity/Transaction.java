@@ -21,7 +21,8 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
- * Maps the shared transaction record referenced by payments, refunds, and invoices.
+ * Maps the shared transaction record referenced by payments and refunds.
+ * Invoice transactions are obtained through the booking and its payments.
  *
  * @author Asus
  */

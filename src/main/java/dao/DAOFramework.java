@@ -14,7 +14,7 @@ import util.PersistenceManager;
 /** Provides shared JPA operations for saving, loading, and importing entities. */
 public class DAOFramework<T> {
 
-    private static final Set<String> PROCEDURE_TABLES = Set.of("BOOKING", "BOOKING_DETAIL", "BOOKING_SERVICE", "ROOM_ASSIGNMENT", "PAYMENT", "CUSTOMER_WALLET", "BOOKING_REFUND", "REFUND_PAYMENT", "WALLET_TRANSACTION", "USER_BOOKING_CONTROL", "BOOKING_LOCK_HISTORY", "TRANSACTION", "INVOICE_TRANSACTION", "INVOICE");
+    private static final Set<String> PROCEDURE_TABLES = Set.of("BOOKING", "BOOKING_DETAIL", "BOOKING_SERVICE", "ROOM_ASSIGNMENT", "PAYMENT", "CUSTOMER_WALLET", "BOOKING_REFUND", "REFUND_PAYMENT", "WALLET_TRANSACTION", "USER_BOOKING_CONTROL", "BOOKING_LOCK_HISTORY", "TRANSACTION", "INVOICE");
     private final Class<T> entityClass;
 
     public DAOFramework(Class<T> entityClassType) {

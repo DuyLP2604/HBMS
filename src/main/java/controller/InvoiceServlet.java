@@ -46,7 +46,7 @@ public class InvoiceServlet extends HttpServlet {
             try {
                 Map<String, Object> summary = bookingDAO.getPaymentSummary(bookingID);
 
-                if (summary != null && !summary.isEmpty()) {
+                if (summary != null && "CHECKED_OUT".equals(summary.get("bookingStatus"))) {
                     Map<String, String> roomDetail = invoiceDAO.getRoomDetailByBooking(bookingID);
                     List<Map<String, String>> services = invoiceDAO.getServicesByBooking(bookingID);
                     Map<String, String> invoice = invoiceDAO.getInvoiceByBooking(bookingID);
@@ -89,7 +89,6 @@ public class InvoiceServlet extends HttpServlet {
 
         try {
             request.setAttribute("paidInvoices", invoiceDAO.getPaidInvoices());
-            request.setAttribute("occupiedRooms", invoiceDAO.getOccupiedRooms());
         } catch (Exception ex) {
             throw new ServletException("Unable to load the invoice list.", ex);
         }
