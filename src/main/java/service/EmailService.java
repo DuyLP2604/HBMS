@@ -1,8 +1,6 @@
 package service;
 
-import jakarta.mail.Authenticator;
 import jakarta.mail.Message;
-import jakarta.mail.PasswordAuthentication;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
@@ -78,12 +76,7 @@ public class EmailService {
         properties.put("mail.smtp.connectiontimeout", "10000");
         properties.put("mail.smtp.timeout", "10000");
         properties.put("mail.smtp.writetimeout", "10000");
-        Session mailSession = Session.getInstance(properties, new Authenticator() {
-            @Override
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(senderEmail, appPassword);
-            }
-        });
+        Session mailSession = Session.getInstance(properties, new SmtpAuthenticator(senderEmail, appPassword));
         try {
             InternetAddress address = new InternetAddress(recipient, true);
             address.validate();

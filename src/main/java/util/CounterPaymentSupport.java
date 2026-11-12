@@ -1,11 +1,11 @@
-package controller;
+package util;
 
 import com.google.gson.JsonObject;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
-import dao.PayOsOrderDAO.Order;
+import dto.PayOsOrder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.awt.image.BufferedImage;
@@ -14,12 +14,12 @@ import javax.imageio.ImageIO;
 import service.CounterPaymentService;
 
 /** Writes the order status and QR image used by front desk payment forms. */
-final class CounterPaymentSupport {
+public final class CounterPaymentSupport {
     private CounterPaymentSupport() {
     }
 
     /** Return the order code, status, and QR image URL as JSON. */
-    static void writeOrder(HttpServletRequest request, HttpServletResponse response, Order order, String path)
+    public static void writeOrder(HttpServletRequest request, HttpServletResponse response, PayOsOrder order, String path)
             throws IOException {
         JsonObject body = new JsonObject();
         String status = CounterPaymentService.status(order);
@@ -36,7 +36,7 @@ final class CounterPaymentSupport {
     }
 
     /** Render the PayOS QR payload as a PNG image. */
-    static void writeQrImage(HttpServletResponse response, Order order) throws IOException, WriterException {
+    public static void writeQrImage(HttpServletResponse response, PayOsOrder order) throws IOException, WriterException {
         if (order == null || !"PENDING".equals(CounterPaymentService.status(order))) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
@@ -52,7 +52,7 @@ final class CounterPaymentSupport {
         ImageIO.write(png, "png", response.getOutputStream());
     }
 
-    static void writeError(HttpServletResponse response, int status, String message) throws IOException {
+    public static void writeError(HttpServletResponse response, int status, String message) throws IOException {
         response.setStatus(status);
         JsonObject body = new JsonObject();
         body.addProperty("message", message);
@@ -64,7 +64,7 @@ final class CounterPaymentSupport {
         response.getWriter().write(body.toString());
     }
 
-    static long parseOrderCode(String value) {
+    public static long parseOrderCode(String value) {
         long code = Long.parseLong(value);
         if (code <= 0) {
             throw new IllegalArgumentException("Invalid PayOS order.");

@@ -3,6 +3,8 @@ package controller;
 import dao.PayOsOrderDAO;
 import dao.PaymentmethodDAO;
 import dao.WalletDAO;
+import dto.PayOsLink;
+import dto.PayOsOrder;
 import dto.WalletSummary;
 import entity.Booking;
 import entity.Payment;
@@ -23,27 +25,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import service.PayOsService;
+import service.PaymentRequest;
 import service.PaymentService;
-import service.PaymentService.PaymentRequest;
+import util.PaymentPageData;
 
 /** Handles online booking payments, PayOS redirects, and the payment result. */
 @WebServlet(name = "PaymentServlet", urlPatterns = {"/payment"})
 public class PaymentServlet extends HttpServlet {
-
-    private static final class PaymentPageData {
-
-        final Booking booking;
-        final PaymentRequest paymentRequest;
-        final Map<String, Object> summary;
-        final List<Paymentmethod> methods;
-
-        PaymentPageData(Booking booking, PaymentRequest paymentRequest, Map<String, Object> summary, List<Paymentmethod> methods) {
-            this.booking = booking;
-            this.paymentRequest = paymentRequest;
-            this.summary = summary;
-            this.methods = methods;
-        }
-    }
 
     /** Open the payment form, show a receipt, or handle the return from PayOS. */
     @Override
@@ -70,7 +58,7 @@ public class PaymentServlet extends HttpServlet {
         if (data == null) {
             return;
         }
-        String token = setupPaymentSession(session, request, data.paymentRequest);
+        String token = setupPaymentSession(session, request, data.getPaymentRequest());
         setupPaymentAttributes(request, data, token);
         request.getRequestDispatcher("/WEB-INF/views/payment.jsp").forward(request, response);
     }
@@ -124,20 +112,20 @@ public class PaymentServlet extends HttpServlet {
 
     /** Prepare the payment form with the balance and usable wallet amount. */
     private void setupPaymentAttributes(HttpServletRequest request, PaymentPageData data, String token) {
-        PaymentRequest paymentRequest = data.paymentRequest;
+        PaymentRequest paymentRequest = data.getPaymentRequest();
         BigDecimal walletBalance = paymentRequest.getWalletBalance();
         BigDecimal offeredWallet = paymentRequest.getOfferedWalletAmount();
         BigDecimal amountToPay = paymentRequest.getAmount();
 
-        request.setAttribute("booking", data.booking);
+        request.setAttribute("booking", data.getBooking());
         request.setAttribute("walletBalance", walletBalance);
         request.setAttribute("walletAvailable", walletBalance != null);
         request.setAttribute("walletCanPay", offeredWallet.compareTo(amountToPay) >= 0);
         request.setAttribute("walletContribution", offeredWallet);
         request.setAttribute("externalContribution", amountToPay.subtract(offeredWallet));
-        request.setAttribute("bookingSummary", data.summary);
-        request.setAttribute("paymentMethods", data.methods);
-        request.setAttribute("paymentOption", data.summary.get("paymentOption"));
+        request.setAttribute("bookingSummary", data.getSummary());
+        request.setAttribute("paymentMethods", data.getMethods());
+        request.setAttribute("paymentOption", data.getSummary().get("paymentOption"));
         request.setAttribute("paymentType", paymentRequest.getPaymentType());
         request.setAttribute("amountToPay", amountToPay);
         request.setAttribute("paymentRequestToken", token);
@@ -329,7 +317,7 @@ public class PaymentServlet extends HttpServlet {
             return false;
         }
 
-        PayOsOrderDAO.Order order;
+        PayOsOrder order;
         try {
             order = new PayOsOrderDAO().find(Long.parseLong(orderCodeParam));
         } catch (NumberFormatException exception) {
@@ -404,7 +392,7 @@ public class PaymentServlet extends HttpServlet {
             long orderCode = PayOsService.newOrderCode();
 
             PayOsOrderDAO orderDao = new PayOsOrderDAO();
-            PayOsOrderDAO.Order order = new PayOsOrderDAO.Order();
+            PayOsOrder order = new PayOsOrder();
             order.orderCode = orderCode;
             order.bookingID = bookingID;
             order.userID = userID;
@@ -427,7 +415,7 @@ public class PaymentServlet extends HttpServlet {
                 expiredAtEpochSeconds = (System.currentTimeMillis() / 1000) + (15 * 60);
             }
 
-            PayOsService.Link link = new PayOsService().createPaymentLink(
+            PayOsLink link = new PayOsService().createPaymentLink(
                     orderCode, shortfall, bookingID, returnUrl, cancelUrl, expiredAtEpochSeconds);
 
             orderDao.insert(order, link.paymentLinkId);

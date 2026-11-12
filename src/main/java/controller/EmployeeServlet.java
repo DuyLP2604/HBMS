@@ -17,6 +17,7 @@ import java.util.Map;
 import util.EmployeeIdGenerator;
 import util.EmployeeValidator;
 import service.EmailService;
+import util.exception.EmployeeValidationException;
 import util.flash.Flash;
 import util.security.CsrfTokens;
 import util.security.TemporaryPasswordGenerator;
@@ -112,7 +113,7 @@ public class EmployeeServlet extends HttpServlet {
                 }
             }
             response.sendRedirect(request.getContextPath() + "/employee?action=list");
-        } catch (ValidationException exception) {
+        } catch (EmployeeValidationException exception) {
             forwardFormError(request, response, action, "Please correct the highlighted fields.", exception.getErrors());
         } catch (IllegalArgumentException exception) {
             handleFormFailure(request, response, action, exception.getMessage());
@@ -156,7 +157,7 @@ public class EmployeeServlet extends HttpServlet {
         request.setAttribute("employee", employee);
         Map<String, String> errors = fillEmployeeInformation(request, employee, employeeDAO, employeeID);
         if (!errors.isEmpty()) {
-            throw new ValidationException(errors);
+            throw new EmployeeValidationException(errors);
         }
         employeeDAO.updateEmployee(employee);
     }
@@ -180,7 +181,7 @@ public class EmployeeServlet extends HttpServlet {
             errors.put("username", "Username is already taken.");
         }
         if (!errors.isEmpty()) {
-            throw new ValidationException(errors);
+            throw new EmployeeValidationException(errors);
         }
         EmailService emailService = configuredEmailService();
         String password = TemporaryPasswordGenerator.generate();
@@ -338,25 +339,6 @@ public class EmployeeServlet extends HttpServlet {
     private boolean hasPermission(HttpSession session) {
         String role = (String) session.getAttribute("role");
         return role != null && ("Admin".equalsIgnoreCase(role) || "Staff".equalsIgnoreCase(role));
-    }
-
-    /*
-     * Carries one message per invalid form field back to doPost.
-     */
-    private static class ValidationException extends IllegalArgumentException {
-
-        private static final long serialVersionUID = 1L;
-
-        private final transient Map<String, String> errors;
-
-        ValidationException(Map<String, String> errors) {
-            super("Invalid employee information.");
-            this.errors = errors;
-        }
-
-        Map<String, String> getErrors() {
-            return errors;
-        }
     }
 
     @Override

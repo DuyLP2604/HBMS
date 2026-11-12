@@ -22,6 +22,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import util.PersistenceManager;
+import util.StatementBinder;
+import util.exception.BookingOperationException;
 
 /** Reads booking data and calls database procedures for booking updates. */
 public class BookingDAO extends DAOFramework<Booking>
@@ -451,28 +453,6 @@ public class BookingDAO extends DAOFramework<Booking>
             {
                 PersistenceManager.getEMF().getCache().evictAll();
             }
-        }
-    }
-
-    @FunctionalInterface
-    private interface StatementBinder
-    {
-        void bind(PreparedStatement statement) throws SQLException;
-    }
-
-    public static class BookingOperationException extends IllegalStateException
-    {
-        private final int sqlErrorCode;
-
-        public BookingOperationException(SQLException cause)
-        {
-            super("Booking operation failed (SQL " + cause.getErrorCode() + ").", cause);
-            this.sqlErrorCode = cause.getErrorCode();
-        }
-
-        public int getSqlErrorCode()
-        {
-            return sqlErrorCode;
         }
     }
 }

@@ -23,10 +23,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import util.HotelContent;
+import util.HotelImageSlot;
 import util.flash.Flash;
 import util.flash.FlashMessage;
 import util.flash.FlashType;
@@ -57,37 +56,17 @@ public class HotelServlet extends HttpServlet {
     private static final Pattern GENERATED_NAME = Pattern.compile(
             "^hotel-(hero|room|pool|restaurant)-\\d+\\.(jpg|png|webp)$");
 
-    /** One editable image of the home page. */
-    private static final class Slot {
-
-        final String key;          // form field name and file name prefix
-        final String label;
-        final String defaultFile;
-        final Function<Hotel, String> getter;
-        final BiConsumer<Hotel, String> setter;
-
-        Slot(String key, String label, String defaultFile,
-                Function<Hotel, String> getter,
-                BiConsumer<Hotel, String> setter) {
-            this.key = key;
-            this.label = label;
-            this.defaultFile = defaultFile;
-            this.getter = getter;
-            this.setter = setter;
-        }
-    }
-
-    private static final List<Slot> SLOTS = Arrays.asList(
-            new Slot("hero", "Background image (top of the home page)",
+    private static final List<HotelImageSlot> SLOTS = Arrays.asList(
+            new HotelImageSlot("hero", "Background image (top of the home page)",
                     HotelContent.DEFAULT_HERO_IMAGE,
                     Hotel::getHotelImage, Hotel::setHotelImage),
-            new Slot("room", "Overview: Luxury Rooms",
+            new HotelImageSlot("room", "Overview: Luxury Rooms",
                     HotelContent.DEFAULT_ROOM_IMAGE,
                     Hotel::getRoomImage, Hotel::setRoomImage),
-            new Slot("pool", "Overview: Swimming Pool",
+            new HotelImageSlot("pool", "Overview: Swimming Pool",
                     HotelContent.DEFAULT_POOL_IMAGE,
                     Hotel::getPoolImage, Hotel::setPoolImage),
-            new Slot("restaurant", "Overview: Restaurant",
+            new HotelImageSlot("restaurant", "Overview: Restaurant",
                     HotelContent.DEFAULT_RESTAURANT_IMAGE,
                     Hotel::getRestaurantImage, Hotel::setRestaurantImage)
     );
@@ -148,11 +127,11 @@ public class HotelServlet extends HttpServlet {
         // The hotel name and the address are fixed: they are never read from the request.
 
         // Check every chosen image before anything is saved.
-        Map<Slot, Part> chosen = new LinkedHashMap<>();
-        Map<Slot, String> extensions = new LinkedHashMap<>();
+        Map<HotelImageSlot, Part> chosen = new LinkedHashMap<>();
+        Map<HotelImageSlot, String> extensions = new LinkedHashMap<>();
 
-        for (Slot slot : SLOTS) {
-            Part part = request.getPart(slot.key);
+        for (HotelImageSlot slot : SLOTS) {
+            Part part = request.getPart(slot.getKey());
 
             if (part == null || part.getSize() <= 0) {
                 continue; // not changed
@@ -161,7 +140,7 @@ public class HotelServlet extends HttpServlet {
             String extension = validateImage(part);
             if (extension == null) {
                 forwardForm(request, response, hotel,
-                        slot.label + ": the file must be a valid JPG, PNG or WEBP image.");
+                        slot.getLabel() + ": the file must be a valid JPG, PNG or WEBP image.");
                 return;
             }
 
@@ -177,18 +156,18 @@ public class HotelServlet extends HttpServlet {
 
         // Step 1: write the new images (the old ones are still in place).
         List<Path> savedFiles = new ArrayList<>();
-        Map<Slot, String> newNames = new LinkedHashMap<>();
+        Map<HotelImageSlot, String> newNames = new LinkedHashMap<>();
 
         try {
             if (!chosen.isEmpty()) {
                 Path folder = imageFolder();
                 Files.createDirectories(folder);
 
-                for (Map.Entry<Slot, Part> entry : chosen.entrySet()) {
-                    Slot slot = entry.getKey();
+                for (Map.Entry<HotelImageSlot, Part> entry : chosen.entrySet()) {
+                    HotelImageSlot slot = entry.getKey();
 
                     // The server picks the name, so an upload cannot choose a path.
-                    String fileName = "hotel-" + slot.key + "-"
+                    String fileName = "hotel-" + slot.getKey() + "-"
                             + System.currentTimeMillis() + "."
                             + extensions.get(slot);
 
@@ -210,10 +189,10 @@ public class HotelServlet extends HttpServlet {
         }
 
         // Step 2: save the new file names in the database.
-        Map<Slot, String> oldNames = new LinkedHashMap<>();
-        for (Map.Entry<Slot, String> entry : newNames.entrySet()) {
-            oldNames.put(entry.getKey(), entry.getKey().getter.apply(hotel));
-            entry.getKey().setter.accept(hotel, entry.getValue());
+        Map<HotelImageSlot, String> oldNames = new LinkedHashMap<>();
+        for (Map.Entry<HotelImageSlot, String> entry : newNames.entrySet()) {
+            oldNames.put(entry.getKey(), entry.getKey().getImageFile(hotel));
+            entry.getKey().setImageFile(hotel, entry.getValue());
         }
 
         if (!hotelDAO.updateHotel(hotel)) {
@@ -366,12 +345,12 @@ public class HotelServlet extends HttpServlet {
 
         List<Map<String, String>> imageFields = new ArrayList<>();
 
-        for (Slot slot : SLOTS) {
+        for (HotelImageSlot slot : SLOTS) {
             Map<String, String> field = new LinkedHashMap<>();
-            field.put("key", slot.key);
-            field.put("label", slot.label);
+            field.put("key", slot.getKey());
+            field.put("label", slot.getLabel());
             field.put("file", HotelContent.safeImage(
-                    slot.getter.apply(hotel), slot.defaultFile));
+                    slot.getImageFile(hotel), slot.getDefaultFile()));
             imageFields.add(field);
         }
 

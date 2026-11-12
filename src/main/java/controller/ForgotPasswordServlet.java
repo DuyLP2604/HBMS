@@ -1,7 +1,7 @@
 package controller;
 
 import dao.PasswordResetDAO;
-import dao.PasswordResetDAO.Account;
+import dto.PasswordResetAccount;
 import entity.Users;
 
 import java.io.IOException;
@@ -117,7 +117,7 @@ public class ForgotPasswordServlet extends HttpServlet {
             accountType = "Customer";
         }
         PasswordResetDAO resetDAO = createPasswordResetDAO();
-        Account account = resetDAO.findAccount(identifier, accountType);
+        PasswordResetAccount account = resetDAO.findAccount(identifier, accountType);
 
 
         // Use the same response when no eligible account is found.

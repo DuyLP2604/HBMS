@@ -31,7 +31,10 @@ class InvoicePaymentViewTest(unittest.TestCase):
             INSERT INTO INVOICE VALUES ('HD0001', '2026-11-12', 'BK0001', 1000);
             INSERT INTO INVOICE VALUES ('HD0002', '2026-11-12', 'BK0002', 2000);
         ''')
-        initializer = (ROOT / "db/DB_v6_merged_transaction.sql").read_text(encoding="utf-8-sig")
+        initializer_path = ROOT / "db/DB_v6_merged_transaction.sql"
+        if not initializer_path.is_file():
+            initializer_path = ROOT / "db/DB_v6_merged_transaction(I).sql"
+        initializer = initializer_path.read_text(encoding="utf-8-sig")
         view = re.search(r"CREATE VIEW V_INVOICE_TRANSACTION_DETAILS AS\n(.*?);\nGO", initializer, re.S)
         self.assertIsNotNone(view)
         # Chỉ bỏ định danh schema SQL Server; giữ nguyên SELECT thực tế của project.

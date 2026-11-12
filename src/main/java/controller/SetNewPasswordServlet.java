@@ -13,7 +13,7 @@ import util.EmployeeValidator;
 import util.flash.Flash;
 import util.security.CsrfTokens;
 import util.security.LoginSession;
-import util.security.LoginSession.PendingStaffLogin;
+import util.security.PendingStaffLogin;
 
 /** Lets staff replace their temporary password on first login. */
 @WebServlet(name = "SetNewPasswordServlet", urlPatterns = {"/set-new-password"})

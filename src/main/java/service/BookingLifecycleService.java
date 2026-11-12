@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import util.PersistenceManager;
+import util.exception.BookingOperationException;
 
 /** Handles booking status changes and cancellation results. */
 public class BookingLifecycleService
@@ -76,7 +77,7 @@ public class BookingLifecycleService
             // SP_CANCEL_BOOKING checks staff permission, the 14:15 cutoff, and the booking status.
             new BookingDAO().cancelBooking(id, actorUserID, "NO_SHOW");
         }
-        catch (BookingDAO.BookingOperationException exception)
+        catch (BookingOperationException exception)
         {
             throw new IllegalStateException(operationError(exception.getSqlErrorCode()), exception);
         }
@@ -99,7 +100,7 @@ public class BookingLifecycleService
             // SP_CANCEL_BOOKING cancels the booking, credits eligible refunds, and updates cancellation counts.
             dao.cancelBooking(id, userID, "CUSTOMER_REQUEST");
         }
-        catch (BookingDAO.BookingOperationException exception)
+        catch (BookingOperationException exception)
         {
             if (exception.getSqlErrorCode() >= 51000 && exception.getSqlErrorCode() <= 51007)
             {
@@ -154,7 +155,7 @@ public class BookingLifecycleService
             // SP_SET_BOOKING_STATUS checks staff permission and the rules for the new status.
             new BookingDAO().updateStatus(id, status, actorUserID);
         }
-        catch (BookingDAO.BookingOperationException exception)
+        catch (BookingOperationException exception)
         {
             throw new IllegalStateException(operationError(exception.getSqlErrorCode()), exception);
         }

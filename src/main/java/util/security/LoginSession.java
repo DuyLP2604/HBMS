@@ -3,7 +3,6 @@ package util.security;
 import entity.Users;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import java.io.Serializable;
 
 /** Manages signed-in sessions and pending staff password setup. */
 public final class LoginSession {
@@ -55,25 +54,5 @@ public final class LoginSession {
             return "/staff/dashboard";
         }
         return "Admin".equalsIgnoreCase(user.getRole()) ? "/dashboard" : "/login";
-    }
-
-    public static final class PendingStaffLogin implements Serializable {
-        private static final long serialVersionUID = 1L;
-        private final int userId;
-        private final String username;
-        private final String passwordHash;
-        private final long expiresAt;
-
-        public PendingStaffLogin(Users user, long expiresAt) {
-            this.userId = user.getUserID();
-            this.username = user.getUsername();
-            this.passwordHash = user.getPassword();
-            this.expiresAt = expiresAt;
-        }
-
-        public int getUserId() { return userId; }
-        public String getUsername() { return username; }
-        public String getPasswordHash() { return passwordHash; }
-        public long getExpiresAt() { return expiresAt; }
     }
 }
