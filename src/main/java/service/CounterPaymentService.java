@@ -2,7 +2,8 @@ package service;
 
 import dao.BookingDAO;
 import dao.PayOsOrderDAO;
-import dao.PayOsOrderDAO.Order;
+import dto.PayOsLink;
+import dto.PayOsOrder;
 import entity.Booking;
 import entity.Payment;
 import java.io.IOException;
@@ -10,8 +11,6 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.sql.Connection;
 import java.time.Instant;
-import service.CheckInService.CheckInRequest;
-import service.PaymentService.PaymentRequest;
 
 /** Coordinates cash and PayOS payments at the front desk. */
 public class CounterPaymentService {
@@ -20,7 +19,7 @@ public class CounterPaymentService {
     private final PayOsService gateway = new PayOsService();
 
     /** Open or reuse a PayOS order for the room balance due at check-in. */
-    public Order openCheckInOrder(CheckInRequest request, String returnUrl) throws Exception {
+    public PayOsOrder openCheckInOrder(CheckInRequest request, String returnUrl) throws Exception {
         if (!request.isPayOsRoomBalance()) {
             throw new IllegalArgumentException("VietQR at check-in requires a paid deposit and an outstanding room balance.");
         }
@@ -32,7 +31,7 @@ public class CounterPaymentService {
             if (!current.isPayOsRoomBalance() || amount.compareTo(request.getRoomAmount()) != 0) {
                 throw new IllegalStateException("The room balance changed. Reload check-in before collecting payment.");
             }
-            Order active = orders.findCheckInOrder(connection, bookingID, null);
+            PayOsOrder active = orders.findCheckInOrder(connection, bookingID, null);
             if (active != null) return active;
             return createOrder(connection, bookingID, current.getCustomerUserID(), "BALANCE", amount,
                     current.getActorUserID(), returnUrl, Instant.now().plusSeconds(900).getEpochSecond());
@@ -40,11 +39,11 @@ public class CounterPaymentService {
     }
 
     /** Open or reuse a PayOS order for the initial counter payment. */
-    public Order openInitialOrder(PaymentRequest shown, String returnUrl) throws Exception {
+    public PayOsOrder openInitialOrder(PaymentRequest shown, String returnUrl) throws Exception {
         String bookingID = shown.getBookingID();
         return orders.withCounterPaymentLock(bookingID, connection -> {
             long deadline = validateInitialPayment(shown);
-            Order active = orders.findInitialCounterOrder(connection, bookingID, null);
+            PayOsOrder active = orders.findInitialCounterOrder(connection, bookingID, null);
             if (active != null) return active;
             requireNoOpenInitialOrder(connection, shown);
             return createOrder(connection, bookingID, shown.getUserID(), shown.getPaymentType(), shown.getAmount(),
@@ -87,9 +86,9 @@ public class CounterPaymentService {
         return deadline;
     }
 
-    private Order createOrder(Connection connection, String bookingID, int customer, String paymentType,
+    private PayOsOrder createOrder(Connection connection, String bookingID, int customer, String paymentType,
             BigDecimal amount, Integer checkInStaffUserID, String returnUrl, long expiresAt) throws Exception {
-        Order order = new Order();
+        PayOsOrder order = new PayOsOrder();
         order.orderCode = PayOsService.newOrderCode();
         order.bookingID = bookingID;
         order.userID = customer;
@@ -98,7 +97,7 @@ public class CounterPaymentService {
         order.status = "PENDING";
         order.checkInExpiresAt = expiresAt;
 
-        PayOsService.Link link;
+        PayOsLink link;
         try {
             link = gateway.createPaymentLink(order.orderCode, amount, bookingID,
                     returnUrl, returnUrl, order.checkInExpiresAt);
@@ -120,7 +119,7 @@ public class CounterPaymentService {
         return order;
     }
 
-    public static String status(Order order) {
+    public static String status(PayOsOrder order) {
         if (order == null) return "NONE";
         if ("PAID".equals(order.status) || "FAILED".equals(order.status)) return order.status;
         return order.checkInExpiresAt > Instant.now().getEpochSecond() ? "PENDING" : "EXPIRED";

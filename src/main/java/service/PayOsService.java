@@ -1,6 +1,7 @@
 package service;
 
 import com.google.gson.*;
+import dto.PayOsLink;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.*;
@@ -41,13 +42,8 @@ public class PayOsService {
         return base.toString().replaceFirst("/+$", "");
     }
 
-    public static final class Link {
-
-        public String paymentLinkId, bin, accountNumber, accountName, checkoutUrl, qrCode, description;
-    }
-
     /** Create a signed PayOS checkout request for a booking payment. */
-    public Link createPaymentLink(long orderCode, BigDecimal amount, String description,
+    public PayOsLink createPaymentLink(long orderCode, BigDecimal amount, String description,
             String returnUrl, String cancelUrl, long expiredAtEpochSeconds) throws Exception {
 
         long amt = amount.setScale(0, java.math.RoundingMode.UNNECESSARY).longValueExact();
@@ -70,12 +66,12 @@ public class PayOsService {
         return parsePaymentLinkResponse(res.body());
     }
 
-    public Link createPaymentLink(long orderCode, BigDecimal amount, String description,
+    public PayOsLink createPaymentLink(long orderCode, BigDecimal amount, String description,
             String returnUrl, String cancelUrl) throws Exception {
         return createPaymentLink(orderCode, amount, description, returnUrl, cancelUrl, 0);
     }
 
-    public String qrImageUrl(Link link, BigDecimal amount) {
+    public String qrImageUrl(PayOsLink link, BigDecimal amount) {
         String cleanAmount = amount.stripTrailingZeros().toPlainString();
         String encodedDesc = java.net.URLEncoder.encode(link.description, StandardCharsets.UTF_8);
         String encodedName = java.net.URLEncoder.encode(link.accountName, StandardCharsets.UTF_8);
@@ -132,7 +128,7 @@ public class PayOsService {
         return body;
     }
 
-    private Link parsePaymentLinkResponse(String responseBody) {
+    private PayOsLink parsePaymentLinkResponse(String responseBody) {
         JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
 
         if (!json.has("code") || !"00".equals(json.get("code").getAsString()) || !json.has("data") || json.get("data").isJsonNull()) {
@@ -141,7 +137,7 @@ public class PayOsService {
         }
 
         JsonObject data = json.getAsJsonObject("data");
-        Link link = new Link();
+        PayOsLink link = new PayOsLink();
         link.paymentLinkId = data.get("paymentLinkId").getAsString();
         link.bin = data.get("bin").getAsString();
         link.accountNumber = data.get("accountNumber").getAsString();

@@ -19,7 +19,7 @@ import util.BookingTimePolicy;
 public final class ReceptionDashboard {
     private static final int ROW_LIMIT = 8;
     private final String focus;
-    private final List<Task> tasks = new ArrayList<>();
+    private final List<ReceptionDashboardTask> tasks = new ArrayList<>();
     private int arrivals;
     private int departures;
     private int assignments;
@@ -62,23 +62,23 @@ public final class ReceptionDashboard {
             if (review) dashboard.reviews++;
 
             // Show the highest-priority task for each booking.
-            Task task = null;
+            ReceptionDashboardTask task = null;
             if (departureDue) {
-                task = new Task(booking, departure, departure.isBefore(today) ? 0 : 3,
+                task = new ReceptionDashboardTask(booking, departure, departure.isBefore(today) ? 0 : 3,
                         departure.isBefore(today) ? "Departure overdue" : "Check-out due",
                         departure.isBefore(today) ? "attention" : "departure",
                         "/CheckoutEmployee", "Check out", "detail");
             } else if (lateArrival || unresolvedPastArrival || expiredArrival) {
-                task = new Task(booking, arrival, 1,
+                task = new ReceptionDashboardTask(booking, arrival, 1,
                         lateArrival ? "Arrival overdue" : "Arrival needs review",
                         "attention", "/staff/stays", "Review stays", null);
             } else if (needsRoom) {
-                task = new Task(booking, arrival, arrival.isAfter(today) ? 5 : 2,
+                task = new ReceptionDashboardTask(booking, arrival, arrival.isAfter(today) ? 5 : 2,
                         arrival.isAfter(today) ? "Upcoming room assignment" : "Needs room assignment", "assignment",
                         "/staff/bookings", "Assign rooms", null);
             } else if (waiting && !arrival.isAfter(today) && departure.isAfter(today)) {
                 boolean canCheckIn = arrival.equals(today) && !now.isBefore(BookingTimePolicy.checkInAt(arrival));
-                task = new Task(booking, arrival, 4,
+                task = new ReceptionDashboardTask(booking, arrival, 4,
                         canCheckIn ? "Ready for check-in" : "Check-in from 14:00",
                         "arrival", canCheckIn ? "/process-checkin" : "/staff/stays",
                         canCheckIn ? "Check in" : "View stays", null);
@@ -93,8 +93,8 @@ public final class ReceptionDashboard {
                 dashboard.tasks.add(task);
             }
         }
-        dashboard.tasks.sort(Comparator.comparingInt((Task task) -> task.priority)
-                .thenComparing(task -> task.date).thenComparing(Task::getBookingID));
+        dashboard.tasks.sort(Comparator.comparingInt((ReceptionDashboardTask task) -> task.priority)
+                .thenComparing(task -> task.date).thenComparing(ReceptionDashboardTask::getBookingID));
         return dashboard;
     }
 
@@ -102,7 +102,7 @@ public final class ReceptionDashboard {
         return new Date(value.getTime()).toLocalDate();
     }
 
-    private boolean matches(Task task) {
+    private boolean matches(ReceptionDashboardTask task) {
         switch (focus) {
             case "arrivals": return task.arrivesToday;
             case "departures": return task.departureDue;
@@ -122,50 +122,7 @@ public final class ReceptionDashboard {
     public int getTotal() { return (int) tasks.stream().filter(task -> !task.upcoming).count(); }
     public int getFilteredTotal() { return (int) tasks.stream().filter(this::matches).count(); }
     /** Return up to eight tasks for the selected dashboard filter. */
-    public List<Task> getTasks() {
+    public List<ReceptionDashboardTask> getTasks() {
         return Collections.unmodifiableList(tasks.stream().filter(this::matches).limit(ROW_LIMIT).collect(Collectors.toList()));
-    }
-
-    public static final class Task {
-        private final String bookingID;
-        private final String guestName;
-        private final String phone;
-        private final String label;
-        private final String tone;
-        private final String actionPath;
-        private final String actionLabel;
-        private final String action;
-        private final LocalDate date;
-        private final int priority;
-        private String dueLabel;
-        private boolean arrivesToday;
-        private boolean departureDue;
-        private boolean needsRoom;
-        private boolean upcoming;
-        private boolean review;
-
-        private Task(Booking booking, LocalDate date, int priority, String label, String tone,
-                String actionPath, String actionLabel, String action) {
-            this.bookingID = booking.getBookingID().trim();
-            this.guestName = booking.getCustomerID() == null ? "Guest" : booking.getCustomerID().getFullName();
-            this.phone = booking.getCustomerID() == null ? null : booking.getCustomerID().getPhone();
-            this.date = date;
-            this.priority = priority;
-            this.label = label;
-            this.tone = tone;
-            this.actionPath = actionPath;
-            this.actionLabel = actionLabel;
-            this.action = action;
-        }
-
-        public String getBookingID() { return bookingID; }
-        public String getGuestName() { return guestName; }
-        public String getPhone() { return phone; }
-        public String getLabel() { return label; }
-        public String getTone() { return tone; }
-        public String getDueLabel() { return dueLabel; }
-        public String getActionPath() { return actionPath; }
-        public String getActionLabel() { return actionLabel; }
-        public String getAction() { return action; }
     }
 }

@@ -1,6 +1,7 @@
 package controller;
 
 import dao.PayOsOrderDAO;
+import dto.PayOsOrder;
 import entity.Users;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -26,7 +27,7 @@ public class PaymentStatusServlet extends HttpServlet {
         }
 
         try {
-            PayOsOrderDAO.Order order = new PayOsOrderDAO().find(Long.parseLong(request.getParameter("orderCode")));
+            PayOsOrder order = new PayOsOrderDAO().find(Long.parseLong(request.getParameter("orderCode")));
             if (order == null || !Integer.valueOf(order.userID).equals(((Users) user).getUserID())) {
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 return;

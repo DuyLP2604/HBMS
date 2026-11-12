@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Set;
 import util.PersistenceManager;
 import util.BookingTimePolicy;
+import util.exception.BookingOperationException;
 
 /** Validates a room wishlist and creates a pending booking. */
 public class BookingCheckoutService
@@ -101,7 +102,7 @@ public class BookingCheckoutService
                 }
                 return created;
             }
-            catch (BookingDAO.BookingOperationException exception)
+            catch (BookingOperationException exception)
             {
                 if (isBookingIDCollision(exception))
                 {
@@ -196,7 +197,7 @@ public class BookingCheckoutService
         }
     }
 
-    private boolean isBookingIDCollision(BookingDAO.BookingOperationException exception)
+    private boolean isBookingIDCollision(BookingOperationException exception)
     {
         Throwable cause = exception.getCause();
         while (cause != null)
@@ -217,7 +218,7 @@ public class BookingCheckoutService
         return false;
     }
 
-    private IllegalStateException translateBookingError(BookingDAO.BookingOperationException exception)
+    private IllegalStateException translateBookingError(BookingOperationException exception)
     {
         String message;
         switch (exception.getSqlErrorCode())

@@ -3,8 +3,8 @@ package controller;
 import com.google.zxing.WriterException;
 import dao.BookingDAO;
 import dao.PayOsOrderDAO;
-import dao.PayOsOrderDAO.Order;
 import dao.PaymentmethodDAO;
+import dto.PayOsOrder;
 import entity.Booking;
 import entity.Users;
 import java.io.IOException;
@@ -17,10 +17,11 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import service.CounterPaymentService;
+import service.CheckInRequest;
 import service.CheckInService;
+import service.CounterPaymentService;
 import service.PayOsService;
-import service.CheckInService.CheckInRequest;
+import util.CounterPaymentSupport;
 import util.security.CsrfTokens;
 
 /** Handles guest identity details and any room payment required before check-in. */
@@ -157,7 +158,7 @@ public class ProcessCheckInServlet extends HttpServlet {
     /** Complete check-in after the QR payment has been confirmed. */
     private void completePaidCheckIn(HttpServletRequest request, CheckInRequest payment) throws SQLException {
         String bookingID = payment.getBookingID();
-        Order order = payOsOrders.findCheckInOrder(bookingID, CounterPaymentSupport.parseOrderCode(request.getParameter("payOsOrderCode")));
+        PayOsOrder order = payOsOrders.findCheckInOrder(bookingID, CounterPaymentSupport.parseOrderCode(request.getParameter("payOsOrderCode")));
         if (order == null || !"PAID".equals(order.status) || order.paymentID == null) {
             throw new IllegalArgumentException("Wait until PayOS confirms the room payment.");
         }
@@ -176,7 +177,7 @@ public class ProcessCheckInServlet extends HttpServlet {
     private void createPayOsOrder(HttpServletRequest request, HttpServletResponse response, CheckInRequest payment)
             throws IOException {
         response.setHeader("Cache-Control", "no-store");
-        Order order;
+        PayOsOrder order;
         try {
             String baseUrl = PayOsService.publicBaseUrl(request.getScheme() + "://" + request.getServerName()
                     + ":" + request.getServerPort() + request.getContextPath());
@@ -196,7 +197,7 @@ public class ProcessCheckInServlet extends HttpServlet {
             throws IOException {
         try {
             String code = request.getParameter("orderCode");
-            Order order = payOsOrders.findCheckInOrder(bookingID, code == null && !image ? null : CounterPaymentSupport.parseOrderCode(code));
+            PayOsOrder order = payOsOrders.findCheckInOrder(bookingID, code == null && !image ? null : CounterPaymentSupport.parseOrderCode(code));
             if (image) {
                 CounterPaymentSupport.writeQrImage(response, order);
             } else {

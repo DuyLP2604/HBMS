@@ -3,8 +3,8 @@ package controller;
 import com.google.gson.JsonObject;
 import com.google.zxing.WriterException;
 import dao.*;
-import dao.PayOsOrderDAO.Order;
 import dto.*;
+import dto.PayOsOrder;
 import entity.*;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -18,9 +18,10 @@ import java.util.*;
 import service.BookingCheckoutService;
 import service.CounterPaymentService;
 import service.PayOsService;
+import service.PaymentRequest;
 import service.PaymentService;
-import service.PaymentService.PaymentRequest;
 import util.BookingTimePolicy;
+import util.CounterPaymentSupport;
 
 /** Lets reception create bookings and collect initial payments for customers. */
 @WebServlet(name = "CounterBookingServlet", urlPatterns = {"/staff/counter-booking"})
@@ -300,7 +301,7 @@ public class CounterBookingServlet extends HttpServlet {
 
     /** Create a PayOS order for the current counter payment request. */
     private void createPayOsOrder(HttpServletRequest req, HttpServletResponse res, String bookingID) throws IOException {
-        Order order;
+        PayOsOrder order;
         try {
             PaymentRequest payment = requirePaymentRequest(req, bookingID);
             String baseUrl = PayOsService.publicBaseUrl(req.getScheme() + "://" + req.getServerName()
@@ -327,7 +328,7 @@ public class CounterBookingServlet extends HttpServlet {
         }
         try {
             String code = req.getParameter("orderCode");
-            Order order = orders.findInitialCounterOrder(bookingID,
+            PayOsOrder order = orders.findInitialCounterOrder(bookingID,
                     code == null && !image ? null : CounterPaymentSupport.parseOrderCode(code));
             if (image) {
                 CounterPaymentSupport.writeQrImage(res, order);
