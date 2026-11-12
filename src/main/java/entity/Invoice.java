@@ -12,7 +12,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
@@ -20,14 +19,12 @@ import jakarta.persistence.TemporalType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.xml.bind.annotation.XmlRootElement;
-import jakarta.xml.bind.annotation.XmlTransient;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.Collection;
 import java.util.Date;
 
 /**
- * Maps an issued invoice and its link to the booking and transaction.
+ * Maps an issued invoice to its booking and issuing employee.
  *
  * @author Asus
  */
@@ -38,8 +35,7 @@ import java.util.Date;
     @NamedQuery(name = "Invoice.findAll", query = "SELECT i FROM Invoice i"),
     @NamedQuery(name = "Invoice.findByInvoiceID", query = "SELECT i FROM Invoice i WHERE i.invoiceID = :invoiceID"),
     @NamedQuery(name = "Invoice.findByInvoiceDate", query = "SELECT i FROM Invoice i WHERE i.invoiceDate = :invoiceDate"),
-    @NamedQuery(name = "Invoice.findByTotalAmount", query = "SELECT i FROM Invoice i WHERE i.totalAmount = :totalAmount"),
-    @NamedQuery(name = "Invoice.findByStatus", query = "SELECT i FROM Invoice i WHERE i.status = :status")})
+    @NamedQuery(name = "Invoice.findByTotalAmount", query = "SELECT i FROM Invoice i WHERE i.totalAmount = :totalAmount")})
 public class Invoice implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -60,22 +56,12 @@ public class Invoice implements Serializable {
     @NotNull
     @Column(name = "TotalAmount")
     private BigDecimal totalAmount;
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 30)
-    @Column(name = "Status")
-    private String status;
-    @JoinColumn(name = "BookingID", referencedColumnName = "BookingID")
-    @ManyToOne(optional = false)
+    @JoinColumn(name = "BookingID", referencedColumnName = "BookingID", unique = true)
+    @OneToOne(optional = false)
     private Booking bookingID;
     @JoinColumn(name = "EmployeeID", referencedColumnName = "EmployeeID")
     @ManyToOne
     private Employee employeeID;
-    @OneToMany(mappedBy = "replacedInvoiceID")
-    private Collection<Invoice> invoiceCollection;
-    @JoinColumn(name = "ReplacedInvoiceID", referencedColumnName = "InvoiceID")
-    @ManyToOne
-    private Invoice replacedInvoiceID;
 
     public Invoice() {
     }
@@ -84,11 +70,10 @@ public class Invoice implements Serializable {
         this.invoiceID = invoiceID;
     }
 
-    public Invoice(String invoiceID, Date invoiceDate, BigDecimal totalAmount, String status) {
+    public Invoice(String invoiceID, Date invoiceDate, BigDecimal totalAmount) {
         this.invoiceID = invoiceID;
         this.invoiceDate = invoiceDate;
         this.totalAmount = totalAmount;
-        this.status = status;
     }
 
     public String getInvoiceID() {
@@ -115,14 +100,6 @@ public class Invoice implements Serializable {
         this.totalAmount = totalAmount;
     }
 
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
     public Booking getBookingID() {
         return bookingID;
     }
@@ -137,23 +114,6 @@ public class Invoice implements Serializable {
 
     public void setEmployeeID(Employee employeeID) {
         this.employeeID = employeeID;
-    }
-
-    @XmlTransient
-    public Collection<Invoice> getInvoiceCollection() {
-        return invoiceCollection;
-    }
-
-    public void setInvoiceCollection(Collection<Invoice> invoiceCollection) {
-        this.invoiceCollection = invoiceCollection;
-    }
-
-    public Invoice getReplacedInvoiceID() {
-        return replacedInvoiceID;
-    }
-
-    public void setReplacedInvoiceID(Invoice replacedInvoiceID) {
-        this.replacedInvoiceID = replacedInvoiceID;
     }
 
     @Override
