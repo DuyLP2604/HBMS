@@ -30,12 +30,12 @@ public class DatabaseBackupService {
                 CellStyle dateStyle = workbook.createCellStyle();
                 dateStyle.setDataFormat(workbook.createDataFormat().getFormat("yyyy-mm-dd hh:mm:ss.000"));
                 for (String table : TABLES) {
-                    List<Column> columns = columns(connection, table);
+                    List<BackupColumn> columns = columns(connection, table);
                     Sheet sheet = workbook.createSheet(table);
                     Row header = sheet.createRow(0);
                     for (int i = 0; i < columns.size(); i++) header.createCell(i).setCellValue(columns.get(i).name);
                     String sql = "SELECT " + names(columns) + " FROM " + table(table);
-                    List<Column> keys = keys(columns);
+                    List<BackupColumn> keys = keys(columns);
                     if (!keys.isEmpty()) sql += " ORDER BY " + names(keys);
                     try (PreparedStatement statement = connection.prepareStatement(sql); ResultSet rows = statement.executeQuery()) {
                         int rowIndex = 1;
@@ -101,7 +101,7 @@ public class DatabaseBackupService {
     private void importSheet(Connection connection, String table, Sheet sheet) throws Exception {
         Row header = sheet.getRow(0);
         if (header == null) return;
-        List<Column> available = columns(connection, table);
+        List<BackupColumn> available = columns(connection, table);
         Map<String, Integer> headers = new HashMap<>();
         DataFormatter formatter = new DataFormatter(Locale.ROOT);
         for (Cell cell : header) {
@@ -110,13 +110,13 @@ public class DatabaseBackupService {
                 throw new IllegalArgumentException(table + ": duplicate column " + name);
             }
         }
-        List<Column> selected = available.stream()
+        List<BackupColumn> selected = available.stream()
                 .filter(c -> headers.containsKey(c.name.toUpperCase(Locale.ROOT))).collect(Collectors.toList());
-        List<Column> primary = keys(available);
+        List<BackupColumn> primary = keys(available);
         if (primary.isEmpty() || !selected.containsAll(primary)) {
             throw new IllegalArgumentException(table + ": the backup is missing primary key columns.");
         }
-        List<Column> updates = selected.stream().filter(c -> !c.key && !c.identity).collect(Collectors.toList());
+        List<BackupColumn> updates = selected.stream().filter(c -> !c.key && !c.identity).collect(Collectors.toList());
         String where = primary.stream().map(c -> quote(c.name) + " = ?").collect(Collectors.joining(" AND "));
         String insert = "INSERT INTO " + table(table) + " (" + names(selected) + ") VALUES ("
                 + selected.stream().map(c -> "?").collect(Collectors.joining(", ")) + ")";
@@ -136,16 +136,16 @@ public class DatabaseBackupService {
                 Row row = sheet.getRow(index);
                 if (empty(row)) continue;
                 try {
-                    Map<Column, Object> values = new HashMap<>();
-                    for (Column column : selected) {
+                    Map<BackupColumn, Object> values = new HashMap<>();
+                    for (BackupColumn column : selected) {
                         Object value = value(row.getCell(headers.get(column.name.toUpperCase(Locale.ROOT))), column.type);
                         if (column.key && value == null) throw new IllegalArgumentException("Missing key " + column.name);
                         values.put(column, value);
                     }
                     int parameter = 1;
-                    for (Column column : updates) bind(statement, parameter++, column, values.get(column));
-                    for (Column column : primary) bind(statement, parameter++, column, values.get(column));
-                    for (Column column : selected) bind(statement, parameter++, column, values.get(column));
+                    for (BackupColumn column : updates) bind(statement, parameter++, column, values.get(column));
+                    for (BackupColumn column : primary) bind(statement, parameter++, column, values.get(column));
+                    for (BackupColumn column : selected) bind(statement, parameter++, column, values.get(column));
                     drain(statement, statement.execute());
                 } catch (Exception exception) {
                     throw new IllegalArgumentException(table + " row " + (index + 1) + ": " + exception.getMessage(), exception);
@@ -196,12 +196,12 @@ public class DatabaseBackupService {
         }
     }
 
-    private static void bind(PreparedStatement statement, int index, Column column, Object value) throws SQLException {
+    private static void bind(PreparedStatement statement, int index, BackupColumn column, Object value) throws SQLException {
         if (value == null) statement.setNull(index, column.type);
         else statement.setObject(index, value, column.type);
     }
 
-    private static List<Column> columns(Connection connection, String table) throws SQLException {
+    private static List<BackupColumn> columns(Connection connection, String table) throws SQLException {
         Set<String> keys = new HashSet<>();
         try (ResultSet rows = connection.getMetaData().getPrimaryKeys(null, "dbo", table)) {
             while (rows.next()) keys.add(rows.getString("COLUMN_NAME"));
@@ -219,12 +219,12 @@ public class DatabaseBackupService {
                 }
             }
         }
-        List<Column> columns = new ArrayList<>();
+        List<BackupColumn> columns = new ArrayList<>();
         try (ResultSet rows = connection.getMetaData().getColumns(null, "dbo", table, null)) {
             while (rows.next()) {
                 if (!table.equalsIgnoreCase(rows.getString("TABLE_NAME"))) continue;
                 String name = rows.getString("COLUMN_NAME");
-                if (!excluded.contains(name)) columns.add(new Column(name, rows.getInt("DATA_TYPE"),
+                if (!excluded.contains(name)) columns.add(new BackupColumn(name, rows.getInt("DATA_TYPE"),
                         keys.contains(name), identities.contains(name)));
             }
         }
@@ -232,10 +232,10 @@ public class DatabaseBackupService {
         return columns;
     }
 
-    private static List<Column> keys(List<Column> columns) {
+    private static List<BackupColumn> keys(List<BackupColumn> columns) {
         return columns.stream().filter(c -> c.key).collect(Collectors.toList());
     }
-    private static String names(List<Column> columns) {
+    private static String names(List<BackupColumn> columns) {
         return columns.stream().map(c -> quote(c.name)).collect(Collectors.joining(", "));
     }
     private static String quote(String identifier) { return "[" + identifier.replace("]", "]]") + "]"; }
@@ -311,14 +311,5 @@ public class DatabaseBackupService {
                 + "WHERE ba.BookingStatus NOT IN ('CANCELLED','CHECKED_OUT') AND bz.BookingStatus NOT IN ('CANCELLED','CHECKED_OUT') "
                 + "AND ba.CheckInDate < bz.CheckOutDate AND bz.CheckInDate < ba.CheckOutDate) "
                 + "THROW 51227, 'Restored room assignments overlap.', 1;");
-    }
-    private static final class Column {
-        final String name;
-        final int type;
-        final boolean key;
-        final boolean identity;
-        Column(String name, int type, boolean key, boolean identity) {
-            this.name = name; this.type = type; this.key = key; this.identity = identity;
-        }
     }
 }

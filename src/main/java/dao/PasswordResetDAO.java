@@ -1,5 +1,6 @@
 package dao;
 
+import dto.PasswordResetAccount;
 import entity.Users;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
@@ -9,7 +10,7 @@ import util.PersistenceManager;
 /** Finds accounts for OTP recovery and writes verified password resets. */
 public class PasswordResetDAO {
     /** Find one eligible customer or staff account by email or phone. */
-    public Account findAccount(String identifier, String role) {
+    public PasswordResetAccount findAccount(String identifier, String role) {
         String table = accountTable(role);
         if (table == null || identifier == null || identifier.isBlank()) {
             return null;
@@ -31,13 +32,13 @@ public class PasswordResetDAO {
                 return null;
             }
             Object[] row = (Object[]) matches.get(0);
-            return new Account(((Number) row[0]).intValue(), role,
+            return new PasswordResetAccount(((Number) row[0]).intValue(), role,
                     ((String) row[1]).trim(), (String) row[2]);
         }
     }
 
     /** Check that the verified account still has the same email and password. */
-    public boolean isEligible(Account account) {
+    public boolean isEligible(PasswordResetAccount account) {
         String table = account == null ? null : accountTable(account.getRole());
         if (table == null) {
             return false;
@@ -54,7 +55,7 @@ public class PasswordResetDAO {
     }
 
     /** Update the password only if the verified account details still match. */
-    public boolean resetPassword(Account account, String password) {
+    public boolean resetPassword(PasswordResetAccount account, String password) {
         String table = account == null ? null : accountTable(account.getRole());
         if (table == null || password == null || password.isBlank()) {
             return false;
@@ -89,7 +90,7 @@ public class PasswordResetDAO {
         }
     }
 
-    private void bindAccount(Query query, Account account, int first) {
+    private void bindAccount(Query query, PasswordResetAccount account, int first) {
         query.setParameter(first, account.getUserId());
         query.setParameter(first + 1, account.getRole());
         query.setParameter(first + 2, account.getPasswordHash());
@@ -113,24 +114,5 @@ public class PasswordResetDAO {
 
     protected EntityManager createEntityManager() {
         return PersistenceManager.createEntityManager();
-    }
-
-    public static final class Account {
-        private final int userId;
-        private final String role;
-        private final String email;
-        private final String passwordHash;
-
-        public Account(int userId, String role, String email, String passwordHash) {
-            this.userId = userId;
-            this.role = role;
-            this.email = email;
-            this.passwordHash = passwordHash;
-        }
-
-        public int getUserId() { return userId; }
-        public String getRole() { return role; }
-        public String getEmail() { return email; }
-        public String getPasswordHash() { return passwordHash; }
     }
 }
