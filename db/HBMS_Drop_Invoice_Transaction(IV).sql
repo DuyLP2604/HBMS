@@ -1,4 +1,4 @@
--- HBMS: loại bỏ bảng nối INVOICE_TRANSACTION trên database hiện có.
+-- HBMS: loại bỏ bảng nối INVOICE_TRANSACTION và chỉ tạo hóa đơn sau checkout.
 -- Bản sửa lỗi 51506: đọc đúng khai báo sau chú thích/khoảng trắng, hỗ trợ PROC và PROCEDURE.
 -- Chọn database QLKS trong SSMS và chạy toàn bộ script, không chia nhỏ các đoạn.
 -- Không chạy lại file khởi tạo DB_v6_merged_transaction.sql trên DB có dữ liệu cần giữ.
@@ -18,6 +18,8 @@ IF OBJECT_ID(N'dbo.INVOICE', N'U') IS NULL
     OR OBJECT_ID(N'dbo.TRANSACTION', N'U') IS NULL
     OR OBJECT_ID(N'dbo.SP_HBMS_ACQUIRE_WRITE_LOCK', N'P') IS NULL
     THROW 51502, N'Migration yêu cầu cấu trúc database HBMS v6.', 1;
+IF OBJECT_ID(N'dbo.SP_SET_BOOKING_STATUS', N'P') IS NULL
+    THROW 51523, N'Thiếu SP_SET_BOOKING_STATUS; chưa thể cập nhật luồng checkout.', 1;
 
 BEGIN TRY
     BEGIN TRANSACTION;
@@ -184,7 +186,7 @@ JOIN PAYMENTMETHOD AS m ON m.MethodID = p.MethodID;';
     ) OR EXISTS (
         SELECT 1 FROM sys.sql_modules
         WHERE PATINDEX(N'%[^A-Z0-9_]INVOICE[_]TRANSACTION[^A-Z0-9_]%',
-            (N' ' + definition + N' ') COLLATE Latin1_General_100_CI_AS) > 0
+            (N' ' + [definition] + N' ') COLLATE Latin1_General_100_CI_AS) > 0
     )
         THROW 51507, N'Có module khác còn dùng INVOICE_TRANSACTION. Toàn bộ migration được hoàn tác.', 1;
 
@@ -195,8 +197,87 @@ JOIN PAYMENTMETHOD AS m ON m.MethodID = p.MethodID;';
     -- Phép đọc thực tế xác nhận view vẫn hoạt động sau khi bảng đã biến mất.
     EXEC sys.sp_executesql N'SELECT TOP (0) * FROM dbo.V_INVOICE_TRANSACTION_DETAILS;';
 
+    -- BEGIN CHECKOUT INVOICE FLOW FIX
+    -- Chỉ dọn hóa đơn tạo sớm của booking chưa CHECKED_OUT; giữ nguyên PAYMENT.
+    DELETE i
+    OUTPUT deleted.InvoiceID AS RemovedPrematureInvoiceID, deleted.BookingID
+    FROM dbo.INVOICE i
+    JOIN dbo.BOOKING b ON b.BookingID = i.BookingID
+    WHERE b.BookingStatus <> 'CHECKED_OUT';
+
+    -- Kiểm tra thanh toán -> chuyển CHECKED_OUT -> tạo invoice trong cùng transaction.
+    EXEC sys.sp_executesql N'CREATE OR ALTER PROCEDURE dbo.SP_CHECKOUT_WITH_INVOICE
+    @BookingID CHAR(6), @ActorUserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    IF @@TRANCOUNT <> 0 THROW 51109, ''Call checkout without an outer transaction.'', 1;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        EXEC dbo.SP_HBMS_ACQUIRE_WRITE_LOCK;
+        IF NOT EXISTS (SELECT 1 FROM dbo.USERS WHERE UserID = @ActorUserID AND Role IN (''Staff'', ''Admin''))
+            THROW 51100, ''Only staff/admin can issue invoices.'', 1;
+        DECLARE @EmployeeID CHAR(6);
+        SELECT @EmployeeID = EmployeeID FROM dbo.EMPLOYEE WHERE UserID = @ActorUserID;
+        IF @EmployeeID IS NULL THROW 51101, ''The account is not linked to an employee profile.'', 1;
+        DECLARE @Status VARCHAR(30), @Total DECIMAL(12,2), @FirstPaidAt DATETIME2(3), @Paid DECIMAL(38,2);
+        SELECT @Status = BookingStatus, @Total = TotalAmount, @FirstPaidAt = FirstPaidAt
+        FROM dbo.BOOKING WITH (UPDLOCK, HOLDLOCK) WHERE BookingID = @BookingID;
+        IF @Status IS NULL THROW 51102, ''Booking not found.'', 1;
+        IF @Status NOT IN (''CHECKED_IN'', ''CHECKED_OUT'') THROW 51103, ''Only checked-in/out bookings can issue an invoice.'', 1;
+        SELECT @Paid = COALESCE(SUM(Amount), 0) FROM dbo.PAYMENT WHERE BookingID = @BookingID AND Status = ''PAID'';
+        IF @FirstPaidAt IS NULL OR @Paid <= 0 THROW 51105, ''The booking has no successful payment.'', 1;
+        IF @Paid < @Total THROW 51104, ''Complete the remaining payment before checkout.'', 1;
+        -- Finish checkout before issuing its final invoice. A later failure rolls both back.
+        IF @Status = ''CHECKED_IN''
+            EXEC dbo.SP_SET_BOOKING_STATUS @BookingID = @BookingID, @NewStatus = ''CHECKED_OUT'', @ActorUserID = @ActorUserID;
+        IF NOT EXISTS (SELECT 1 FROM dbo.BOOKING WHERE BookingID = @BookingID AND BookingStatus = ''CHECKED_OUT'')
+            THROW 51108, ''Invoices can only be issued after checkout.'', 1;
+        DECLARE @InvoiceID CHAR(6), @InvoiceTotal DECIMAL(12,2), @Created BIT = 0;
+        SELECT @InvoiceID = InvoiceID, @InvoiceTotal = TotalAmount
+        FROM dbo.INVOICE WITH (UPDLOCK, HOLDLOCK) WHERE BookingID = @BookingID;
+        IF @InvoiceID IS NOT NULL AND @InvoiceTotal <> @Total
+            THROW 51106, ''The invoice total does not match the booking total.'', 1;
+        IF @InvoiceID IS NULL
+        BEGIN
+            DECLARE @NextNumber INT;
+            SELECT @NextNumber = COALESCE(MAX(TRY_CONVERT(INT, SUBSTRING(RTRIM(InvoiceID), 3, 4))), 0) + 1
+            FROM dbo.INVOICE WITH (UPDLOCK, HOLDLOCK) WHERE RTRIM(InvoiceID) LIKE ''HD[0-9][0-9][0-9][0-9]'';
+            IF @NextNumber > 9999 THROW 51107, ''The invoice ID range is exhausted.'', 1;
+            SET @InvoiceID = ''HD'' + RIGHT(''0000'' + CONVERT(VARCHAR(4), @NextNumber), 4);
+            INSERT dbo.INVOICE (InvoiceID, InvoiceDate, TotalAmount, EmployeeID, BookingID)
+            VALUES (@InvoiceID, CAST(SYSDATETIME() AS DATE), @Total, @EmployeeID, @BookingID);
+            SET @Created = 1;
+        END;
+        COMMIT TRANSACTION;
+        SELECT @InvoiceID AS InvoiceID, @BookingID AS BookingID, @Total AS TotalAmount, @Created AS InvoiceCreated;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH;
+END;';
+
+    -- Ngăn mọi thao tác INSERT/UPDATE invoice khi booking chưa checkout.
+    EXEC sys.sp_executesql N'CREATE OR ALTER TRIGGER dbo.TR_INVOICE_RequireCheckedOut
+ON dbo.INVOICE
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT 1 FROM inserted i
+        JOIN dbo.BOOKING b ON b.BookingID = i.BookingID
+        WHERE b.BookingStatus <> ''CHECKED_OUT''
+    )
+        THROW 51108, ''Invoices can only be issued after checkout.'', 1;
+END;';
+    GRANT EXECUTE ON dbo.SP_CHECKOUT_WITH_INVOICE TO HBMS_APP_ROLE;
+    -- END CHECKOUT INVOICE FLOW FIX
+
     COMMIT TRANSACTION;
-    PRINT N'Đã xóa bảng INVOICE_TRANSACTION và cập nhật các đối tượng liên quan.';
+    PRINT N'Đã bỏ bảng nối và cập nhật luồng: CHECKED_OUT trước, tạo invoice sau. Các payment được giữ nguyên.';
 END TRY
 BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
