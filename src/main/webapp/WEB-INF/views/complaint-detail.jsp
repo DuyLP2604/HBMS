@@ -1,9 +1,7 @@
 <%@ page contentType="text/html" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %><%--
-    Shows a complaint, its status, and the staff reply.
---%>
+<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
 <layout:layout
     title="Complaint Details"
     pageCss="group5.css"
@@ -16,13 +14,13 @@
                 <div class="g5-header-status">
                     <c:choose>
                         <c:when test="${complaint.status eq 'Đã xử lý'}">
-                            <span class="badge g5-status-success"><c:out value="${complaint.status}" /></span>
+                            <span class="badge g5-status-success">Resolved</span>
                         </c:when>
                         <c:when test="${complaint.status eq 'Đang xử lý'}">
-                            <span class="badge g5-status-pending"><c:out value="${complaint.status}" /></span>
+                            <span class="badge g5-status-pending">In Progress</span>
                         </c:when>
                         <c:otherwise>
-                            <span class="badge g5-status-neutral"><c:out value="${complaint.status}" /></span>
+                            <span class="badge g5-status-neutral">Pending</span>
                         </c:otherwise>
                     </c:choose>
                 </div>
@@ -66,7 +64,7 @@
                         <dd class="col-sm-9 mt-3 g5-message"><strong><c:out value="${complaint.replyMessage}" /></strong></dd>
                             </c:if>
                 </dl>
-                <c:if test="${canManageComplaints}">
+                <c:if test="${sessionScope.user.role ne 'Admin' and canManageComplaints}">
                     <hr class="mt-4">
                     <h2 class="g5-subtitle">Handle Complaint</h2>
                     <form action="${pageContext.request.contextPath}/complaint" method="post" class="mt-2">
@@ -76,14 +74,14 @@
                         <div class="mb-3">
                             <label for="complaintStatus" class="form-label fw-bold">Update Status</label>
                             <select id="complaintStatus" name="status" class="form-select g5-status-select" required>
-                                <option value="Chưa xử lý" ${complaint.status eq 'Chưa xử lý' ? 'selected' : ''}>Chưa xử lý</option>
-                                <option value="Đang xử lý" ${complaint.status eq 'Đang xử lý' ? 'selected' : ''}>Đang xử lý</option>
-                                <option value="Đã xử lý" ${complaint.status eq 'Đã xử lý' ? 'selected' : ''}>Đã xử lý</option>
+                                <option value="Chưa xử lý" ${complaint.status eq 'Chưa xử lý' ? 'selected' : ''}>Pending</option>
+                                <option value="Đang xử lý" ${complaint.status eq 'Đang xử lý' ? 'selected' : ''}>In Progress</option>
+                                <option value="Đã xử lý" ${complaint.status eq 'Đã xử lý' ? 'selected' : ''}>Resolved</option>
                             </select>
                         </div>
                         <div class="mb-3">
                             <label for="replyMessage" class="form-label fw-bold">Reply Message</label>
-                            <textarea id="replyMessage" name="replyMessage" class="form-control" rows="5" placeholder="Nhập nội dung giải thích, hỗ trợ khách hàng vào đây..." required><c:out value="${complaint.replyMessage}" /></textarea>
+                            <textarea id="replyMessage" name="replyMessage" class="form-control" rows="5" placeholder="Enter response or assistance message here..." required><c:out value="${complaint.replyMessage}" /></textarea>
                         </div>
                         <button type="submit" class="btn g5-primary px-4">Reply</button>
                     </form>
