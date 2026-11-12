@@ -112,7 +112,7 @@ public class LoginServlet extends HttpServlet {
         if (user == null || user.getUserID() == 0) {
             Flash.error(
                     request,
-                    "Invalid username or password."
+                    "Invalid username or password, or the account is deactivated."
             );
 
             response.sendRedirect(

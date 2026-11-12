@@ -107,9 +107,9 @@ public class PasswordResetDAO {
         return null;
     }
 
-    // Staff must finish first-login setup before they can reset a forgotten password.
+    // Staff must have an active account and finish first-login setup before password recovery.
     private String staffCondition(String role, String prefix) {
-        return "Staff".equals(role) ? " AND " + prefix + "MustChangePassword = 0" : "";
+        return "Staff".equals(role) ? " AND " + prefix + "MustChangePassword = 0 AND " + prefix + "IsActive = 1" : "";
     }
 
     protected EntityManager createEntityManager() {

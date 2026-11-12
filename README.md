@@ -1,3 +1,10 @@
+# HBMS – Vô hiệu hóa tài khoản nhân viên
+
+1. Với database đang dùng, chọn **QLKS** trong SSMS và chạy `db/HBMS_Staff_Account_Deactivation(V).sql` trước khi cập nhật ứng dụng. Script thêm cột `USERS.IsActive` và mặc định tài khoản hiện có là Active. Có thể chạy lại script.
+2. Với database mới, file `db/DB_v6_merged_transaction(I).sql` đã có cột này. File khởi tạo sẽ xóa và tạo lại database QLKS nếu database đã tồn tại.
+3. Clean and Build dự án, triển khai lại trên Tomcat, rồi đăng nhập Admin. Mở **Employee List**, bấm **Deactivate** ở dòng nhân viên và xác nhận.
+4. Kiểm tra trạng thái **Deactivated** trên danh sách. Thử đăng nhập lại bằng tài khoản đã khóa và tải lại trang trong một phiên nhân viên đã đăng nhập trước đó. Hồ sơ nhân viên và các bản ghi liên quan vẫn được lưu.
+
 # HBMS – Patch loại bỏ bảng INVOICE_TRANSACTION
 
 ## 1. Mục tiêu và kết quả

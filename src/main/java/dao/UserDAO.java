@@ -34,7 +34,7 @@ public class UserDAO {
             return null;
         }
         try (EntityManager em = createEntityManager()) {
-            String jpql = "SELECT u FROM Users u WHERE u.username = :username AND u.password = :password";
+            String jpql = "SELECT u FROM Users u WHERE u.username = :username AND u.password = :password AND u.active = true";
             TypedQuery<Users> query = em.createQuery(jpql, Users.class);
             query.setParameter("username", username);
             query.setParameter("password", hashMD5(password));
@@ -44,6 +44,16 @@ public class UserDAO {
             System.out.println(e.getMessage());
         }
         return null;
+    }
+
+    /** Read the current account state from the database for an existing staff session. */
+    public boolean isActiveStaff(int userId) {
+        try (EntityManager em = createEntityManager()) {
+            return em.createQuery("SELECT COUNT(u) FROM Users u WHERE u.userID = :id AND u.role = :role AND u.active = true", Long.class)
+                    .setParameter("id", userId)
+                    .setParameter("role", "Staff")
+                    .getSingleResult() == 1L;
+        }
     }
 
     public boolean isUsernameExists(String username) {
@@ -169,7 +179,7 @@ public class UserDAO {
         EntityManager em = createEntityManager();
         try {
             em.getTransaction().begin();
-            int changed = em.createQuery("UPDATE Users u SET u.password = :password, u.mustChangePassword = false WHERE u.userID = :id AND u.role = :role AND u.mustChangePassword = true AND u.password = :expected")
+            int changed = em.createQuery("UPDATE Users u SET u.password = :password, u.mustChangePassword = false WHERE u.userID = :id AND u.role = :role AND u.active = true AND u.mustChangePassword = true AND u.password = :expected")
                     .setParameter("password", newHash).setParameter("id", userId).setParameter("role", "Staff").setParameter("expected", expectedPasswordHash).executeUpdate();
             if (changed != 1) {
                 em.getTransaction().rollback();
@@ -197,7 +207,7 @@ public class UserDAO {
         EntityManager em = createEntityManager();
         try {
             em.getTransaction().begin();
-            int changed = em.createQuery("UPDATE Users u SET u.password = :password WHERE u.userID = :id AND u.role = :role AND u.mustChangePassword = true")
+            int changed = em.createQuery("UPDATE Users u SET u.password = :password WHERE u.userID = :id AND u.role = :role AND u.active = true AND u.mustChangePassword = true")
                     .setParameter("password", hashMD5(temporaryPassword)).setParameter("id", userId).setParameter("role", "Staff").executeUpdate();
             em.getTransaction().commit();
             em.getEntityManagerFactory().getCache().evict(Users.class, userId);

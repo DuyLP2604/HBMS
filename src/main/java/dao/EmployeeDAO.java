@@ -2,6 +2,7 @@ package dao;
 
 import entity.Employee;
 import entity.Users;
+import jakarta.persistence.CacheStoreMode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
@@ -15,8 +16,10 @@ public class EmployeeDAO {
     public List<Employee> getAllEmployees() {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
-            String jpql = "SELECT e FROM Employee e ORDER BY e.employeeID";
-            return em.createQuery(jpql, Employee.class).getResultList();
+            String jpql = "SELECT e FROM Employee e JOIN FETCH e.userID ORDER BY e.employeeID";
+            return em.createQuery(jpql, Employee.class)
+                    .setHint("jakarta.persistence.cache.storeMode", CacheStoreMode.REFRESH)
+                    .getResultList();
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to load the employee list.", exception);
         } finally {
@@ -30,7 +33,12 @@ public class EmployeeDAO {
         }
         EntityManager em = PersistenceManager.createEntityManager();
         try {
-            return em.find(Employee.class, employeeID.trim());
+            String jpql = "SELECT e FROM Employee e JOIN FETCH e.userID WHERE e.employeeID = :id";
+            List<Employee> employees = em.createQuery(jpql, Employee.class)
+                    .setParameter("id", employeeID.trim())
+                    .setHint("jakarta.persistence.cache.storeMode", CacheStoreMode.REFRESH)
+                    .getResultList();
+            return employees.isEmpty() ? null : employees.get(0);
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to find the employee.", exception);
         } finally {
@@ -196,6 +204,29 @@ public class EmployeeDAO {
         } catch (Exception exception) {
             rollback(em);
             throw new IllegalStateException("Unable to update the employee.", exception);
+        } finally {
+            close(em);
+        }
+    }
+
+    /** Disable the linked Staff account without changing the employee record. */
+    public boolean deactivateStaffAccount(String employeeID) {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            int changed = em.createNativeQuery(
+                    "UPDATE dbo.USERS SET IsActive = 0 WHERE Role = 'Staff' AND IsActive = 1"
+                    + " AND UserID IN (SELECT UserID FROM dbo.EMPLOYEE WHERE EmployeeID = ?)")
+                    .setParameter(1, employeeID)
+                    .executeUpdate();
+            em.getTransaction().commit();
+            if (changed == 1) {
+                em.getEntityManagerFactory().getCache().evict(Users.class);
+            }
+            return changed == 1;
+        } catch (RuntimeException exception) {
+            rollback(em);
+            throw exception;
         } finally {
             close(em);
         }
