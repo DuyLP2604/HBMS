@@ -13,9 +13,6 @@ import java.util.Collections;
 import java.util.List;
 import util.PersistenceManager;
 
-/**
- * Reads the service catalog and updates the services booked by guests.
- */
 public class ServiceDAO {
 
     public List<Service> getAllServices() {
@@ -256,6 +253,74 @@ public class ServiceDAO {
             PersistenceManager.getEMF().getCache().evictAll();
         }
         return changed;
+    }
+
+    public List<BookingService> getBookedServicesPaged(int offset, int pageSize) {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            String jpql = "SELECT bs FROM BookingService bs "
+                    + "JOIN FETCH bs.service "
+                    + "JOIN FETCH bs.booking b "
+                    + "JOIN FETCH b.customerID "
+                    + "WHERE b.bookingStatus <> 'CANCELLED' "
+                    + "ORDER BY b.bookingID DESC, bs.service.serviceID DESC";
+            TypedQuery<BookingService> query = em.createQuery(jpql, BookingService.class);
+            query.setFirstResult(offset);
+            query.setMaxResults(pageSize);
+            return query.getResultList();
+        } catch (Exception e) {
+            return Collections.emptyList();
+        } finally {
+            close(em);
+        }
+    }
+
+    public long countBookedServices() {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            String jpql = "SELECT COUNT(bs) FROM BookingService bs "
+                    + "WHERE bs.booking.bookingStatus <> 'CANCELLED'";
+            return em.createQuery(jpql, Long.class).getSingleResult();
+        } catch (Exception e) {
+            return 0L;
+        } finally {
+            close(em);
+        }
+    }
+
+    public void cancelBookingService(String bookingID, String serviceID, int actorUserID) {
+        if (bookingID == null || serviceID == null) {
+            throw new IllegalArgumentException("Thông tin đơn dịch vụ không hợp lệ.");
+        }
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            List<BookingService> list = em.createQuery(
+                    "SELECT bs FROM BookingService bs WHERE TRIM(bs.booking.bookingID) = :bid AND TRIM(bs.service.serviceID) = :sid",
+                    BookingService.class)
+                    .setParameter("bid", bookingID.trim())
+                    .setParameter("sid", serviceID.trim())
+                    .getResultList();
+
+            if (list.isEmpty()) {
+                throw new IllegalArgumentException("Không tìm thấy dịch vụ trong đơn phòng.");
+            }
+
+            BookingService bs = list.get(0);
+            String status = bs.getServiceStatus();
+            if (status != null && !"PENDING".equalsIgnoreCase(status.trim())) {
+                throw new IllegalStateException("Dịch vụ đã được tiếp nhận hoặc đã hoàn thành, không thể hủy.");
+            }
+
+            em.remove(bs);
+            em.getTransaction().commit();
+            PersistenceManager.getEMF().getCache().evictAll();
+        } catch (Exception e) {
+            rollback(em);
+            throw new IllegalStateException(e.getMessage(), e);
+        } finally {
+            close(em);
+        }
     }
 
     private void rollback(EntityManager em) {

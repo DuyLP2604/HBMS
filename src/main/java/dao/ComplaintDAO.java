@@ -4,10 +4,11 @@ import entity.Complaint;
 import entity.Employee;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.TypedQuery;
+import java.util.Collections;
 import java.util.List;
 import util.PersistenceManager;
 
-/** Loads complaints and saves replies and status changes. */
 public class ComplaintDAO extends DAOFramework<Complaint> {
 
     public ComplaintDAO() {
@@ -18,7 +19,47 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
         return PersistenceManager.createEntityManager();
     }
 
-    /** Load one complaint by its ID. */
+    @Override
+    public List<Complaint> getAll() {
+        EntityManager em = createEntityManager();
+        try {
+            String jpql = "SELECT c FROM Complaint c ORDER BY c.createdAt DESC, c.complaintID DESC";
+            TypedQuery<Complaint> query = em.createQuery(jpql, Complaint.class);
+            return query.getResultList();
+        } catch (Exception e) {
+            return Collections.emptyList();
+        } finally {
+            em.close();
+        }
+    }
+
+    public List<Complaint> getComplaintsPaged(int offset, int pageSize) {
+        EntityManager em = createEntityManager();
+        try {
+            String jpql = "SELECT c FROM Complaint c ORDER BY c.createdAt DESC, c.complaintID DESC";
+            TypedQuery<Complaint> query = em.createQuery(jpql, Complaint.class);
+            query.setFirstResult(offset);
+            query.setMaxResults(pageSize);
+            return query.getResultList();
+        } catch (Exception e) {
+            return Collections.emptyList();
+        } finally {
+            em.close();
+        }
+    }
+
+    public long countComplaints() {
+        EntityManager em = createEntityManager();
+        try {
+            String jpql = "SELECT COUNT(c) FROM Complaint c";
+            return em.createQuery(jpql, Long.class).getSingleResult();
+        } catch (Exception e) {
+            return 0L;
+        } finally {
+            em.close();
+        }
+    }
+
     public Complaint getComplaintById(int id) {
         EntityManager em = createEntityManager();
         try {
@@ -48,7 +89,6 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
         }
     }
 
-    /** Save the latest reply and its author together; actorUserId must come from the login session. */
     public void updateReply(int id, String replyMessage, String status, int actorUserId) {
         if (id <= 0 || actorUserId <= 0) {
             throw new IllegalArgumentException("Invalid complaint or account ID.");
@@ -63,7 +103,6 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
         EntityManager em = createEntityManager();
         try {
             em.getTransaction().begin();
-            // Read the current role and Employee relationship rather than a detached session object.
             List<Object[]> actors = em.createQuery(
                     "SELECT u.role, e.employeeID FROM Users u LEFT JOIN u.employee e WHERE u.userID = :userId",
                     Object[].class).setParameter("userId", actorUserId).getResultList();
@@ -85,7 +124,6 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
             }
             complaint.setReplyMessage(replyMessage.trim());
             complaint.setStatus(nextStatus);
-            // An Admin without an employee profile is valid and must not inherit a previous author.
             complaint.setEmployeeID(employeeId == null ? null : em.getReference(Employee.class, employeeId));
             em.getTransaction().commit();
         } catch (RuntimeException ex) {
@@ -96,9 +134,5 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
         } finally {
             em.close();
         }
-    }
-
-    public static void main(String[] args) {
-        System.out.println(new ComplaintDAO().getAll());
     }
 }
