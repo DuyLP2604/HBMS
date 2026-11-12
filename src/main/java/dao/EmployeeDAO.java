@@ -215,6 +215,19 @@ public class EmployeeDAO {
         }
     }
 
+    public boolean isCustomerServiceByUserId(int userID) {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            Long count = em.createQuery("SELECT COUNT(e) FROM Employee e WHERE e.userID.userID = :userID AND LOWER(e.position) LIKE :position", Long.class)
+                    .setParameter("userID", userID)
+                    .setParameter("position", "%customer service%")
+                    .getSingleResult();
+            return count != null && count > 0;
+        } finally {
+            close(em);
+        }
+    }
+
     /** Find the employee profile linked to the signed-in account. */
     public Employee getByUserId(int userID) {
         EntityManager em = PersistenceManager.createEntityManager();

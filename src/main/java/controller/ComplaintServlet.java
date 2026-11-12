@@ -20,11 +20,9 @@ import java.util.stream.Collectors;
 import util.flash.Flash;
 import util.security.CsrfTokens;
 
-/** Handles guest complaints and staff replies. */
 @WebServlet(name = "ComplaintServlet", urlPatterns = {"/complaint"})
 public class ComplaintServlet extends HttpServlet {
 
-    /** Open the complaint form, the staff list, or an accessible complaint detail. */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         Users user = getLoggedInUser(request);
@@ -42,7 +40,30 @@ public class ComplaintServlet extends HttpServlet {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
                 return;
             }
-            request.setAttribute("complaints", daoCp.getAll());
+            int requestedPage = 1;
+            try {
+                String pageParam = request.getParameter("page");
+                if (pageParam != null) {
+                    requestedPage = Math.max(1, Integer.parseInt(pageParam.trim()));
+                }
+            } catch (NumberFormatException ignored) {
+            }
+            int pageSize = 10;
+            long totalComplaints = daoCp.countComplaints();
+            int totalPages = (int) Math.max(1L, (totalComplaints + pageSize - 1L) / pageSize);
+            int currentPage = Math.min(requestedPage, totalPages);
+            int offset = (currentPage - 1) * pageSize;
+            List<Complaint> complaintList = daoCp.getComplaintsPaged(offset, pageSize);
+
+            request.setAttribute("complaints", complaintList);
+            request.setAttribute("currentPage", currentPage);
+            request.setAttribute("totalPages", totalPages);
+            request.setAttribute("totalComplaints", totalComplaints);
+            request.setAttribute("pageSize", pageSize);
+            request.setAttribute("startIndex", complaintList.isEmpty() ? 0 : offset + 1);
+            request.setAttribute("endIndex", complaintList.isEmpty() ? 0 : offset + complaintList.size());
+            request.setAttribute("pageStart", Math.max(1, currentPage - 2));
+            request.setAttribute("pageEnd", Math.min(totalPages, currentPage + 2));
             request.getRequestDispatcher("/WEB-INF/views/complaints.jsp").forward(request, response);
 
         } else if ("add".equalsIgnoreCase(action)) {
@@ -73,14 +94,15 @@ public class ComplaintServlet extends HttpServlet {
 
             request.setAttribute("complaint", complaint);
             request.setAttribute("canManageComplaints", canManageComplaints(user));
-            if (canManageComplaints(user)) {
+            boolean canReply = canReplyComplaints(user);
+            request.setAttribute("canReplyComplaints", canReply);
+            if (canReply) {
                 request.setAttribute("complaintCsrfToken", CsrfTokens.getOrCreate(request.getSession()));
             }
             request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp").forward(request, response);
         }
     }
 
-    /** Submit a guest complaint or save a staff reply. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
@@ -123,8 +145,8 @@ public class ComplaintServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/complaint?action=add");
 
         } else if ("reply".equalsIgnoreCase(action)) {
-            if (!canManageComplaints(user)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
+            if (!canReplyComplaints(user)) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only Customer Service staff or Admin can reply to complaints.");
                 return;
             }
 
@@ -176,7 +198,19 @@ public class ComplaintServlet extends HttpServlet {
         return "Admin".equalsIgnoreCase(user.getRole()) || "Staff".equalsIgnoreCase(user.getRole());
     }
 
-    /** Allow staff to view complaints and guests to view their own complaints. */
+    private boolean canReplyComplaints(Users user) {
+        if (user == null) {
+            return false;
+        }
+        if ("Admin".equalsIgnoreCase(user.getRole())) {
+            return true;
+        }
+        if ("Staff".equalsIgnoreCase(user.getRole()) && user.getUserID() != null) {
+            return new dao.EmployeeDAO().isCustomerServiceByUserId(user.getUserID());
+        }
+        return false;
+    }
+
     private boolean canViewComplaint(Users user, Complaint complaint) {
         if (canManageComplaints(user)) {
             return true;
