@@ -94,7 +94,9 @@ public class ComplaintServlet extends HttpServlet {
 
             request.setAttribute("complaint", complaint);
             request.setAttribute("canManageComplaints", canManageComplaints(user));
-            if (canManageComplaints(user)) {
+            boolean canReply = canReplyComplaints(user);
+            request.setAttribute("canReplyComplaints", canReply);
+            if (canReply) {
                 request.setAttribute("complaintCsrfToken", CsrfTokens.getOrCreate(request.getSession()));
             }
             request.getRequestDispatcher("/WEB-INF/views/complaint-detail.jsp").forward(request, response);
@@ -143,8 +145,8 @@ public class ComplaintServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/complaint?action=add");
 
         } else if ("reply".equalsIgnoreCase(action)) {
-            if (!canManageComplaints(user)) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied.");
+            if (!canReplyComplaints(user)) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only Customer Service staff or Admin can reply to complaints.");
                 return;
             }
 
@@ -194,6 +196,19 @@ public class ComplaintServlet extends HttpServlet {
 
     private boolean canManageComplaints(Users user) {
         return "Admin".equalsIgnoreCase(user.getRole()) || "Staff".equalsIgnoreCase(user.getRole());
+    }
+
+    private boolean canReplyComplaints(Users user) {
+        if (user == null) {
+            return false;
+        }
+        if ("Admin".equalsIgnoreCase(user.getRole())) {
+            return true;
+        }
+        if ("Staff".equalsIgnoreCase(user.getRole()) && user.getUserID() != null) {
+            return new dao.EmployeeDAO().isCustomerServiceByUserId(user.getUserID());
+        }
+        return false;
     }
 
     private boolean canViewComplaint(Users user, Complaint complaint) {

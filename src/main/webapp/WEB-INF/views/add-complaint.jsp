@@ -24,7 +24,7 @@
 
                             <div class="mb-3">
                                 <label for="complaintTitle" class="form-label">Title <span class="text-danger">*</span></label>
-                                <input type="text" id="complaintTitle" name="title" class="form-control" required placeholder="Summary of the issue...">
+                                <input type="text" id="complaintTitle" name="title" class="form-control" required maxlength="200" placeholder="Summary of the issue...">
                             </div>
 
                             <div class="mb-3">

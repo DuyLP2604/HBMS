@@ -118,6 +118,12 @@ public class ComplaintDAO extends DAOFramework<Complaint> {
             if (!admin && employeeId == null) {
                 throw new IllegalArgumentException("Your staff account has no employee profile. Please contact an administrator.");
             }
+            if (!admin) {
+                Employee emp = em.find(Employee.class, employeeId);
+                if (emp == null || emp.getPosition() == null || !emp.getPosition().toLowerCase().contains("customer service")) {
+                    throw new SecurityException("Only Customer Service staff can reply to complaints.");
+                }
+            }
             Complaint complaint = em.find(Complaint.class, id);
             if (complaint == null) {
                 throw new EntityNotFoundException("Complaint not found.");
