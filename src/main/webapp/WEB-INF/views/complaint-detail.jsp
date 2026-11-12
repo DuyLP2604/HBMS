@@ -64,7 +64,7 @@
                         <dd class="col-sm-9 mt-3 g5-message"><strong><c:out value="${complaint.replyMessage}" /></strong></dd>
                             </c:if>
                 </dl>
-                <c:if test="${canManageComplaints}">
+                <c:if test="${sessionScope.user.role ne 'Admin' and canManageComplaints}">
                     <hr class="mt-4">
                     <h2 class="g5-subtitle">Handle Complaint</h2>
                     <form action="${pageContext.request.contextPath}/complaint" method="post" class="mt-2">
