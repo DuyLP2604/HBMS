@@ -26,7 +26,7 @@ public class PasswordChangeDAO {
             // Check the role, old hash and first-login flag in the UPDATE itself.
             // A concurrent reset or flag change cannot be overwritten by this form.
             String sql = "UPDATE USERS SET Password = ? WHERE UserID = ? AND Role = ? AND Password = ?"
-                    + ("Staff".equals(role) ? " AND MustChangePassword = 0" : "");
+                    + ("Staff".equals(role) ? " AND MustChangePassword = 0 AND IsActive = 1" : "");
             int changed = em.createNativeQuery(sql)
                     .setParameter(1, passwords.hashMD5(newPassword))
                     .setParameter(2, userId)

@@ -65,6 +65,10 @@ public class Users implements Serializable {
     @Column(name = "MustChangePassword", nullable = false)
     private boolean mustChangePassword;
 
+    @Basic(optional = false)
+    @Column(name = "IsActive", nullable = false)
+    private boolean active = true;
+
 
     private static final long serialVersionUID = 1L;
     @Id
@@ -141,6 +145,14 @@ public class Users implements Serializable {
         return "entity.Users[ userID=" + userID + " ]";
     }
 
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
 
     public boolean isMustChangePassword() {
         return mustChangePassword;

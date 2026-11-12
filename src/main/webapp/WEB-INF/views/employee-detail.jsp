@@ -35,7 +35,7 @@
                     </section>
                 </div>
             </div>
-            <c:if test="${sessionScope.user.role eq 'Admin' and employee.userID.role eq 'Staff' and employee.userID.mustChangePassword}">
+            <c:if test="${sessionScope.user.role eq 'Admin' and employee.userID.role eq 'Staff' and employee.userID.active and employee.userID.mustChangePassword}">
                 <section class="employee-account-section" aria-label="Staff login credentials">
                     <div class="ui-notice ui-notice-info">This account is waiting for its first password change. Resending generates a new temporary password and invalidates earlier temporary credentials.</div>
                     <form action="${pageContext.request.contextPath}/employee" method="post">

@@ -15,6 +15,9 @@
 .ui-employee-workspace .employee-email-cell { min-width: 200px; max-width: 270px; overflow-wrap: anywhere; }
 .ui-employee-workspace .employee-action-cell { min-width: 200px; }
 .ui-employee-workspace .employee-action-cell .ui-button { margin: 3px 4px 3px 0; }
+.ui-employee-workspace .employee-deactivate-button { color: #954635; background: #fff; border-color: #efd7cc; }
+.ui-employee-workspace .employee-deactivate-button:hover,
+.ui-employee-workspace .employee-account-inactive { color: #954635; background: #fff4ef; }
 .ui-employee-workspace .employee-position-badge, .ui-employee-workspace .employee-shift-badge { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 6px; font-size: 12px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
 .ui-employee-workspace .employee-position-badge { color: #426648; background: #edf4e9; }
 .ui-employee-workspace .employee-shift-badge { color: #526b73; background: #eef4f5; }
