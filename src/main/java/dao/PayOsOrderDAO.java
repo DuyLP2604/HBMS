@@ -71,25 +71,11 @@ public class PayOsOrderDAO {
                 + "OR b.PaymentOption <> o.PaymentType OR b.InitialRequiredAmount <> o.ExternalAmount");
     }
 
-    public PayOsOrder findCheckoutOrder(String bookingID, Long orderCode) throws SQLException {
-        try (Connection c = PersistenceManager.openConnection()) {
-            return findCheckoutOrder(c, bookingID, orderCode);
-        }
-    }
-
-    public PayOsOrder findCheckoutOrder(Connection c, String bookingID, Long orderCode) throws SQLException {
-        return findCounterOrder(c, bookingID, orderCode, "o.CheckInStaffUserID IS NULL AND o.CheckInQrCode IS NOT NULL "
-                + "AND o.PaymentType = 'BALANCE'",
-                "b.BookingStatus <> 'CHECKED_IN' OR b.RemainingAmount <> o.ExternalAmount");
-    }
-
     private PayOsOrder findCounterOrder(Connection c, String bookingID, Long orderCode, String stage, String balanceChanged)
             throws SQLException {
         String filter = orderCode == null
                 ? "AND ((o.Status <> 'PAID' AND o.CheckInExpiresAt > ?) "
-                        + "OR (o.Status = 'PAID' AND b.FirstPaidAt IS NOT NULL AND (o.PaymentType IN ('DEPOSIT', 'FULL') "
-                        + "OR (o.PaymentType = 'BALANCE' AND o.CheckInStaffUserID IS NULL "
-                        + "AND b.BookingStatus IN ('CHECKED_IN', 'CHECKED_OUT') AND b.RemainingAmount = 0)))) "
+                        + "OR (o.Status = 'PAID' AND o.PaymentType IN ('DEPOSIT', 'FULL') AND b.FirstPaidAt IS NOT NULL)) "
                         + "ORDER BY o.CreatedAt DESC, o.OrderCode DESC"
                 : "AND o.OrderCode = ?";
         try (PreparedStatement ps = c.prepareStatement("SELECT TOP (1) o.OrderCode, o.PaymentID, o.ExternalAmount, "

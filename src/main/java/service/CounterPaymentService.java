@@ -11,7 +11,6 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.sql.Connection;
 import java.time.Instant;
-import java.util.Map;
 
 /** Coordinates cash and PayOS payments at the front desk. */
 public class CounterPaymentService {
@@ -46,7 +45,7 @@ public class CounterPaymentService {
             long deadline = validateInitialPayment(shown);
             PayOsOrder active = orders.findInitialCounterOrder(connection, bookingID, null);
             if (active != null) return active;
-            requireNoOpenOrder(connection, shown);
+            requireNoOpenInitialOrder(connection, shown);
             return createOrder(connection, bookingID, shown.getUserID(), shown.getPaymentType(), shown.getAmount(),
                     null, returnUrl, deadline);
         });
@@ -56,49 +55,13 @@ public class CounterPaymentService {
     public Payment collectInitialCash(PaymentRequest shown, int staffUserID) throws Exception {
         return orders.withCounterPaymentLock(shown.getBookingID(), connection -> {
             validateInitialPayment(shown);
-            requireNoOpenOrder(connection, shown);
+            requireNoOpenInitialOrder(connection, shown);
             return payments.collectAtCounter(shown, "PT03", staffUserID, false, false, "");
         });
     }
 
-    /** Open or reuse a PayOS order for the balance due at checkout. */
-    public PayOsOrder openCheckoutOrder(PaymentRequest shown, String returnUrl) throws Exception {
-        String bookingID = shown.getBookingID();
-        return orders.withCounterPaymentLock(bookingID, connection -> {
-            validateCheckoutPayment(shown);
-            PayOsOrder active = orders.findCheckoutOrder(connection, bookingID, null);
-            if (active != null) return active;
-            requireNoOpenOrder(connection, shown);
-            return createOrder(connection, bookingID, shown.getUserID(), "BALANCE", shown.getAmount(),
-                    null, returnUrl, Instant.now().plusSeconds(900).getEpochSecond());
-        });
-    }
-
-    /** Record checkout cash only when no PayOS payment is open for this balance. */
-    public Payment collectCheckoutCash(PaymentRequest shown, int staffUserID) throws Exception {
-        return orders.withCounterPaymentLock(shown.getBookingID(), connection -> {
-            validateCheckoutPayment(shown);
-            requireNoOpenOrder(connection, shown);
-            return payments.collectAtCounter(shown, "PT03", staffUserID, false, false, "");
-        });
-    }
-
-    private void validateCheckoutPayment(PaymentRequest shown) {
-        Map<String, Object> summary = new BookingDAO().getPaymentSummary(shown.getBookingID());
-        Object owner = summary.get("customerUserID");
-        if (!"CHECKED_IN".equals(summary.get("bookingStatus")) || summary.get("firstPaidAt") == null
-                || !(owner instanceof Number) || ((Number) owner).intValue() != shown.getUserID()) {
-            throw new IllegalStateException("Reload checkout and verify the booking before collecting payment.");
-        }
-        Object remaining = summary.get("remainingAmount");
-        if (!"BALANCE".equals(shown.getPaymentType()) || !(remaining instanceof BigDecimal)
-                || shown.getAmount().signum() <= 0 || shown.getAmount().compareTo((BigDecimal) remaining) != 0) {
-            throw new IllegalStateException("The outstanding amount changed. Reload checkout before collecting payment.");
-        }
-    }
-
-    /** Block another payment while PayOS is open for the same payment type. */
-    private void requireNoOpenOrder(Connection connection, PaymentRequest shown) throws Exception {
+    /** Block another initial payment while a PayOS order is open for the booking. */
+    private void requireNoOpenInitialOrder(Connection connection, PaymentRequest shown) throws Exception {
         if (orders.hasOpenPaymentOrder(connection, shown.getBookingID(), shown.getPaymentType(), true)) {
             throw new IllegalStateException("Check the existing VietQR payment before collecting or generating another code.");
         }
