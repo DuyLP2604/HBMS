@@ -138,15 +138,12 @@
                                     <img id="checkoutPayOsImage" width="240" height="240" alt="VietQR for the outstanding checkout balance" hidden>
                                     <a id="checkoutPayOsLink" class="ui-button ui-button-secondary ui-button-wide" target="_blank" rel="noopener noreferrer" hidden>Open PayOS</a>
                                 </section>
-                                <p id="checkoutPaymentStatus" class="checkout-payment-help" role="status" aria-live="polite">Checking payment status…</p>
+                                <p id="checkoutPaymentStatus" class="checkout-payment-help" role="status" aria-live="polite"></p>
                                 <button type="submit" id="checkoutCashSubmit" class="ui-button ui-button-primary ui-button-wide" disabled>Confirm cash received</button>
                                 <p class="checkout-payment-help">After payment is recorded, confirm checkout and issue the invoice.</p>
                                 <c:if test="${empty paymentMethods}"><div class="ui-notice ui-notice-danger">No collection methods are available. Contact the administrator.</div></c:if>
                                     <noscript><p>Enable JavaScript to collect cash or display the payment QR.</p></noscript>
                                 </form>
-                        </c:when>
-                        <c:when test="${checkoutPaymentDue}">
-                            <div class="ui-notice ui-notice-warning">A receptionist can collect the outstanding balance.</div>
                         </c:when>
                         <c:otherwise>
                             <div class="ui-notice ui-notice-warning checkout-unavailable" role="alert">Checkout is unavailable. Reload this page and verify the booking payment status.</div>
@@ -190,7 +187,7 @@
         });
     </script>
     <script>
-        // Wait for a verified payment before enabling checkout.
+// Collect cash at reception or wait for a verified PayOS payment before checkout.
         (function () {
             'use strict';
             const form = document.getElementById('checkoutPaymentForm');
@@ -231,18 +228,13 @@
                 create.hidden = ['PENDING', 'PAID', 'FAILED'].includes(state);
                 create.disabled = busy || state === 'UNKNOWN';
                 image.hidden = link.hidden = state !== 'PENDING';
-                if (image.hidden) {
-                    image.removeAttribute('src');
-                    link.removeAttribute('href');
-                }
             }
 
             function render(order) {
                 state = order.status;
                 orderCode = order.orderCode || '';
                 if (state === 'PENDING') {
-                    if (image.getAttribute('src') !== order.imageUrl)
-                        image.src = order.imageUrl;
+                    image.src = order.imageUrl;
                     link.href = order.checkoutUrl;
                 }
                 status.textContent = {
@@ -258,7 +250,7 @@
             }
 
             async function read(response) {
-                if (!response.ok || response.redirected) {
+                if (!response.ok) {
                     let message = 'Unable to verify payment. Reload checkout and review payment history.';
                     try {
                         message = (await response.json()).message || message;
@@ -280,7 +272,7 @@
                     render(await read(await fetch(url, {cache: 'no-store'})));
                 } catch (error) {
                     status.textContent = error.message;
-                    // Keep collection disabled while the order status is unknown.
+                    // Keep cash disabled until the active QR state can be checked.
                     state = 'UNKNOWN';
                     sync();
                 }
@@ -291,7 +283,6 @@
             create.addEventListener('click', async function () {
                 if (busy || ['UNKNOWN', 'PENDING', 'PAID', 'FAILED'].includes(state))
                     return;
-                clearTimeout(timer);
                 busy = true;
                 sync();
                 status.textContent = 'Generating VietQR…';
@@ -330,7 +321,6 @@
                 if (!event.persisted)
                     return;
                 submitting = false;
-                orderCode = '';
                 state = 'UNKNOWN';
                 submit.textContent = 'Confirm cash received';
                 sync();

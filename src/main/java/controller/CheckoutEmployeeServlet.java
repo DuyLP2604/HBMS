@@ -1,12 +1,10 @@
 package controller;
 
-import com.google.zxing.WriterException;
 import dao.BookingDAO;
-import dao.EmployeeDAO;
 import dao.InvoiceDAO;
 import dao.PayOsOrderDAO;
+import dao.PayOsOrderDAO.Order;
 import dao.PaymentmethodDAO;
-import dto.PayOsOrder;
 import entity.Users;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -17,32 +15,33 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.sql.SQLException;
 import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.UUID;
-import service.CounterPaymentService;
-import service.PaymentRequest;
 import service.PaymentService;
+import service.PaymentService.PaymentRequest;
 import service.PayOsService;
-import util.CounterPaymentSupport;
 import util.security.CsrfTokens;
+import util.PersistenceManager;
+import java.net.URI;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.Instant;
 
 /** Lets reception review stay charges and complete checkout with an invoice. */
-@WebServlet(name = "CheckoutEmployeeServlet", urlPatterns = {CheckoutEmployeeServlet.PATH})
+@WebServlet(name = "CheckoutEmployeeServlet", urlPatterns = {"/CheckoutEmployee"})
 public class CheckoutEmployeeServlet extends HttpServlet
 {
-    static final String PATH = "/CheckoutEmployee";
-    private static final String PAYMENT_REQUESTS = "checkoutPaymentRequests";
-
     private final InvoiceDAO invoiceDAO = new InvoiceDAO();
     private final BookingDAO bookingDAO = new BookingDAO();
     private final PayOsOrderDAO payOsOrders = new PayOsOrderDAO();
-    private final CounterPaymentService counterPayments = new CounterPaymentService();
+    private static final String PAYMENT_REQUESTS = "checkoutPaymentRequests";
 
     /** Open the reception checkout list or the details for one booking. */
     @Override
@@ -55,21 +54,17 @@ public class CheckoutEmployeeServlet extends HttpServlet
         }
         String action = request.getParameter("action");
         response.setHeader("Cache-Control", "no-store");
-
+        
+        // Bắt luồng PayOS Image và Status cho màn hình Checkout
         if ("payOsStatus".equals(action) || "payOsImage".equals(action))
         {
-            if (!canCollectPayment(user))
-            {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN);
-                return;
-            }
             showPayOsOrder(request, response, "payOsImage".equals(action));
             return;
         }
-
+        
         if ("detail".equals(action))
         {
-            showCheckoutDetail(request, response, user);
+            showCheckoutDetail(request, response);
         }
         else if (action == null || action.isBlank() || "list".equals(action))
         {
@@ -114,13 +109,12 @@ public class CheckoutEmployeeServlet extends HttpServlet
     }
 
     /** Load room and service charges and determine whether the stay can be closed. */
-    private void showCheckoutDetail(HttpServletRequest request, HttpServletResponse response, Users user)
-            throws ServletException, IOException
+    private void showCheckoutDetail(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
         String bookingID = request.getParameter("bookingID");
         if (bookingID == null || bookingID.isBlank())
         {
-            response.sendRedirect(request.getContextPath() + PATH);
+            response.sendRedirect(request.getContextPath() + "/CheckoutEmployee");
             return;
         }
         if (bookingID.trim().length() > 6)
@@ -178,17 +172,15 @@ public class CheckoutEmployeeServlet extends HttpServlet
         request.setAttribute("issuedInvoice", issuedInvoice);
         HttpSession session = request.getSession(false);
         request.setAttribute("csrfToken", CsrfTokens.getOrCreate(session));
-        boolean paymentDue = "CHECKED_IN".equals(summary.get("bookingStatus"))
-                && summary.get("firstPaidAt") != null && remainingAmount.signum() > 0;
-        boolean canCollect = paymentDue && canCollectPayment(user);
-        request.setAttribute("checkoutPaymentDue", paymentDue);
-        if (canCollect)
+        if ("CHECKED_IN".equals(summary.get("bookingStatus")) && summary.get("firstPaidAt") != null
+                && remainingAmount.signum() > 0)
         {
             Object customer = summary.get("customerUserID");
             if (!(customer instanceof Number) || ((Number) customer).intValue() <= 0)
             {
                 throw new ServletException("The booking customer account is unavailable.");
             }
+            Users staff = (Users) session.getAttribute("user");
             PaymentRequest payment = new PaymentService().createPaymentRequest(bookingID, ((Number) customer).intValue());
             if (!"BALANCE".equals(payment.getPaymentType()) || payment.getAmount().compareTo(remainingAmount) != 0)
             {
@@ -201,7 +193,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
             {
                 Map<String, CheckoutPayment> pending = paymentRequests(session);
                 while (pending.size() >= 20) pending.remove(pending.keySet().iterator().next());
-                pending.put(token, new CheckoutPayment(user.getUserID(), payment));
+                pending.put(token, new CheckoutPayment(staff.getUserID(), payment));
             }
             request.setAttribute("checkoutPaymentToken", token);
             request.setAttribute("paymentMethods", new PaymentmethodDAO().getCollectionMethods());
@@ -216,7 +208,6 @@ public class CheckoutEmployeeServlet extends HttpServlet
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
         request.setCharacterEncoding("UTF-8");
-        response.setHeader("Cache-Control", "no-store");
         Users user = requireStaff(request, response);
         if (user == null)
         {
@@ -228,14 +219,10 @@ public class CheckoutEmployeeServlet extends HttpServlet
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Reload checkout and try again.");
             return;
         }
-
+        
+        // Điều hướng các logic thanh toán (Cash & QR PayOS)
         if ("collectCash".equals(action) || "createPayOs".equals(action))
         {
-            if (!canCollectPayment(user))
-            {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only receptionists can collect checkout payments.");
-                return;
-            }
             collectPayment(request, response, user, action);
             return;
         }
@@ -244,7 +231,8 @@ public class CheckoutEmployeeServlet extends HttpServlet
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unsupported checkout action.");
             return;
         }
-
+        
+        // Xử lý tạo Invoice sau khi thanh toán xong
         HttpSession session = request.getSession(false);
         try
         {
@@ -293,7 +281,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
             setFlash(session, false, "Checkout could not be confirmed. Check the booking and invoice before trying again.");
         }
         String id = validBookingID(request);
-        response.sendRedirect(request.getContextPath() + PATH
+        response.sendRedirect(request.getContextPath() + "/CheckoutEmployee"
                 + (id == null ? "" : "?action=detail&bookingID=" + id));
     }
 
@@ -321,9 +309,9 @@ public class CheckoutEmployeeServlet extends HttpServlet
             {
                 String baseUrl = PayOsService.publicBaseUrl(request.getScheme() + "://" + request.getServerName()
                         + ":" + request.getServerPort() + request.getContextPath());
-                PayOsOrder order = counterPayments.openCheckoutOrder(shown.payment,
-                        baseUrl + PATH + "?action=detail&bookingID=" + bookingID);
-                CounterPaymentSupport.writeOrder(request, response, order, PATH);
+                Order order = openCheckoutOrder(shown.payment, user.getUserID(),
+                        baseUrl + "/CheckoutEmployee?action=detail&bookingID=" + bookingID);
+                CounterPaymentSupport.writeOrder(request, response, order, "/CheckoutEmployee");
                 return;
             }
             if (!"PT03".equals(request.getParameter("methodID"))
@@ -331,7 +319,11 @@ public class CheckoutEmployeeServlet extends HttpServlet
             {
                 throw new IllegalArgumentException("Select cash and confirm that the outstanding amount was received.");
             }
-            counterPayments.collectCheckoutCash(shown.payment, user.getUserID());
+            payOsOrders.withCounterPaymentLock(bookingID, connection -> {
+                validateCheckoutPayment(shown.payment);
+                requireNoOpenPayment(connection, bookingID);
+                return new PaymentService().collectAtCounter(shown.payment, "PT03", user.getUserID(), false, false, "");
+            });
             setFlash(session, true, "Cash payment recorded. Review the updated balance, then confirm checkout and issue the invoice.");
         }
         catch (Exception exception)
@@ -347,7 +339,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
             }
             setFlash(session, false, message);
         }
-        response.sendRedirect(request.getContextPath() + PATH + "?action=detail&bookingID=" + bookingID);
+        response.sendRedirect(request.getContextPath() + "/CheckoutEmployee?action=detail&bookingID=" + bookingID);
     }
 
     private void showPayOsOrder(HttpServletRequest request, HttpServletResponse response, boolean image) throws IOException
@@ -361,31 +353,130 @@ public class CheckoutEmployeeServlet extends HttpServlet
         try
         {
             String code = request.getParameter("orderCode");
-            PayOsOrder order = payOsOrders.findCheckoutOrder(bookingID,
-                    code == null && !image ? null : CounterPaymentSupport.parseOrderCode(code));
-            if (image)
+            Order order;
+            try (Connection connection = PersistenceManager.openConnection())
             {
-                CounterPaymentSupport.writeQrImage(response, order);
+                order = findCheckoutOrder(connection, bookingID,
+                        code == null && !image ? null : CounterPaymentSupport.parseOrderCode(code));
             }
-            else
-            {
-                CounterPaymentSupport.writeOrder(request, response, order, PATH);
-            }
+            if (image) CounterPaymentSupport.writeQrImage(response, order);
+            else CounterPaymentSupport.writeOrder(request, response, order, "/CheckoutEmployee");
         }
         catch (IllegalArgumentException exception)
         {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST);
         }
-        catch (SQLException | WriterException exception)
+        catch (java.sql.SQLException | com.google.zxing.WriterException exception)
         {
             log("Unable to load checkout QR.", exception);
             response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
         }
     }
 
-    private boolean canCollectPayment(Users user)
+    /** Use the existing payment service to validate the amount displayed on the checkout form. */
+    private void validateCheckoutPayment(PaymentRequest shown)
     {
-        return "Staff".equalsIgnoreCase(user.getRole()) && new EmployeeDAO().isReceptionistByUserId(user.getUserID());
+        Map<String, Object> summary = bookingDAO.getPaymentSummary(shown.getBookingID());
+        Object owner = summary.get("customerUserID");
+        if (!"CHECKED_IN".equals(summary.get("bookingStatus")) || summary.get("firstPaidAt") == null
+                || !(owner instanceof Number) || ((Number) owner).intValue() != shown.getUserID())
+        {
+            throw new IllegalStateException("Reload checkout and verify the booking before collecting payment.");
+        }
+        if (!"BALANCE".equals(shown.getPaymentType())
+                || shown.getAmount().compareTo(requireAmount(summary, "remainingAmount")) != 0)
+        {
+            throw new IllegalStateException("The outstanding amount changed. Reload checkout before collecting payment.");
+        }
+    }
+
+    private void requireNoOpenPayment(Connection connection, String bookingID) throws SQLException
+    {
+        if (payOsOrders.hasOpenPaymentOrder(connection, bookingID, "BALANCE", true))
+        {
+            throw new IllegalStateException("Check the existing QR payment before collecting cash or generating another code.");
+        }
+    }
+
+    /** Create the same PayOS QR used at check-in, for the outstanding checkout BALANCE. */
+    private Order openCheckoutOrder(PaymentRequest shown, int staffUserID, String returnUrl) throws Exception
+    {
+        if (!new dao.EmployeeDAO().isReceptionistByUserId(staffUserID))
+        {
+            throw new SecurityException("Only receptionists can collect checkout payments.");
+        }
+        return payOsOrders.withCounterPaymentLock(shown.getBookingID(), connection -> {
+            validateCheckoutPayment(shown);
+            Order active = findCheckoutOrder(connection, shown.getBookingID(), null);
+            if (active != null) return active;
+            requireNoOpenPayment(connection, shown.getBookingID());
+            Order order = new Order();
+            order.orderCode = PayOsService.newOrderCode();
+            order.bookingID = shown.getBookingID();
+            order.userID = shown.getUserID();
+            order.paymentType = "BALANCE";
+            order.externalAmount = shown.getAmount();
+            order.status = "PENDING";
+            order.checkInExpiresAt = Instant.now().plusSeconds(900).getEpochSecond();
+            PayOsService.Link link;
+            try
+            {
+                link = new PayOsService().createPaymentLink(order.orderCode, order.externalAmount, order.bookingID,
+                        returnUrl, returnUrl, order.checkInExpiresAt);
+            }
+            catch (InterruptedException exception)
+            {
+                Thread.currentThread().interrupt();
+                throw exception;
+            }
+            URI checkout = URI.create(link.checkoutUrl);
+            if (!"https".equalsIgnoreCase(checkout.getScheme()) || !"pay.payos.vn".equalsIgnoreCase(checkout.getHost())
+                    || checkout.getRawUserInfo() != null || link.checkoutUrl.length() > 500
+                    || link.qrCode.isBlank() || link.qrCode.length() > 2000 || link.paymentLinkId.isBlank())
+            {
+                throw new IllegalStateException("PayOS did not return a valid payment QR.");
+            }
+            order.checkInQrCode = link.qrCode;
+            order.checkInCheckoutUrl = link.checkoutUrl;
+            // Ordinary BALANCE orders are already supported by the existing checkout webhook.
+            payOsOrders.insertCounterOrder(connection, order, null, link.paymentLinkId);
+            return order;
+        });
+    }
+
+    /** Read checkout QR details from the existing PAYOS_ORDER table without changing the DAO. */
+    private Order findCheckoutOrder(Connection connection, String bookingID, Long code) throws SQLException
+    {
+        String filter = code == null
+                ? "AND o.Status <> 'PAID' AND o.CheckInExpiresAt > ? ORDER BY o.CreatedAt DESC, o.OrderCode DESC"
+                : "AND o.OrderCode = ?";
+        // Đã update SQL condition ở dòng `AND b.BookingStatus NOT IN ('CHECKED_IN', 'CHECKED_OUT')` để QR hiển thị mượt mà.
+        String sql = "SELECT TOP (1) o.OrderCode, o.PaymentID, o.ExternalAmount, o.CheckInExpiresAt, "
+                + "o.CheckInQrCode, o.CheckInCheckoutUrl, CASE WHEN o.Status IN ('PENDING','PROCESSING') "
+                + "AND (b.BookingStatus NOT IN ('CHECKED_IN', 'CHECKED_OUT') OR b.RemainingAmount <> o.ExternalAmount) "
+                + "THEN 'FAILED' ELSE o.Status END AS Status FROM dbo.PAYOS_ORDER o "
+                + "JOIN dbo.V_BOOKING_PAYMENT_SUMMARY b ON b.BookingID = o.BookingID "
+                + "WHERE o.BookingID = ? AND o.PaymentType = 'BALANCE' AND o.CheckInStaffUserID IS NULL "
+                + "AND o.CheckInQrCode IS NOT NULL " + filter;
+        try (PreparedStatement statement = connection.prepareStatement(sql))
+        {
+            statement.setString(1, bookingID);
+            statement.setLong(2, code == null ? Instant.now().getEpochSecond() : code);
+            try (ResultSet result = statement.executeQuery())
+            {
+                if (!result.next()) return null;
+                Order order = new Order();
+                order.bookingID = bookingID;
+                order.orderCode = result.getLong("OrderCode");
+                order.paymentID = result.getString("PaymentID");
+                order.externalAmount = result.getBigDecimal("ExternalAmount");
+                order.status = result.getString("Status");
+                order.checkInExpiresAt = result.getLong("CheckInExpiresAt");
+                order.checkInQrCode = result.getString("CheckInQrCode");
+                order.checkInCheckoutUrl = result.getString("CheckInCheckoutUrl");
+                return order;
+            }
+        }
     }
 
     private String validBookingID(HttpServletRequest request)

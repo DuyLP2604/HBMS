@@ -153,6 +153,10 @@ public class PaymentServlet extends HttpServlet {
             return;
         }
 
+        if ("BALANCE".equals(paymentRequest.getPaymentType())) {
+            submitPayment(request, response, session, methodID, useWallet, paymentRequest);
+            return;
+        }
         PayOsOrderDAO orders = new PayOsOrderDAO();
         try {
             orders.withCounterPaymentLock(bookingID, connection -> {
