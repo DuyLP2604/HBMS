@@ -209,15 +209,18 @@ public class EmployeeDAO {
         }
     }
 
-    /** Disable the linked Staff account without changing the employee record. */
-    public boolean deactivateStaffAccount(String employeeID) {
+    /** Change access for the linked Staff account and invalidate its old sessions. */
+    public boolean setStaffAccountActive(String employeeID, boolean active) {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
             int changed = em.createNativeQuery(
-                    "UPDATE dbo.USERS SET IsActive = 0 WHERE Role = 'Staff' AND IsActive = 1"
+                    "UPDATE dbo.USERS SET IsActive = ?, AccessVersion = AccessVersion + 1"
+                    + " WHERE Role = 'Staff' AND IsActive = ?"
                     + " AND UserID IN (SELECT UserID FROM dbo.EMPLOYEE WHERE EmployeeID = ?)")
-                    .setParameter(1, employeeID)
+                    .setParameter(1, active ? 1 : 0)
+                    .setParameter(2, active ? 0 : 1)
+                    .setParameter(3, employeeID)
                     .executeUpdate();
             em.getTransaction().commit();
             if (changed == 1) {

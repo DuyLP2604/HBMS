@@ -69,6 +69,9 @@ public class Users implements Serializable {
     @Column(name = "IsActive", nullable = false)
     private boolean active = true;
 
+    @Column(name = "AccessVersion", nullable = false)
+    private int accessVersion;
+
 
     private static final long serialVersionUID = 1L;
     @Id
@@ -152,6 +155,10 @@ public class Users implements Serializable {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public int getAccessVersion() {
+        return accessVersion;
     }
 
     public boolean isMustChangePassword() {
