@@ -107,13 +107,16 @@
                                         <td class="employee-action-cell">
                                             <a href="${pageContext.request.contextPath}/employee?action=viewDetail&id=${e.employeeID}" class="ui-button ui-button-soft ui-button-small">View Details</a>
                                             <a href="${pageContext.request.contextPath}/employee?action=update&id=${e.employeeID}" class="ui-button ui-button-secondary ui-button-small">Edit</a>
-                                            <c:if test="${canManageAccounts and staffAccount and e.userID.active}">
+                                            <c:if test="${canManageAccounts and staffAccount}">
+                                                <c:set var="accountActive" value="${e.userID.active}" />
                                                 <form action="${pageContext.request.contextPath}/employee" method="post" class="d-inline-block m-0"
-                                                      onsubmit="return confirm('Deactivate this staff account? The employee will lose access to HBMS.');">
-                                                    <input type="hidden" name="action" value="deactivateAccount">
+                                                      onsubmit="return confirm('${accountActive ? 'Deactivate this staff account? The employee will lose access to HBMS.' : 'Reactivate this staff account? The employee will be able to sign in again.'}');">
+                                                    <input type="hidden" name="action" value="${accountActive ? 'deactivateAccount' : 'reactivateAccount'}">
                                                     <input type="hidden" name="id" value="${fn:escapeXml(e.employeeID)}">
                                                     <input type="hidden" name="csrfToken" value="${fn:escapeXml(csrfToken)}">
-                                                    <button type="submit" class="ui-button ui-button-small employee-deactivate-button">Deactivate</button>
+                                                    <button type="submit" class="ui-button ui-button-small ${accountActive ? 'employee-deactivate-button' : 'ui-button-primary'}">
+                                                        ${accountActive ? 'Deactivate' : 'Reactivate'}
+                                                    </button>
                                                 </form>
                                             </c:if>
                                         </td>

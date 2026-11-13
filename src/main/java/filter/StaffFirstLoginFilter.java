@@ -34,17 +34,18 @@ public class StaffFirstLoginFilter implements Filter {
         if ((staff || pending != null) && !staticAsset && !"/logout".equals(path)) {
             response.setHeader("Cache-Control", "no-store");
             int userId = staff ? user.getUserID() : pending.getUserId();
-            boolean active;
+            int accessVersion = staff ? user.getAccessVersion() : pending.getAccessVersion();
+            boolean valid;
             try {
-                active = createUserDAO().isActiveStaff(userId);
+                valid = createUserDAO().isStaffSessionValid(userId, accessVersion);
             } catch (RuntimeException exception) {
                 request.getServletContext().log("Unable to check staff account status.", exception);
                 response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "Unable to check your account status. Please try again.");
                 return;
             }
-            if (!active) {
+            if (!valid) {
                 session.invalidate();
-                Flash.error(request, "Your staff account is deactivated. Contact an administrator.");
+                Flash.error(request, "Your staff session has ended. Sign in again or contact an administrator.");
                 response.sendRedirect(request.getContextPath() + "/login");
                 return;
             }

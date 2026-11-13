@@ -88,7 +88,9 @@ public class EmployeeServlet extends HttpServlet {
         boolean add = "add".equalsIgnoreCase(action);
         boolean resend = "resendCredentials".equalsIgnoreCase(action);
         boolean deactivate = "deactivateAccount".equalsIgnoreCase(action);
-        boolean accountManagement = add || resend || deactivate;
+        boolean reactivate = "reactivateAccount".equalsIgnoreCase(action);
+        boolean accountStatusChange = deactivate || reactivate;
+        boolean accountManagement = add || resend || accountStatusChange;
         if (!profileUpdate && !accountManagement) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid employee action.");
             return;
@@ -105,12 +107,14 @@ public class EmployeeServlet extends HttpServlet {
             if (profileUpdate) {
                 updateEmployee(request);
                 Flash.success(request, "Employee information updated.");
-            } else if (deactivate) {
+            } else if (accountStatusChange) {
                 String employeeID = requireParameter(request, "id", "Employee ID is required.");
-                if (createEmployeeDAO().deactivateStaffAccount(employeeID)) {
-                    Flash.success(request, "Staff account deactivated.");
+                if (createEmployeeDAO().setStaffAccountActive(employeeID, reactivate)) {
+                    Flash.success(request, reactivate ? "Staff account reactivated." : "Staff account deactivated.");
                 } else {
-                    Flash.warning(request, "No active staff account was found for this employee.");
+                    Flash.warning(request, reactivate
+                            ? "No deactivated staff account was found for this employee."
+                            : "No active staff account was found for this employee.");
                 }
             } else if (add) {
                 boolean sent = addEmployee(request);
@@ -226,7 +230,7 @@ public class EmployeeServlet extends HttpServlet {
         EmailService emailService = configuredEmailService();
         String password = TemporaryPasswordGenerator.generate();
         // Renew the temporary password only while first-login setup is pending.
-        if (!createUserDAO().renewStaffTemporaryPassword(user.getUserID(), password)) {
+        if (!createUserDAO().renewStaffTemporaryPassword(user.getUserID(), user.getAccessVersion(), password)) {
             throw new IllegalArgumentException("This account is no longer eligible for a temporary password.");
         }
         return deliverCredentials(emailService, employee, user, password);
@@ -258,7 +262,8 @@ public class EmployeeServlet extends HttpServlet {
     }
 
     private void handleFormFailure(HttpServletRequest request, HttpServletResponse response, String action, String message) throws ServletException, IOException {
-        if ("resendCredentials".equalsIgnoreCase(action) || "deactivateAccount".equalsIgnoreCase(action)) {
+        if ("resendCredentials".equalsIgnoreCase(action) || "deactivateAccount".equalsIgnoreCase(action)
+                || "reactivateAccount".equalsIgnoreCase(action)) {
             Flash.error(request, message);
             response.sendRedirect(request.getContextPath() + "/employee?action=list");
         } else {
