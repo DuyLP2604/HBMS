@@ -3,6 +3,7 @@ package service;
 import com.google.gson.JsonObject;
 import dao.BookingDAO;
 import dao.WalletDAO;
+import dto.PayOsLink;
 import dto.WalletSummary;
 import entity.Booking;
 import entity.Payment;
@@ -10,7 +11,6 @@ import entity.Transaction;
 import entity.Paymentmethod;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -292,7 +292,7 @@ public class PaymentService {
                     return false;
                 }
                 String transactionCode = "PT02".equals(request.methodID) ? "WALLET-" + request.paymentID : request.transactionCode;
-                return !request.bookingID.equals(result.getString("BookingID").trim()) || !request.paymentType.equals(result.getString("PaymentType")) || request.amount.compareTo(result.getBigDecimal("Amount")) != 0 || request.walletAmount.compareTo(result.getBigDecimal("WalletAmount")) != 0 || !request.methodID.equals(result.getString("MethodID")) || !java.util.Objects.equals(transactionCode, result.getString("TransactionCode"));
+                return !request.getBookingID().equals(result.getString("BookingID").trim()) || !request.getPaymentType().equals(result.getString("PaymentType")) || request.getAmount().compareTo(result.getBigDecimal("Amount")) != 0 || request.walletAmount.compareTo(result.getBigDecimal("WalletAmount")) != 0 || !request.methodID.equals(result.getString("MethodID")) || !java.util.Objects.equals(transactionCode, result.getString("TransactionCode"));
             }
         }
     }
@@ -311,10 +311,10 @@ public class PaymentService {
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
             if (request != null) {
                 statement.setString(1, request.paymentID);
-                statement.setString(2, request.bookingID);
+                statement.setString(2, request.getBookingID());
                 statement.setInt(3, request.actorUserID);
-                statement.setString(4, request.paymentType);
-                statement.setBigDecimal(5, request.amount);
+                statement.setString(4, request.getPaymentType());
+                statement.setBigDecimal(5, request.getAmount());
                 statement.setString(6, request.methodID);
                 statement.setString(7, request.transactionCode);
                 statement.setBigDecimal(8, request.walletAmount);
@@ -344,7 +344,7 @@ public class PaymentService {
     private Payment readPayment(Connection connection, PaymentRequest request, Booking booking, Paymentmethod method) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("SELECT p.PaymentTime, p.Amount, p.WalletAmount, p.Status, p.TransactionID, t.id AS TransactionRowID, t.TransactionCode, t.TransactionType, t.TransactionValue FROM dbo.PAYMENT AS p JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = p.TransactionID WHERE p.PaymentID = ? AND p.BookingID = ?")) {
             statement.setString(1, request.paymentID);
-            statement.setString(2, request.bookingID);
+            statement.setString(2, request.getBookingID());
             try (ResultSet result = statement.executeQuery()) {
                 if (!result.next()) {
                     throw new IllegalStateException("The payment result could not be confirmed.");
@@ -356,7 +356,7 @@ public class PaymentService {
                 payment.setPaymentTime(result.getTimestamp("PaymentTime"));
                 payment.setAmount(result.getBigDecimal("Amount"));
                 payment.setWalletAmount(result.getBigDecimal("WalletAmount"));
-                payment.setPaymentType(request.paymentType);
+                payment.setPaymentType(request.getPaymentType());
                 payment.setStatus(result.getString("Status"));
                 Transaction transaction = new Transaction(result.getLong("TransactionRowID"),
                         result.getString("TransactionID"), result.getString("TransactionType"),
@@ -368,7 +368,7 @@ public class PaymentService {
         }
     }
 
-    public PayOsService.Link createGatewayLink(long orderCode, PaymentRequest request, String returnUrl, String cancelUrl) throws Exception {
+    public PayOsLink createGatewayLink(long orderCode, PaymentRequest request, String returnUrl, String cancelUrl) throws Exception {
         if (request == null || request.getAmount().signum() <= 0) {
             throw new IllegalArgumentException("Pay request invalid or pay amount must greater than 0.");
         }
@@ -391,7 +391,7 @@ public class PaymentService {
      * @return
      * @throws java.lang.Exception
      */
-    public PayOsService.Link createGatewayLink(PaymentRequest request, String returnUrl, String cancelUrl) throws Exception {
+    public PayOsLink createGatewayLink(PaymentRequest request, String returnUrl, String cancelUrl) throws Exception {
         long orderCode = Long.parseLong(String.valueOf(System.currentTimeMillis()).substring(5) + request.getUserID());
         return createGatewayLink(orderCode, request, returnUrl, cancelUrl);
     }
@@ -438,61 +438,6 @@ public class PaymentService {
                 return "Only the wallet owner can authorize a wallet contribution.";
             default:
                 return "Payment could not be confirmed. Check your booking or retry the same request.";
-        }
-    }
-
-    public static final class PaymentRequest implements Serializable {
-
-        private static final long serialVersionUID = 2L;
-        private final String bookingID;
-        private final int userID;
-        private final String paymentType;
-        private final BigDecimal amount;
-        private final BigDecimal walletBalance;
-        private String transactionCode = "PAYMENT-" + UUID.randomUUID();
-        private int actorUserID;
-        private Integer walletAuthorizedBy;
-        private String paymentID;
-        private String transactionID;
-        private final String transferReference = "HBMS" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
-        private String methodID;
-        private BigDecimal walletAmount;
-
-        private PaymentRequest(String bookingID, int userID, String paymentType, BigDecimal amount, BigDecimal walletBalance) {
-            this.bookingID = bookingID;
-            this.userID = userID;
-            this.paymentType = paymentType;
-            this.amount = amount;
-            this.walletBalance = walletBalance;
-        }
-
-        public String getTransferReference() {
-            return transferReference;
-        }
-
-        public String getBookingID() {
-            return bookingID;
-        }
-
-        public int getUserID() {
-            return userID;
-        }
-
-        public String getPaymentType() {
-            return paymentType;
-        }
-
-        public BigDecimal getAmount() {
-            return amount;
-        }
-
-        public BigDecimal getWalletBalance() {
-            return walletBalance;
-        }
-
-        public BigDecimal getOfferedWalletAmount() {
-            // Limit the wallet contribution to the amount due.
-            return walletBalance == null ? BigDecimal.ZERO : walletBalance.max(BigDecimal.ZERO).min(amount);
         }
     }
 }

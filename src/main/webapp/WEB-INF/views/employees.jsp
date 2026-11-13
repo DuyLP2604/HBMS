@@ -8,7 +8,7 @@
     <div class="hbms-ui ui-shell ui-employee-workspace">
         <header class="ui-page-heading">
             <div><p class="ui-eyebrow">STAFF DIRECTORY</p><h1>Employee List</h1><p class="ui-description">Find and manage employee information.</p></div>
-            <c:if test="${sessionScope.user.role eq 'Admin'}"><a href="${pageContext.request.contextPath}/employee?action=add" class="ui-button ui-button-primary"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Employee</a></c:if>
+            <c:if test="${canManageAccounts}"><a href="${pageContext.request.contextPath}/employee?action=add" class="ui-button ui-button-primary"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add Employee</a></c:if>
         </header>
         <section class="ui-panel" aria-label="Employee directory">
             <div class="ui-panel-body"><form action="${pageContext.request.contextPath}/employee" method="get" id="searchForm">
@@ -54,7 +54,9 @@
                         </form></div>
             <div class="ui-table-scroll" role="region" aria-label="Employee list">
                 <table class="ui-table employee-directory-table">
-                    <thead><tr><th scope="col">Employee ID</th><th scope="col">Full Name</th><th scope="col">Email</th><th scope="col">Position</th><th scope="col">Work Shift</th><th scope="col">Action</th></tr></thead>
+                    <thead><tr><th scope="col">Employee ID</th><th scope="col">Full Name</th><th scope="col">Email</th><th scope="col">Position</th><th scope="col">Work Shift</th>
+                        <c:if test="${canManageAccounts}"><th scope="col">Account Status</th></c:if>
+                        <th scope="col">Action</th></tr></thead>
 <tbody>
                             <c:set var="matchCount" value="0" />
                             <c:forEach var="e" items="${employees}">
@@ -92,16 +94,38 @@
                                         <td>
                                             <span class="employee-shift-badge"><c:out value="${e.shift}" /></span>
                                         </td>
+                                        <c:set var="staffAccount" value="${e.userID.role eq 'Staff'}" />
+                                        <c:if test="${canManageAccounts}">
+                                            <td>
+                                                <c:choose>
+                                                    <c:when test="${not staffAccount}">—</c:when>
+                                                    <c:when test="${e.userID.active}"><span class="ui-status">Active</span></c:when>
+                                                    <c:otherwise><span class="ui-status employee-account-inactive">Deactivated</span></c:otherwise>
+                                                </c:choose>
+                                            </td>
+                                        </c:if>
                                         <td class="employee-action-cell">
                                             <a href="${pageContext.request.contextPath}/employee?action=viewDetail&id=${e.employeeID}" class="ui-button ui-button-soft ui-button-small">View Details</a>
                                             <a href="${pageContext.request.contextPath}/employee?action=update&id=${e.employeeID}" class="ui-button ui-button-secondary ui-button-small">Edit</a>
+                                            <c:if test="${canManageAccounts and staffAccount}">
+                                                <c:set var="accountActive" value="${e.userID.active}" />
+                                                <form action="${pageContext.request.contextPath}/employee" method="post" class="d-inline-block m-0"
+                                                      onsubmit="return confirm('${accountActive ? 'Deactivate this staff account? The employee will lose access to HBMS.' : 'Reactivate this staff account? The employee will be able to sign in again.'}');">
+                                                    <input type="hidden" name="action" value="${accountActive ? 'deactivateAccount' : 'reactivateAccount'}">
+                                                    <input type="hidden" name="id" value="${fn:escapeXml(e.employeeID)}">
+                                                    <input type="hidden" name="csrfToken" value="${fn:escapeXml(csrfToken)}">
+                                                    <button type="submit" class="ui-button ui-button-small ${accountActive ? 'employee-deactivate-button' : 'ui-button-primary'}">
+                                                        ${accountActive ? 'Deactivate' : 'Reactivate'}
+                                                    </button>
+                                                </form>
+                                            </c:if>
                                         </td>
                                     </tr>
                                 </c:if>
                             </c:forEach>
                             <c:if test="${empty employees || matchCount == 0}">
                                 <tr>
-                                    <td colspan="6" class="ui-empty-state">No employees found.</td>
+                                    <td colspan="${canManageAccounts ? 7 : 6}" class="ui-empty-state">No employees found.</td>
                                 </tr>
                             </c:if>
                         </tbody>

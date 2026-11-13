@@ -12094,8 +12094,6 @@ D:.
     |       |   |       Employee.class
     |       |   |       Hotel.class
     |       |   |       Invoice.class
-    |       |   |       InvoiceTransaction.class
-    |       |   |       InvoiceTransactionPK.class
     |       |   |       Nationality.class
     |       |   |       Payment.class
     |       |   |       Paymentmethod.class

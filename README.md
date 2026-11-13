@@ -1,471 +1,189 @@
-# HBMS - Project Structure Guide
+# HBMS – Vô hiệu hóa và kích hoạt lại tài khoản nhân viên
 
-## 1. New Web Structure
+1. Với database đang dùng, chọn **QLKS** trong SSMS và chạy một lần file `db/HBMS_Staff_Account_Status(V).sql` trước khi cập nhật ứng dụng. Script tự thêm các cột còn thiếu và giữ giá trị của các cột đã có. Có thể chạy lại script.
+2. Với database mới, file `db/DB_v6_merged_transaction(I).sql` đã có cả hai cột. File khởi tạo sẽ xóa và tạo lại database QLKS nếu database đã tồn tại.
+3. Clean and Build dự án, triển khai lại trên Tomcat, rồi đăng nhập Admin. Mở **Employee List**, chọn **Deactivate** hoặc **Reactivate** và xác nhận. Trạng thái trên danh sách đổi thành **Deactivated** hoặc **Active**.
+4. Sau khi kích hoạt lại, nhân viên đăng nhập lại bằng tài khoản và mật khẩu hiện có. Nếu tài khoản vẫn đang chờ đổi mật khẩu lần đầu, nhân viên tiếp tục quy trình đổi mật khẩu tạm. Hồ sơ và các bản ghi nghiệp vụ vẫn được lưu. Các phiên đăng nhập và yêu cầu đặt lại mật khẩu được tạo trước khi trạng thái tài khoản thay đổi sẽ hết hiệu lực.
 
-```text
-src/main/webapp/
-│
-├── assets/
-│   └── images/
-│
-├── css/
-│   ├── navbar.css
-│   ├── dropdown.css
-│   ├── flashMessage.css
-│   ├── customer.css
-│   ├── employee.css
-│   └── ...
-│
-├── js/
-│   ├── flashMessage.js
-│   ├── register.js
-│   └── ...
-│
-├── fontawesome/
-│
-└── WEB-INF/
-    ├── components/
-    │   ├── navbar.jsp
-    │   ├── dropdownMenu.jsp
-    │   ├── flashMessage.jsp
-    │   └── footer.jsp
-    │
-    ├── tags/
-    │   └── layout.tag
-    │
-    └── views/
-        ├── index.jsp
-        ├── login.jsp
-        ├── customers.jsp
-        ├── employees.jsp
-        └── ...
+# HBMS – Patch loại bỏ bảng INVOICE_TRANSACTION
+
+## 1. Mục tiêu và kết quả
+
+Patch được thực hiện trên mã nguồn trong `HBMS.zip` đã cung cấp ngày 12/11/2026.
+Project không còn cần bảng nối `INVOICE_TRANSACTION` khi khởi tạo database, ghi nhận
+thanh toán, checkout hoặc sao lưu/phục hồi Excel.
+
+Đối với database đang chạy, cần thực thi `db/HBMS_Drop_Invoice_Transaction.sql`
+để cập nhật các thủ tục, view và xóa bảng thật trong SQL Server. Việc sửa file SQL
+trong project không tự thay đổi database trên máy của bạn. Chưa có kết nối tới
+SQL Server của bạn trong lần chỉnh sửa này.
+
+## 2. Quan hệ dữ liệu sau thay đổi
+
+Mỗi hóa đơn thuộc một booking. Các khoản thanh toán của hóa đơn được lấy từ
+`PAYMENT.BookingID = INVOICE.BookingID`, sau đó lấy giao dịch qua
+`PAYMENT.TransactionID = TRANSACTION.TransactionID`.
+
+| Dữ liệu cần lấy | Quan hệ sử dụng |
+| --- | --- |
+| Booking của hóa đơn | `INVOICE.BookingID` → `BOOKING.BookingID` |
+| Các lần thanh toán | `INVOICE.BookingID` → `PAYMENT.BookingID` |
+| Giao dịch của mỗi lần thanh toán | `PAYMENT.TransactionID` → `TRANSACTION.TransactionID` |
+| Phương thức thanh toán | `PAYMENT.MethodID` → `PAYMENTMETHOD.MethodID` |
+
+View `V_INVOICE_TRANSACTION_DETAILS` được giữ tên và giữ đủ 17 cột để các truy vấn
+đang dùng view tiếp tục hoạt động. Tên view còn chữ `TRANSACTION` vì nó hiển thị
+giao dịch; view này không còn đọc bảng `INVOICE_TRANSACTION`.
+
+View chỉ lấy `PAYMENT.Status IN ('PAID', 'REFUNDED')`. Các khoản `PENDING` và `FAILED`
+không xuất hiện. `REFUNDED` được giữ để truy vết khoản thu trước khi hoàn tiền;
+không dùng tổng view này làm số tiền thu ròng sau hoàn tiền. Các dòng giao dịch
+hoàn tiền tiếp tục được quản lý qua `BOOKING_REFUND` và `TRANSACTION` như trước.
+
+## 3. Chi tiết các file đã thay đổi
+
+| File | Thay đổi |
+| --- | --- |
+| `db/DB_v6_merged_transaction.sql` | Bỏ tạo bảng nối, PK/FK/index riêng, trigger kiểm tra, dữ liệu mẫu và lệnh DENY của bảng nối. Bỏ đoạn INSERT vào bảng nối ở cả hai định nghĩa `SP_RECORD_PAYMENT` và ở `SP_CHECKOUT_WITH_INVOICE`. Viết lại view và kiểm tra dữ liệu mẫu theo quan hệ trực tiếp. |
+| `db/HBMS_Drop_Invoice_Transaction.sql` | Thêm migration dành cho database hiện có; cập nhật hai thủ tục và view, bỏ trigger rồi xóa bảng trong một transaction. |
+| `db/tests/HBMS_Procedure_Header_Regression.sql` | Thêm 12 ca hồi quy SQL Server cho header có chú thích dài, chú thích lồng nhau, `PROC`, `CREATE OR ALTER` và dữ liệu không hợp lệ. Fixture chỉ nằm trong `tempdb` và được rollback. |
+| `db/tests/HBMS_Drop_Invoice_Transaction_Verify.sql` | Thêm script kiểm tra sau migration: bảng/trigger đã mất, module không còn phụ thuộc, view không thiếu/thừa/lặp khoản thanh toán. |
+| `src/main/java/dao/DAOFramework.java` | Bỏ tên bảng cũ khỏi `PROCEDURE_TABLES`; giữ nguyên cơ chế bắt buộc các bảng nghiệp vụ còn lại ghi qua thủ tục. |
+| `src/main/java/service/DatabaseBackupService.java` | Bỏ bảng cũ khỏi danh sách sao lưu và phục hồi Excel. Ghi chú rõ sheet thừa trong backup cũ được bỏ qua. |
+| `src/main/java/entity/Transaction.java` | Cập nhật mô tả quan hệ: hóa đơn tra giao dịch thông qua booking và các khoản thanh toán. Không đổi mapping hay hành vi entity. |
+| `src/test/python/test_invoice_payments.py` | Thêm 7 ca kiểm tra quan hệ và bộ lọc của SELECT trong view bằng dữ liệu giả lập. |
+| `project_structure.txt` | Bỏ hai dòng mô tả class cũ `InvoiceTransaction.class` và `InvoiceTransactionPK.class`. |
+| `docs/PROJECT_STRUCTURE_GUIDE.md` | Chuyển nội dung `README.md` cũ vào đây để giữ hướng dẫn cấu trúc project. |
+| `README.md` trong project; `readme.md` tải riêng | Tài liệu tiếng Việt giải thích patch và cách áp dụng. Giữ tên `README.md` gốc khi áp dụng Git để tương thích Windows. |
+
+Trong mã nguồn được cung cấp không có entity `InvoiceTransaction.java` hoặc
+`InvoiceTransactionPK.java`, cũng không có khai báo hai entity này trong
+`persistence.xml`. Vì vậy không cần xóa thêm entity hay sửa cấu hình JPA.
+
+`InvoiceDAO`, các service thanh toán/check-in/checkout và servlet hiện có gọi
+stored procedure hoặc đọc bảng/view khác, không trực tiếp đọc bảng nối. Các file
+này không cần sửa chỉ vì bỏ bảng. Tiền thu, giao dịch gốc, số dư ví, kiểm tra quyền,
+kiểm tra thanh toán đủ và chống ghi nhận trùng tiếp tục dùng logic hiện có.
+
+## 4. Cách áp dụng cho database đang sử dụng
+
+1. Dùng bản project đã sửa, hoặc áp dụng file patch vào đúng bản gốc `HBMS.zip`.
+   Nếu dùng Git, chạy `git apply --check HBMS_remove_invoice_transaction.patch`,
+   sau đó `git apply HBMS_remove_invoice_transaction.patch` tại thư mục có `pom.xml`.
+2. Tạm dừng ứng dụng và tạo bản sao lưu database trước khi thay đổi cấu trúc.
+3. Mở SQL Server Management Studio, chọn database **QLKS**, chạy toàn bộ
+   `db/HBMS_Drop_Invoice_Transaction.sql` bằng tài khoản có quyền sửa thủ tục,
+   view, trigger và bảng, đồng thời có quyền đọc định nghĩa các module.
+4. Chạy `db/tests/HBMS_Drop_Invoice_Transaction_Verify.sql` trên cùng database.
+5. Clean and Build project bằng JDK 11 trở lên và Maven: `mvn clean package`.
+   Deploy WAR mới lên Tomcat rồi khởi động lại ứng dụng.
+
+Migration chỉ xóa đoạn INSERT vào bảng nối trong định nghĩa hai thủ tục đang có
+trong database. Các phần xử lý khác được giữ lại, kể cả nếu đã có chỉnh sửa riêng
+ngoài đoạn đó. Migration chuẩn hóa CRLF/LF khi so khớp. Nếu đoạn tham chiếu bảng
+cũ đã được viết lại khác mẫu trong `HBMS.zip`, script dừng và rollback để tránh
+ghi đè nhầm logic. Khi đó cần đối chiếu thủ tục thực tế rồi điều chỉnh migration.
+
+### Bản sửa lỗi `readme.md: already exists in working directory` trên Windows
+
+Bản patch đầu xóa `README.md` rồi thêm `readme.md`. Trên Windows, hai tên này
+thường trỏ tới cùng một file nên `git apply --check` báo file đã tồn tại.
+
+Bản hiện tại giữ tên `README.md` gốc và cập nhật nội dung trực tiếp. Hướng dẫn
+cũ vẫn được giữ đầy đủ trong `docs/PROJECT_STRUCTURE_GUIDE.md`. File tài liệu
+tải riêng vẫn có tên `readme.md`.
+
+Nếu đã gặp lỗi này ở bước `git apply --check`, tải lại file
+`HBMS_remove_invoice_transaction.patch`, chép đè bản patch cũ ở thư mục có
+`pom.xml`, rồi chạy lại `git apply --check` và `git apply` như hướng dẫn trên.
+Không cần xóa hay đổi tên file README đang có. Lệnh `--check` không áp dụng
+thay đổi vào mã nguồn.
+
+### Bản sửa lỗi 51506
+
+Bản migration đầu kiểm tra vị trí từ `PROCEDURE` trong 40 ký tự đầu của
+`OBJECT_DEFINITION`. SQL Server có thể lưu cả chú thích đứng trước khai báo,
+khiến kiểm tra này từ chối một thủ tục hợp lệ.
+
+Bản hiện tại bỏ giới hạn đó, đọc các từ khóa ở phần khai báo sau khi bỏ qua
+khoảng trắng, chú thích dòng và chú thích khối lồng nhau. Hỗ trợ `CREATE`,
+`ALTER`, `CREATE OR ALTER` cùng cả `PROC` và `PROCEDURE`. Chỉ đổi từ `CREATE`
+đầu khai báo thành `ALTER` khi cần; giữ nguyên phần chú thích và thân thủ tục.
+`SET NOCOUNT ON` cũng được thêm để bỏ thông báo số dòng cấu hình tạm.
+
+Nếu đã gặp lỗi 51506 với bản cũ, chạy lại **toàn bộ** bản mới của
+`db/HBMS_Drop_Invoice_Transaction.sql` trên QLKS. Với script cũ đã gửi, lỗi này
+được bắt trong CATCH và rollback transaction; lệnh xóa bảng nằm sau bước bị lỗi.
+Thông báo `(2 rows affected)` đến từ hai dòng trong biến bảng cấu hình `@Modules`,
+không phải số giao dịch bị xóa. Không cần chạy lại file khởi tạo database.
+
+Có thể chạy riêng `db/tests/HBMS_Procedure_Header_Regression.sql` trên SQL Server
+thử nghiệm để kiểm tra 12 trường hợp. File này chủ động chuyển sang `tempdb`,
+không chỉnh dữ liệu HBMS; fixture được rollback. Sau đó chọn lại QLKS để chạy
+migration và script verify. Các ca hồi quy SQL mới chưa được thực thi trong
+môi trường chỉnh sửa do chưa có SQL Server.
+
+Script dùng khóa ghi chung `SP_HBMS_ACQUIRE_WRITE_LOCK` của project và một
+transaction cho toàn bộ thay đổi. Nếu phát hiện liên kết cũ không hợp lệ, phụ
+thuộc chưa xử lý hoặc lỗi SQL, toàn bộ thay đổi được rollback. Có thể chạy lại
+script sau khi migration đã thành công; không tạo lại bảng cũ.
+
+Migration không xóa dữ liệu trong `INVOICE`, `PAYMENT`, `TRANSACTION` hay các bảng
+hoàn tiền/ví. Dữ liệu bị xóa là các dòng của chính bảng nối được yêu cầu bỏ.
+Các khóa duy nhất của bảng gốc được giữ để hạn chế thay đổi ngoài phạm vi patch.
+
+**Không chạy `DB_v6_merged_transaction.sql` trên database có dữ liệu cần giữ:**
+file này có lệnh xóa và tạo lại toàn bộ database, vốn đã có trong bản gốc.
+
+## 5. Khởi tạo database mới
+
+Chỉ khi tạo môi trường mới hoặc chủ động làm lại dữ liệu mẫu, chạy bản đã sửa của
+`db/DB_v6_merged_transaction.sql`. Database mới sẽ không tạo bảng nối ngay từ đầu
+và không cần chạy thêm migration xóa bảng. Các script PayOS và xử lý dịch vụ
+đi kèm không có tham chiếu bảng nối nên không phải sửa vì yêu cầu này.
+
+## 6. Sao lưu và phục hồi Excel
+
+- Backup mới không tạo sheet `INVOICE_TRANSACTION`.
+- Khi import backup cũ, sheet `INVOICE_TRANSACTION` được bỏ qua vì không nằm trong
+  danh sách bảng hiện hành. Các sheet gốc như `INVOICE`, `PAYMENT`, `TRANSACTION`
+  vẫn được import và kiểm tra tính nhất quán như trước.
+- Không cần tái tạo các dòng bảng nối sau import: view suy ra các khoản thanh
+  toán trực tiếp từ `BookingID` và `TransactionID`.
+- Với công cụ phục hồi ngoài project, cần loại phần khôi phục bảng nối khỏi kịch
+  bản cũ, hoặc chạy lại migration sau khi khôi phục một bản database cũ đầy đủ.
+
+## 7. Kiểm tra và giới hạn xác minh
+
+Các kiểm tra đã thực hiện:
+
+- **7/7 ca Python đạt**: nhiều lần thu tiền trên một hóa đơn, tách đúng booking,
+  loại `PENDING`/`FAILED`, giữ lịch sử `REFUNDED`, booking chưa có hóa đơn,
+  không ghép sai giao dịch và giữ các trường tiền ví/tiền ngoài ví.
+- **2/2 file kiểm tra JavaScript hiện có đạt**, gồm kiểm tra trạng thái thanh toán
+  tại quầy/check-in và 20 kiểm tra giao diện thanh toán.
+- Rà soát mã nguồn Java, cấu hình JPA, các câu SQL, backup/restore và cấu trúc
+  project để loại phụ thuộc thực thi vào bảng cũ.
+- Phân tích cú pháp **126 file Java** bằng bộ phân tích JDK, đặt mức cú pháp
+  Java 11: không có lỗi cú pháp. Bước này chưa kiểm tra liên kết thư viện hoặc
+  thay thế việc build WAR bằng Maven.
+
+Chạy lại kiểm tra cục bộ tại thư mục có `pom.xml`:
+
+```bash
+python -m unittest discover -s src/test/python -v
+node --test src/test/js/*.test.js
 ```
 
-
-## 2. JSP Views
-
-All main JSP pages must be placed inside:
-
-```text
-WEB-INF/views/
-```
-
-Examples:
-
-- `WEB-INF/views/customers.jsp`
-- `WEB-INF/views/employees.jsp`
-- `WEB-INF/views/profile.jsp`
-
-Do **NOT** access JSP files directly from the browser.
-
-
-## 3. Servlet Forward to JSP
-
-Servlets should forward to JSP using:
-
-```java
-request.getRequestDispatcher(
-    "/WEB-INF/views/yourpagehere.jsp"
-).forward(request, response);
-```
-
-
-## 4. Redirect
-
-Always use `contextPath`.
-
-Example:
-
-```java
-response.sendRedirect(
-    request.getContextPath() + "/customer?action=list"
-);
-```
-
-Do **NOT** redirect directly to a JSP file.
-
-
-## 5. Layout
-
-Pages should include:
-
-```jsp
-<%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
-<layout:layout
-    title="Customer List"
-    pageCss="customer.css"
-    useBootstrap="true"
->
-    <!-- Page content here -->
-</layout:layout>
-```
-
-Do **NOT** manually add:
-
-- `<html>`
-- `<head>`
-- `<body>`
-- Navbar
-- Bootstrap CSS
-- Flash message component
-- Common CSS
-- Common JavaScript
-
-`layout.tag` already handles them.
-
-
-## 6. Navbar / Common Components
-
-Common components are located in:
-
-```text
-WEB-INF/components/
-```
-
-Current common components include:
-
-- `navbar.jsp`
-- `dropdownMenu.jsp`
-- `flashMessage.jsp`
-- `footer.jsp`
-
-Do not copy navbar code into individual JSP pages.
-
-`layout.tag` automatically handles common components and resources.
-
-### Page without navbar
-
-Use:
-
-```jsp
-showNavbar="false"
-```
-
-Example:
-
-```jsp
-<layout:layout
-    title="Login"
-    pageCss="login.css"
-    showNavbar="false"
->
-```
-
-### Page using footer
-
-Use:
-
-```jsp
-showFooter="true"
-```
-
-Example:
-
-```jsp
-<layout:layout
-    title="Home"
-    pageCss="index.css"
-    showFooter="true"
->
-```
-
-
-## 7. CSS
-
-### Common CSS
-
-- `css/navbar.css`
-- `css/dropdown.css`
-- `css/flashMessage.css`
-
-### Page-specific CSS
-
-- `css/customer.css`
-- `css/employee.css`
-- `css/booking.css`
-- `css/complaint.css`
-- `css/profile.css`
-- ...
-
-Use:
-
-```jsp
-pageCss="customer.css"
-```
-
-to link page-specific CSS to a page.
-
-Avoid defining generic selectors such as:
-
-- `.navbar`
-- `.logo`
-- `.dropdown`
-- `form`
-- `input`
-- `button`
-
-inside page-specific CSS when they may affect shared components or other pages.
-
-Prefer specific page classes.
-
-Example JSP:
-
-```jsp
-<form
-    action="${pageContext.request.contextPath}/register"
-    method="post"
-    class="register-form"
->
-```
-
-Then in CSS:
-
-```css
-.register-form {
-    /* Register form styles */
-}
-```
-
-This helps prevent page-specific CSS from overriding common components.
-
-
-## 8. JavaScript
-
-Page-specific JavaScript should be stored in:
-
-```text
-src/main/webapp/js/
-```
-
-Examples:
-
-- `js/register.js`
-- `js/checkout.js`
-- `js/dashboard.js`
-- `js/togglePassword.js`
-
-Use:
-
-```jsp
-pageJs="register.js"
-```
-
-to include JavaScript in a page.
-
-Avoid putting large JavaScript blocks directly inside JSP files because they are harder to read and maintain.
-
-
-## 9. Static Resources
-
-Use `contextPath` when referencing static resources.
-
-Examples:
-
-```jsp
-${pageContext.request.contextPath}/assets/images/...
-${pageContext.request.contextPath}/css/...
-${pageContext.request.contextPath}/js/...
-${pageContext.request.contextPath}/fontawesome/...
-```
-
-Static resources must stay **outside `WEB-INF`**.
-
-Examples of static resources:
-
-- CSS files
-- JavaScript files
-- Images
-- Font Awesome files
-
-
-## 10. Flash Messages
-
-Use Flash inside Servlets.
-
-Available Flash types can be found in `Flash.java`.
-
-Examples:
-
-```java
-Flash.success(
-    request,
-    "Employee added successfully."
-);
-
-Flash.error(
-    request,
-    "Unable to create employee."
-);
-```
-
-Then redirect:
-
-```java
-response.sendRedirect(
-    request.getContextPath() + "/employee?action=list"
-);
-```
-
-Flash messages should be handled by:
-
-```text
-Servlet
-    ↓
-Flash
-    ↓
-Redirect
-    ↓
-FlashMessageFilter
-    ↓
-flashMessage.jsp
-```
-
-Do **NOT** use DAO classes to create Flash messages.
-
-
-## 11. Home Page
-
-`HomeServlet` is mapped to:
-
-```text
-/home
-```
-
-Do **NOT** map `HomeServlet` to:
-
-```text
-/
-```
-
-because it may intercept requests for:
-
-- CSS files
-- JavaScript files
-- Images
-- Font Awesome resources
-
-and cause static resources to return the Home page instead.
-
-
-## 12. Language
-
-UI labels and messages should be written in **English** for consistency.
-
-
-# How to Create a New Page
-
-1. Create the JSP file:
-
-   ```text
-   WEB-INF/views/example.jsp
-   ```
-
-2. Create page-specific CSS if needed:
-
-   ```text
-   css/example.css
-   ```
-
-3. Create page-specific JavaScript if needed:
-
-   ```text
-   js/example.js
-   ```
-
-4. Use the shared layout:
-
-   ```jsp
-   <%@ taglib prefix="layout" tagdir="/WEB-INF/tags" %>
-
-   <layout:layout
-       title="Example"
-       pageCss="example.css"
-       pageJs="example.js"
-       useBootstrap="true"
-   >
-       <!-- Page content -->
-   </layout:layout>
-   ```
-
-5. Forward to the JSP from the Servlet:
-
-   ```java
-   request.getRequestDispatcher(
-       "/WEB-INF/views/example.jsp"
-   ).forward(request, response);
-   ```
-
-6. Use `contextPath` for links and form actions:
-
-   ```jsp
-   <a href="${pageContext.request.contextPath}/customer?action=list">
-       Customer List
-   </a>
-   ```
-
-7. Never open or redirect directly to `example.jsp`.
-
-# Layout Attributes
-
-Use these attributes inside:
-
-```jsp
-<layout:layout ...>
-```
-
-| Attribute | Use |
-|---|---|
-| `title` | Page title. Required. |
-| `pageCss` | Load CSS for that page. Example: `pageCss="customer.css"` |
-| `pageJs` | Load JavaScript for that page. Example: `pageJs="register.js"` |
-| `useBootstrap` | Set `true` if the page uses Bootstrap classes |
-| `bodyClass` | Add a special class to `<body>` for page-specific styling |
-| `showNavbar` | Set `false` to hide navbar |
-| `showFooter` | Set `true/false` to control footer |
-
-Example:
-
-```jsp
-<layout:layout
-    title="Register"
-    pageCss="registerCustomer.css"
-    pageJs="register.js"
-    bodyClass="register-page"
-    showNavbar="false"
-    showFooter="false"
->
-    <!-- Page content -->
-</layout:layout>
-```
-
-The declarations below belong only in `layout.tag`:
-
-```jsp
-<%@ attribute name="title" ... %>
-<%@ attribute name="pageCss" ... %>
-```
-
-Do not copy them into normal JSP pages.
-
-## Xác nhận thanh toán booking qua PayOS
-
-1. **DB v6 đang dùng:** chạy `db/HBMS_PayOS_Migration.sql` để thêm bảng `PAYOS_ORDER` nếu còn thiếu và cài thủ tục xử lý webhook. **Cài DB mới:** chạy `db/DB_v6_merged_transaction.sql`, bản này đã có bảng và thủ tục PayOS. Script khởi tạo có lệnh xóa DB cũ.
-2. Đặt `PAYOS_CLIENT_ID`, `PAYOS_API_KEY` và `PAYOS_CHECKSUM_KEY` trên tiến trình Tomcat. Khi dùng tunnel hoặc reverse proxy, đặt `PAYOS_PUBLIC_BASE_URL` thành URL HTTPS của ứng dụng, gồm cả context path, ví dụ `https://hbms.example.com/HBMS`. Đăng nhập và mở trang thanh toán bằng cùng URL này khi thử.
-3. Clean and Build, deploy WAR mới và đăng ký webhook của kênh PayOS tại `<PAYOS_PUBLIC_BASE_URL>/payos-webhook`. Nếu Tomcat chỉ chạy localhost, dùng URL HTTPS của tunnel để PayOS gọi được endpoint.
-4. Trên DB test, tạo một booking, chọn PayOS rồi thanh toán. Xác nhận `PAYOS_ORDER.Status = 'PAID'`, có một dòng `PAYMENT` tương ứng và booking đợt đầu lên `CONFIRMED`. Gửi lại cùng webhook để kiểm tra dòng thanh toán vẫn chỉ có một. Webhook thử lúc đăng ký URL được chấp nhận khi có chữ ký hợp lệ, và mã đơn thử không khớp đơn HBMS sẽ không tạo thanh toán.
-
-Nếu PayOS đã báo thành công mà HBMS chưa cập nhật, kiểm tra lịch sử gọi webhook của kênh và log Tomcat. HTTP 401 là chữ ký không khớp. HTTP 503 là backend chưa thể xử lý, chẳng hạn thiếu migration hoặc lỗi kết nối DB. Đơn `FAILED` có `ErrorMessage` để đối chiếu trường hợp sai tiền, quá hạn hoặc số dư ví thay đổi. Trạng thái trên URL quay về chỉ dùng để điều hướng. Thanh toán được ghi sau khi webhook đã xác thực và đối chiếu với đơn lưu trong DB.
-
-- [Webhook PayOS](https://payos.vn/docs/du-lieu-tra-ve/webhook/)
-- [Kiểm tra chữ ký](https://payos.vn/docs/tich-hop-webhook/kiem-tra-du-lieu-voi-signature/)
-
-### VietQR tại quầy khi nhận phòng
-
-Sau khi cập nhật code, chạy lại `db/HBMS_PayOS_Migration.sql` trên DB v6 đang dùng để thêm các trường cho QR tại quầy. DB mới đã có các trường này trong script v6. Dùng cùng kênh PayOS, các biến môi trường và webhook `/payos-webhook` đang chạy.
-
-1. Mở check-in của booking đã đặt cọc và đã gán phòng. Chọn **VietQR** rồi bấm **Generate VietQR**.
-2. Cho khách quét mã để trả phần tiền phòng còn thiếu. Webhook PayOS cập nhật số tiền đã trả.
-3. Kiểm tra CCCD và bấm **Complete check-in**. Phí dịch vụ còn lại thu lúc checkout.
-
-Mã có hạn 15 phút. Tải lại trang sẽ hiện mã đang hoạt động của booking. Nếu khách đã chuyển tiền mà trạng thái cần đối soát hoặc mã hết hạn, kiểm tra giao dịch PayOS trước khi thu lại.
+Kiểm tra Python dùng SQLite cho phần SELECT chuẩn SQL của view, không xác minh
+khả năng chạy stored procedure hoặc transaction T-SQL. Môi trường chỉnh sửa
+chưa có Maven và SQL Server nên **chưa build WAR và chưa thực thi migration trên
+SQL Server**. Script kiểm tra SQL đi kèm cần được chạy tại môi trường của bạn.
+
+Sau khi triển khai, kiểm tra trên database thử: đặt cọc rồi trả phần còn lại,
+thu tiền mặt/ví/PayOS, checkout và in lại cùng hóa đơn, xác nhận không tạo thêm
+hóa đơn khi gửi lại yêu cầu checkout, sau đó thử backup/restore Excel. Nếu còn
+thiếu tiền, checkout phải tiếp tục bị chặn theo quy tắc hiện có.
+
+Nếu cần khôi phục trạng thái trước patch, dùng bản sao lưu database và bản code
+cũ tương ứng. Không chạy script khởi tạo để khôi phục dữ liệu đang sử dụng.

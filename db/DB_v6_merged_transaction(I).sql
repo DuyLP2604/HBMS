@@ -42,6 +42,8 @@ CREATE TABLE USERS (
     Password VARCHAR(255) NOT NULL,
     Role VARCHAR(50) NOT NULL,
     MustChangePassword BIT NOT NULL CONSTRAINT DF_USERS_MustChangePassword DEFAULT (0),
+    IsActive BIT NOT NULL CONSTRAINT DF_USERS_IsActive DEFAULT (1),
+    AccessVersion INT NOT NULL CONSTRAINT DF_USERS_AccessVersion DEFAULT (0),
 
     CONSTRAINT PK_USERS PRIMARY KEY (UserID),
     CONSTRAINT UQ_USERS_Username UNIQUE (Username),
@@ -388,26 +390,6 @@ CREATE TABLE INVOICE (
 );
 GO
 
-CREATE TABLE INVOICE_TRANSACTION (
-    InvoiceID CHAR(6) NOT NULL,
-    BookingID CHAR(6) NOT NULL,
-    PaymentID CHAR(6) NOT NULL,
-    TransactionID VARCHAR(100) NOT NULL,
-
-    CONSTRAINT PK_INVOICE_TRANSACTION PRIMARY KEY (InvoiceID, TransactionID),
-    CONSTRAINT UQ_INVOICE_TRANSACTION_Payment UNIQUE (InvoiceID, PaymentID),
-    CONSTRAINT FK_INVOICE_TRANSACTION_INVOICE FOREIGN KEY (BookingID, InvoiceID)
-        REFERENCES INVOICE(BookingID, InvoiceID),
-    CONSTRAINT FK_INVOICE_TRANSACTION_PAYMENT FOREIGN KEY (BookingID, PaymentID, TransactionID)
-        REFERENCES PAYMENT(BookingID, PaymentID, TransactionID),
-    CONSTRAINT FK_INVOICE_TRANSACTION_TRANSACTION FOREIGN KEY (TransactionID)
-        REFERENCES dbo.[TRANSACTION](TransactionID)
-);
-GO
-
-CREATE INDEX IX_INVOICE_TRANSACTION_TransactionID ON INVOICE_TRANSACTION(TransactionID);
-GO
-
 CREATE TABLE COMPLAINT (
     ComplaintID INT IDENTITY(1,1) NOT NULL,
     Title NVARCHAR(200) NOT NULL,
@@ -596,17 +578,6 @@ BEGIN
         SELECT 1 FROM inserted AS w JOIN BOOKING_REFUND AS r ON r.RefundID = w.RefundID
         WHERE w.TransactionType = 'REFUND_CREDIT' AND w.Amount <> r.Amount
     ) THROW 51202, 'Wallet entry must match its owner and payment or refund amount.', 1;
-END;
-GO
-
--- Check that each invoice transaction is valid for the invoice.
-CREATE TRIGGER TR_INVOICE_TRANSACTION_Validate ON INVOICE_TRANSACTION AFTER INSERT, UPDATE AS
-BEGIN
-    SET NOCOUNT ON;
-    IF EXISTS (
-        SELECT 1 FROM inserted AS i JOIN PAYMENT AS p ON p.PaymentID = i.PaymentID
-        WHERE p.Status NOT IN ('PAID', 'REFUNDED')
-    ) THROW 51203, 'Invoices can reference only successfully captured payment transactions.', 1;
 END;
 GO
 
@@ -1459,12 +1430,6 @@ VALUES
 ('HD0040', '2026-09-20', 2850000, 'NV06', 'BK0040');
 GO
 
-INSERT INVOICE_TRANSACTION(InvoiceID, BookingID, PaymentID, TransactionID)
-SELECT i.InvoiceID, i.BookingID, p.PaymentID, p.TransactionID
-FROM INVOICE AS i JOIN PAYMENT AS p ON p.BookingID = i.BookingID
-WHERE p.Status IN ('PAID', 'REFUNDED');
-GO
-
 INSERT INTO COMPLAINT (Title, Content, Status, CustomerID)
 VALUES (
     N'Yêu cầu hỗ trợ đặt phòng',
@@ -2065,12 +2030,6 @@ BEGIN
         IF @WalletAmount > 0
             INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, PaymentID, TransactionID)
             VALUES (@WalletID, 'PAYMENT_DEBIT', @WalletAmount, @Now, @PaymentID, @TransactionID);
-        INSERT INVOICE_TRANSACTION(InvoiceID, BookingID, PaymentID, TransactionID)
-        SELECT i.InvoiceID, @BookingID, @PaymentID, @TransactionID
-        FROM INVOICE AS i
-        WHERE i.BookingID = @BookingID
-          AND NOT EXISTS (SELECT 1 FROM INVOICE_TRANSACTION AS link
-              WHERE link.InvoiceID = i.InvoiceID AND link.TransactionID = @TransactionID);
         IF @FirstPaidAt IS NULL
             UPDATE BOOKING SET FirstPaidAt = @Now, BookingAmountAtFirstPayment = @Total,
                 BookingStatus = 'CONFIRMED', PaymentDeadline = NULL WHERE BookingID = @BookingID;
@@ -2266,7 +2225,6 @@ DENY INSERT, UPDATE, DELETE ON BOOKING_SERVICE TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON ROOM_ASSIGNMENT TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON PAYMENT TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON dbo.[TRANSACTION] TO HBMS_APP_ROLE;
-DENY INSERT, UPDATE, DELETE ON INVOICE_TRANSACTION TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON CUSTOMER_WALLET TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON WALLET_TRANSACTION TO HBMS_APP_ROLE;
 DENY INSERT, UPDATE, DELETE ON BOOKING_REFUND TO HBMS_APP_ROLE;
@@ -2461,12 +2419,6 @@ BEGIN
             VALUES (@InvoiceID, CAST(SYSDATETIME() AS DATE), @Total, @EmployeeID, @BookingID);
             SET @Created = 1;
         END;
-        INSERT INVOICE_TRANSACTION(InvoiceID, BookingID, PaymentID, TransactionID)
-        SELECT @InvoiceID, @BookingID, p.PaymentID, p.TransactionID
-        FROM PAYMENT AS p
-        WHERE p.BookingID = @BookingID AND p.Status = 'PAID'
-          AND NOT EXISTS (SELECT 1 FROM INVOICE_TRANSACTION AS link
-              WHERE link.InvoiceID = @InvoiceID AND link.TransactionID = p.TransactionID);
         IF @Status = 'CHECKED_IN'
             EXEC dbo.SP_SET_BOOKING_STATUS @BookingID = @BookingID, @NewStatus = 'CHECKED_OUT', @ActorUserID = @ActorUserID;
         COMMIT TRANSACTION;
@@ -2634,12 +2586,6 @@ BEGIN
         IF @WalletAmount > 0
             INSERT WALLET_TRANSACTION(WalletID, TransactionType, Amount, TransactionTime, PaymentID, TransactionID)
             VALUES (@WalletID, 'PAYMENT_DEBIT', @WalletAmount, @Now, @PaymentID, @TransactionID);
-        INSERT INVOICE_TRANSACTION(InvoiceID, BookingID, PaymentID, TransactionID)
-        SELECT i.InvoiceID, @BookingID, @PaymentID, @TransactionID
-        FROM INVOICE AS i
-        WHERE i.BookingID = @BookingID
-          AND NOT EXISTS (SELECT 1 FROM INVOICE_TRANSACTION AS link
-              WHERE link.InvoiceID = i.InvoiceID AND link.TransactionID = @TransactionID);
         IF @FirstPaidAt IS NULL
             UPDATE BOOKING SET FirstPaidAt = @Now, BookingAmountAtFirstPayment = @Total,
                 BookingStatus = 'CONFIRMED', PaymentDeadline = NULL WHERE BookingID = @BookingID;
@@ -3057,7 +3003,7 @@ IF EXISTS (SELECT 1 FROM V_WALLET_BALANCE WHERE Balance < 0)
     THROW 51124, 'Internal wallet cannot have a negative balance.', 1;
 GO
 
--- Show the transactions attached to each invoice.
+-- Derive captured invoice payments through BookingID; no link table is needed.
 CREATE VIEW V_INVOICE_TRANSACTION_DETAILS AS
 SELECT i.InvoiceID, i.InvoiceDate, i.BookingID,
     i.TotalAmount AS InvoiceAmount, t.id AS TransactionRowID, t.TransactionID,
@@ -3065,9 +3011,8 @@ SELECT i.InvoiceID, i.InvoiceDate, i.BookingID,
     p.PaymentTime, p.Status AS PaymentStatus, p.MethodID, m.MethodName,
     t.TransactionCode, p.WalletAmount, p.ExternalAmount
 FROM INVOICE AS i
-JOIN INVOICE_TRANSACTION AS link ON link.InvoiceID = i.InvoiceID AND link.BookingID = i.BookingID
-JOIN PAYMENT AS p ON p.PaymentID = link.PaymentID AND p.TransactionID = link.TransactionID
-JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = link.TransactionID
+JOIN PAYMENT AS p ON p.BookingID = i.BookingID AND p.Status IN ('PAID', 'REFUNDED')
+JOIN dbo.[TRANSACTION] AS t ON t.TransactionID = p.TransactionID
 JOIN PAYMENTMETHOD AS m ON m.MethodID = p.MethodID;
 GO
 
@@ -3095,13 +3040,13 @@ IF EXISTS (
 )
     THROW 51223, 'Seed central transactions must reference a payment or refund.', 1;
 IF EXISTS (
-    SELECT 1 FROM INVOICE AS i JOIN PAYMENT AS p ON p.BookingID = i.BookingID
+    SELECT i.InvoiceID, p.PaymentID, p.TransactionID
+    FROM INVOICE AS i JOIN PAYMENT AS p ON p.BookingID = i.BookingID
     WHERE p.Status IN ('PAID', 'REFUNDED')
-      AND NOT EXISTS (SELECT 1 FROM INVOICE_TRANSACTION AS link
-          WHERE link.InvoiceID = i.InvoiceID AND link.PaymentID = p.PaymentID
-            AND link.TransactionID = p.TransactionID)
+    EXCEPT
+    SELECT InvoiceID, PaymentID, TransactionID FROM dbo.V_INVOICE_TRANSACTION_DETAILS
 )
-    THROW 51224, 'Seed invoices must link every captured payment transaction.', 1;
+    THROW 51224, 'Seed invoice details must include every captured booking payment.', 1;
 GO
 
 IF COL_LENGTH('dbo.BOOKING', 'GuestCCCDs') IS NULL

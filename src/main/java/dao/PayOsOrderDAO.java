@@ -1,23 +1,15 @@
 package dao;
 
+import dto.PayOsOrder;
 import java.math.BigDecimal;
 import java.sql.*;
 import util.PersistenceManager;
+import util.CounterPaymentOperation;
 
 /** Stores PayOS orders and confirms transfers through SP_CONFIRM_PAYOS_ORDER. */
 public class PayOsOrderDAO {
 
-    public static final class Order {
-
-        public long orderCode;
-        public String bookingID, paymentType, status, reference, paymentID;
-        public int userID;
-        public BigDecimal amount, walletAmount, externalAmount;
-        public long checkInExpiresAt;
-        public String checkInQrCode, checkInCheckoutUrl;
-    }
-
-    public void insert(Order o, String paymentLinkId) throws SQLException {
+    public void insert(PayOsOrder o, String paymentLinkId) throws SQLException {
         try (Connection c = PersistenceManager.openConnection(); PreparedStatement ps = c.prepareStatement("INSERT INTO dbo.PAYOS_ORDER (OrderCode, BookingID, UserID, PaymentType, Amount, WalletAmount, ExternalAmount, PaymentLinkId) VALUES (?,?,?,?,?,?,?,?)")) {
             ps.setLong(1, o.orderCode);
             ps.setString(2, o.bookingID);
@@ -32,14 +24,14 @@ public class PayOsOrderDAO {
     }
 
     /** Load a PayOS order by its gateway order code. */
-    public Order find(long orderCode) throws SQLException {
+    public PayOsOrder find(long orderCode) throws SQLException {
         try (Connection c = PersistenceManager.openConnection(); PreparedStatement ps = c.prepareStatement("SELECT BookingID, UserID, PaymentType, Amount, WalletAmount, ExternalAmount, Status, Reference, PaymentID FROM dbo.PAYOS_ORDER WHERE OrderCode = ?")) {
             ps.setLong(1, orderCode);
             try (ResultSet r = ps.executeQuery()) {
                 if (!r.next()) {
                     return null;
                 }
-                Order o = new Order();
+                PayOsOrder o = new PayOsOrder();
                 o.orderCode = orderCode;
                 o.bookingID = r.getString("BookingID").trim();
                 o.userID = r.getInt("UserID");
@@ -55,31 +47,31 @@ public class PayOsOrderDAO {
         }
     }
 
-    public Order findCheckInOrder(String bookingID, Long orderCode) throws SQLException {
+    public PayOsOrder findCheckInOrder(String bookingID, Long orderCode) throws SQLException {
         try (Connection c = PersistenceManager.openConnection()) {
             return findCheckInOrder(c, bookingID, orderCode);
         }
     }
 
-    public Order findCheckInOrder(Connection c, String bookingID, Long orderCode) throws SQLException {
+    public PayOsOrder findCheckInOrder(Connection c, String bookingID, Long orderCode) throws SQLException {
         return findCounterOrder(c, bookingID, orderCode, "o.CheckInStaffUserID IS NOT NULL",
                 "b.BookingStatus <> 'ASSIGNED' OR b.PaymentOption <> 'DEPOSIT' OR r.RoomRemainingAmount <> o.ExternalAmount");
     }
 
-    public Order findInitialCounterOrder(String bookingID, Long orderCode) throws SQLException {
+    public PayOsOrder findInitialCounterOrder(String bookingID, Long orderCode) throws SQLException {
         try (Connection c = PersistenceManager.openConnection()) {
             return findInitialCounterOrder(c, bookingID, orderCode);
         }
     }
 
-    public Order findInitialCounterOrder(Connection c, String bookingID, Long orderCode) throws SQLException {
+    public PayOsOrder findInitialCounterOrder(Connection c, String bookingID, Long orderCode) throws SQLException {
         return findCounterOrder(c, bookingID, orderCode, "o.CheckInStaffUserID IS NULL AND o.CheckInQrCode IS NOT NULL "
                 + "AND o.PaymentType IN ('DEPOSIT', 'FULL')",
                 "b.BookingStatus <> 'PENDING_PAYMENT' OR b.FirstPaidAt IS NOT NULL "
                 + "OR b.PaymentOption <> o.PaymentType OR b.InitialRequiredAmount <> o.ExternalAmount");
     }
 
-    private Order findCounterOrder(Connection c, String bookingID, Long orderCode, String stage, String balanceChanged)
+    private PayOsOrder findCounterOrder(Connection c, String bookingID, Long orderCode, String stage, String balanceChanged)
             throws SQLException {
         String filter = orderCode == null
                 ? "AND ((o.Status <> 'PAID' AND o.CheckInExpiresAt > ?) "
@@ -97,7 +89,7 @@ public class PayOsOrderDAO {
             ps.setLong(2, orderCode == null ? java.time.Instant.now().getEpochSecond() : orderCode);
             try (ResultSet r = ps.executeQuery()) {
                 if (!r.next()) return null;
-                Order order = new Order();
+                PayOsOrder order = new PayOsOrder();
                 order.bookingID = bookingID;
                 order.orderCode = r.getLong("OrderCode");
                 order.status = r.getString("Status");
@@ -128,7 +120,7 @@ public class PayOsOrderDAO {
     }
 
     // Counter bookings reuse the QR fields with no check-in staff ID.
-    public void insertCounterOrder(Connection c, Order order, Integer checkInStaffUserID, String paymentLinkId) throws SQLException {
+    public void insertCounterOrder(Connection c, PayOsOrder order, Integer checkInStaffUserID, String paymentLinkId) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement("INSERT INTO dbo.PAYOS_ORDER "
                 + "(OrderCode, BookingID, UserID, PaymentType, Amount, WalletAmount, ExternalAmount, PaymentLinkId, "
                 + "CheckInStaffUserID, CheckInExpiresAt, CheckInQrCode, CheckInCheckoutUrl) "
@@ -146,11 +138,6 @@ public class PayOsOrderDAO {
             ps.setString(11, order.checkInCheckoutUrl);
             ps.executeUpdate();
         }
-    }
-
-    @FunctionalInterface
-    public interface CounterPaymentOperation<T> {
-        T run(Connection connection) throws Exception;
     }
 
     /** Use sp_getapplock and sp_releaseapplock to serialize front desk payments for one booking. */

@@ -1,21 +1,22 @@
 package util.security;
 
 import dao.PasswordResetDAO;
-import dao.PasswordResetDAO.Account;
+import dto.PasswordResetAccount;
 import jakarta.servlet.http.HttpSession;
 
 /** Binds OTP permission to the exact account and credentials that received the email. */
 public final class PasswordResetSession {
     private PasswordResetSession() { }
 
-    public static void bind(HttpSession session, Account account) {
+    public static void bind(HttpSession session, PasswordResetAccount account) {
         session.setAttribute("resetUserId", account.getUserId());
         session.setAttribute("resetEmail", account.getEmail());
         session.setAttribute("resetAccountRole", account.getRole());
         session.setAttribute("resetPasswordHash", account.getPasswordHash());
+        session.setAttribute("resetAccessVersion", account.getAccessVersion());
     }
 
-    public static Account account(HttpSession session) {
+    public static PasswordResetAccount account(HttpSession session) {
         if (session == null) {
             return null;
         }
@@ -28,12 +29,14 @@ public final class PasswordResetSession {
                 || ((String) hash).isBlank()) {
             return null;
         }
-        return new Account((Integer) id, (String) role, (String) email, (String) hash);
+        Object version = session.getAttribute("resetAccessVersion");
+        return new PasswordResetAccount((Integer) id, (String) role, (String) email, (String) hash,
+                version instanceof Integer ? (Integer) version : 0);
     }
 
     /** Check that the session still points to an eligible recovery account. */
     public static boolean isEligible(HttpSession session, PasswordResetDAO dao) {
-        Account account = account(session);
+        PasswordResetAccount account = account(session);
         return account != null && dao.isEligible(account);
     }
 
@@ -41,7 +44,7 @@ public final class PasswordResetSession {
         if (session == null) {
             return;
         }
-        String[] attributes = {"resetUserId", "resetEmail", "resetAccountRole", "resetPasswordHash",
+        String[] attributes = {"resetUserId", "resetEmail", "resetAccountRole", "resetPasswordHash", "resetAccessVersion",
             "resetOtp", "resetOtpExpiry", "resetOtpAttempts", "resetOtpVerified", "resetVerifiedExpiry",
             "resetOtpResendCount", "resetOtpResendWindowStart"};
         for (String name : attributes) {

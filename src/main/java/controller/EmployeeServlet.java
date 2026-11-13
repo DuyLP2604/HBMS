@@ -17,6 +17,7 @@ import java.util.Map;
 import util.EmployeeIdGenerator;
 import util.EmployeeValidator;
 import service.EmailService;
+import util.exception.EmployeeValidationException;
 import util.flash.Flash;
 import util.security.CsrfTokens;
 import util.security.TemporaryPasswordGenerator;
@@ -38,6 +39,11 @@ public class EmployeeServlet extends HttpServlet {
         }
         switch (action) {
             case "list":
+                boolean canManageAccounts = isAdmin(request);
+                request.setAttribute("canManageAccounts", canManageAccounts);
+                if (canManageAccounts) {
+                    request.setAttribute("csrfToken", CsrfTokens.getOrCreate(request.getSession()));
+                }
                 request.setAttribute("employees", employeeDAO.getAllEmployees());
                 request.setAttribute("positions", employeeDAO.getAllPositions());
                 request.setAttribute("shifts", employeeDAO.getAllShifts());
@@ -65,7 +71,7 @@ public class EmployeeServlet extends HttpServlet {
         }
     }
 
-    /** Handle employee updates, new staff accounts, and requests to resend credentials. */
+    /** Handle employee profile edits and staff account management. */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
@@ -78,25 +84,39 @@ public class EmployeeServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Employee action is required.");
             return;
         }
-        if (!"update".equalsIgnoreCase(action) && !"add".equalsIgnoreCase(action) && !"resendCredentials".equalsIgnoreCase(action)) {
+        boolean profileUpdate = "update".equalsIgnoreCase(action);
+        boolean add = "add".equalsIgnoreCase(action);
+        boolean resend = "resendCredentials".equalsIgnoreCase(action);
+        boolean deactivate = "deactivateAccount".equalsIgnoreCase(action);
+        boolean reactivate = "reactivateAccount".equalsIgnoreCase(action);
+        boolean accountStatusChange = deactivate || reactivate;
+        boolean accountManagement = add || resend || accountStatusChange;
+        if (!profileUpdate && !accountManagement) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid employee action.");
             return;
         }
-        // Only admins can create staff accounts or resend login details.
-        boolean provisioning = "add".equalsIgnoreCase(action) || "resendCredentials".equalsIgnoreCase(action);
-        if (provisioning && !isAdmin(request)) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only administrators can create or resend staff credentials.");
+        if (accountManagement && !isAdmin(request)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only administrators can manage staff accounts.");
             return;
         }
-        if (provisioning && !CsrfTokens.isValid(request)) {
+        if (accountManagement && !CsrfTokens.isValid(request)) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "The form expired. Reload the page and try again.");
             return;
         }
         try {
-            if ("update".equalsIgnoreCase(action)) {
+            if (profileUpdate) {
                 updateEmployee(request);
                 Flash.success(request, "Employee information updated.");
-            } else if ("add".equalsIgnoreCase(action)) {
+            } else if (accountStatusChange) {
+                String employeeID = requireParameter(request, "id", "Employee ID is required.");
+                if (createEmployeeDAO().setStaffAccountActive(employeeID, reactivate)) {
+                    Flash.success(request, reactivate ? "Staff account reactivated." : "Staff account deactivated.");
+                } else {
+                    Flash.warning(request, reactivate
+                            ? "No deactivated staff account was found for this employee."
+                            : "No active staff account was found for this employee.");
+                }
+            } else if (add) {
                 boolean sent = addEmployee(request);
                 if (sent) {
                     Flash.success(request, "Staff account created. The username and temporary password were sent by email.");
@@ -112,7 +132,7 @@ public class EmployeeServlet extends HttpServlet {
                 }
             }
             response.sendRedirect(request.getContextPath() + "/employee?action=list");
-        } catch (ValidationException exception) {
+        } catch (EmployeeValidationException exception) {
             forwardFormError(request, response, action, "Please correct the highlighted fields.", exception.getErrors());
         } catch (IllegalArgumentException exception) {
             handleFormFailure(request, response, action, exception.getMessage());
@@ -156,7 +176,7 @@ public class EmployeeServlet extends HttpServlet {
         request.setAttribute("employee", employee);
         Map<String, String> errors = fillEmployeeInformation(request, employee, employeeDAO, employeeID);
         if (!errors.isEmpty()) {
-            throw new ValidationException(errors);
+            throw new EmployeeValidationException(errors);
         }
         employeeDAO.updateEmployee(employee);
     }
@@ -180,7 +200,7 @@ public class EmployeeServlet extends HttpServlet {
             errors.put("username", "Username is already taken.");
         }
         if (!errors.isEmpty()) {
-            throw new ValidationException(errors);
+            throw new EmployeeValidationException(errors);
         }
         EmailService emailService = configuredEmailService();
         String password = TemporaryPasswordGenerator.generate();
@@ -200,8 +220,8 @@ public class EmployeeServlet extends HttpServlet {
         String employeeID = requireParameter(request, "id", "Employee ID is required.");
         Employee employee = createEmployeeDAO().getEmployeeById(employeeID);
         Users user = employee == null ? null : employee.getUserID();
-        if (user == null || !"Staff".equalsIgnoreCase(user.getRole()) || !user.isMustChangePassword()) {
-            throw new IllegalArgumentException("Only staff accounts awaiting their first password change can receive temporary credentials.");
+        if (user == null || !"Staff".equalsIgnoreCase(user.getRole()) || !user.isActive() || !user.isMustChangePassword()) {
+            throw new IllegalArgumentException("Only active staff accounts awaiting their first password change can receive temporary credentials.");
         }
         String email = EmployeeValidator.normalizeEmail(employee.getEmail());
         if (email == null || EmployeeValidator.validateEmail(email) != null) {
@@ -210,8 +230,8 @@ public class EmployeeServlet extends HttpServlet {
         EmailService emailService = configuredEmailService();
         String password = TemporaryPasswordGenerator.generate();
         // Renew the temporary password only while first-login setup is pending.
-        if (!createUserDAO().renewStaffTemporaryPassword(user.getUserID(), password)) {
-            throw new IllegalArgumentException("This account has already completed password setup. Its password was not changed.");
+        if (!createUserDAO().renewStaffTemporaryPassword(user.getUserID(), user.getAccessVersion(), password)) {
+            throw new IllegalArgumentException("This account is no longer eligible for a temporary password.");
         }
         return deliverCredentials(emailService, employee, user, password);
     }
@@ -242,7 +262,8 @@ public class EmployeeServlet extends HttpServlet {
     }
 
     private void handleFormFailure(HttpServletRequest request, HttpServletResponse response, String action, String message) throws ServletException, IOException {
-        if ("resendCredentials".equalsIgnoreCase(action)) {
+        if ("resendCredentials".equalsIgnoreCase(action) || "deactivateAccount".equalsIgnoreCase(action)
+                || "reactivateAccount".equalsIgnoreCase(action)) {
             Flash.error(request, message);
             response.sendRedirect(request.getContextPath() + "/employee?action=list");
         } else {
@@ -338,25 +359,6 @@ public class EmployeeServlet extends HttpServlet {
     private boolean hasPermission(HttpSession session) {
         String role = (String) session.getAttribute("role");
         return role != null && ("Admin".equalsIgnoreCase(role) || "Staff".equalsIgnoreCase(role));
-    }
-
-    /*
-     * Carries one message per invalid form field back to doPost.
-     */
-    private static class ValidationException extends IllegalArgumentException {
-
-        private static final long serialVersionUID = 1L;
-
-        private final transient Map<String, String> errors;
-
-        ValidationException(Map<String, String> errors) {
-            super("Invalid employee information.");
-            this.errors = errors;
-        }
-
-        Map<String, String> getErrors() {
-            return errors;
-        }
     }
 
     @Override

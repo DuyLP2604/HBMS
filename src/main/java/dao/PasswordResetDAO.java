@@ -1,5 +1,6 @@
 package dao;
 
+import dto.PasswordResetAccount;
 import entity.Users;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
@@ -9,7 +10,7 @@ import util.PersistenceManager;
 /** Finds accounts for OTP recovery and writes verified password resets. */
 public class PasswordResetDAO {
     /** Find one eligible customer or staff account by email or phone. */
-    public Account findAccount(String identifier, String role) {
+    public PasswordResetAccount findAccount(String identifier, String role) {
         String table = accountTable(role);
         if (table == null || identifier == null || identifier.isBlank()) {
             return null;
@@ -17,7 +18,7 @@ public class PasswordResetDAO {
         String value = identifier.trim();
         try (EntityManager em = createEntityManager()) {
             Query query = em.createNativeQuery(
-                    "SELECT u.UserID, o.Email, u.Password FROM USERS u JOIN " + table
+                    "SELECT u.UserID, o.Email, u.Password, u.AccessVersion FROM USERS u JOIN " + table
                     + " o ON o.UserID = u.UserID WHERE u.Role = ?"
                     + " AND (LOWER(LTRIM(RTRIM(o.Email))) = LOWER(?) OR o.Phone = ?)"
                     + " AND o.Email IS NOT NULL AND LTRIM(RTRIM(o.Email)) <> ''"
@@ -31,13 +32,13 @@ public class PasswordResetDAO {
                 return null;
             }
             Object[] row = (Object[]) matches.get(0);
-            return new Account(((Number) row[0]).intValue(), role,
-                    ((String) row[1]).trim(), (String) row[2]);
+            return new PasswordResetAccount(((Number) row[0]).intValue(), role,
+                    ((String) row[1]).trim(), (String) row[2], ((Number) row[3]).intValue());
         }
     }
 
     /** Check that the verified account still has the same email and password. */
-    public boolean isEligible(Account account) {
+    public boolean isEligible(PasswordResetAccount account) {
         String table = account == null ? null : accountTable(account.getRole());
         if (table == null) {
             return false;
@@ -46,7 +47,7 @@ public class PasswordResetDAO {
             Query query = em.createNativeQuery(
                     "SELECT COUNT(*) FROM USERS u JOIN " + table
                     + " o ON o.UserID = u.UserID WHERE u.UserID = ? AND u.Role = ?"
-                    + " AND u.Password = ? AND LOWER(LTRIM(RTRIM(o.Email))) = LOWER(?)"
+                    + " AND u.Password = ? AND u.AccessVersion = ? AND LOWER(LTRIM(RTRIM(o.Email))) = LOWER(?)"
                     + staffCondition(account.getRole(), "u."));
             bindAccount(query, account, 1);
             return ((Number) query.getSingleResult()).intValue() == 1;
@@ -54,7 +55,7 @@ public class PasswordResetDAO {
     }
 
     /** Update the password only if the verified account details still match. */
-    public boolean resetPassword(Account account, String password) {
+    public boolean resetPassword(PasswordResetAccount account, String password) {
         String table = account == null ? null : accountTable(account.getRole());
         if (table == null || password == null || password.isBlank()) {
             return false;
@@ -66,7 +67,7 @@ public class PasswordResetDAO {
             // The UPDATE checks that the account details still match the verified reset request.
             Query query = em.createNativeQuery(
                     "UPDATE USERS SET Password = ? WHERE UserID = ? AND Role = ?"
-                    + " AND Password = ?" + staffCondition(account.getRole(), "")
+                    + " AND Password = ? AND AccessVersion = ?" + staffCondition(account.getRole(), "")
                     + " AND EXISTS (SELECT 1 FROM " + table
                     + " o WHERE o.UserID = USERS.UserID"
                     + " AND LOWER(LTRIM(RTRIM(o.Email))) = LOWER(?))");
@@ -89,11 +90,12 @@ public class PasswordResetDAO {
         }
     }
 
-    private void bindAccount(Query query, Account account, int first) {
+    private void bindAccount(Query query, PasswordResetAccount account, int first) {
         query.setParameter(first, account.getUserId());
         query.setParameter(first + 1, account.getRole());
         query.setParameter(first + 2, account.getPasswordHash());
-        query.setParameter(first + 3, account.getEmail());
+        query.setParameter(first + 3, account.getAccessVersion());
+        query.setParameter(first + 4, account.getEmail());
     }
 
     private String accountTable(String role) {
@@ -106,31 +108,12 @@ public class PasswordResetDAO {
         return null;
     }
 
-    // Staff must finish first-login setup before they can reset a forgotten password.
+    // Staff must have an active account and finish first-login setup before password recovery.
     private String staffCondition(String role, String prefix) {
-        return "Staff".equals(role) ? " AND " + prefix + "MustChangePassword = 0" : "";
+        return "Staff".equals(role) ? " AND " + prefix + "MustChangePassword = 0 AND " + prefix + "IsActive = 1" : "";
     }
 
     protected EntityManager createEntityManager() {
         return PersistenceManager.createEntityManager();
-    }
-
-    public static final class Account {
-        private final int userId;
-        private final String role;
-        private final String email;
-        private final String passwordHash;
-
-        public Account(int userId, String role, String email, String passwordHash) {
-            this.userId = userId;
-            this.role = role;
-            this.email = email;
-            this.passwordHash = passwordHash;
-        }
-
-        public int getUserId() { return userId; }
-        public String getRole() { return role; }
-        public String getEmail() { return email; }
-        public String getPasswordHash() { return passwordHash; }
     }
 }

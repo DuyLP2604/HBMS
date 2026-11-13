@@ -1,7 +1,7 @@
 package controller;
 
 import dao.PasswordResetDAO;
-import dao.PasswordResetDAO.Account;
+import dto.PasswordResetAccount;
 import java.io.IOException;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -46,7 +46,7 @@ public class ResetPasswordServlet extends HttpServlet {
                 rejectReset(request, response, session);
                 return;
             }
-            Account account = PasswordResetSession.account(session);
+            PasswordResetAccount account = PasswordResetSession.account(session);
             String password = request.getParameter("password");
             String confirmPassword = request.getParameter("confirmPassword");
             String error = "Staff".equals(account.getRole())

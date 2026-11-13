@@ -1,6 +1,7 @@
 package dao;
 
 import entity.Users;
+import jakarta.persistence.CacheStoreMode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.security.MessageDigest;
@@ -34,16 +35,30 @@ public class UserDAO {
             return null;
         }
         try (EntityManager em = createEntityManager()) {
-            String jpql = "SELECT u FROM Users u WHERE u.username = :username AND u.password = :password";
+            String jpql = "SELECT u FROM Users u WHERE u.username = :username AND u.password = :password AND u.active = true";
             TypedQuery<Users> query = em.createQuery(jpql, Users.class);
             query.setParameter("username", username);
             query.setParameter("password", hashMD5(password));
-            List<Users> users = query.setMaxResults(1).getResultList();
+            List<Users> users = query.setHint("jakarta.persistence.cache.storeMode", CacheStoreMode.REFRESH)
+                    .setMaxResults(1)
+                    .getResultList();
             return users.isEmpty() ? null : users.get(0);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
         return null;
+    }
+
+    /** Check that the staff account is active and the session matches its current access version. */
+    public boolean isStaffSessionValid(int userId, int accessVersion) {
+        try (EntityManager em = createEntityManager()) {
+            return em.createQuery("SELECT COUNT(u) FROM Users u WHERE u.userID = :id AND u.role = :role"
+                    + " AND u.active = true AND u.accessVersion = :accessVersion", Long.class)
+                    .setParameter("id", userId)
+                    .setParameter("role", "Staff")
+                    .setParameter("accessVersion", accessVersion)
+                    .getSingleResult() == 1L;
+        }
     }
 
     public boolean isUsernameExists(String username) {
@@ -157,7 +172,7 @@ public class UserDAO {
     /* Conditional updates make a temporary credential single-use across sessions.
      * Bulk updates also evict EclipseLink's shared cache before the next login. */
     /** Replace the temporary password and clear the first-login requirement. */
-    public Users completeFirstLogin(int userId, String expectedPasswordHash, String newPassword) {
+    public Users completeFirstLogin(int userId, int accessVersion, String expectedPasswordHash, String newPassword) {
         String error = util.EmployeeValidator.validatePassword(newPassword);
         if (error != null) {
             throw new IllegalArgumentException(error);
@@ -169,8 +184,15 @@ public class UserDAO {
         EntityManager em = createEntityManager();
         try {
             em.getTransaction().begin();
-            int changed = em.createQuery("UPDATE Users u SET u.password = :password, u.mustChangePassword = false WHERE u.userID = :id AND u.role = :role AND u.mustChangePassword = true AND u.password = :expected")
-                    .setParameter("password", newHash).setParameter("id", userId).setParameter("role", "Staff").setParameter("expected", expectedPasswordHash).executeUpdate();
+            int changed = em.createQuery("UPDATE Users u SET u.password = :password, u.mustChangePassword = false"
+                    + " WHERE u.userID = :id AND u.role = :role AND u.active = true AND u.mustChangePassword = true"
+                    + " AND u.accessVersion = :accessVersion AND u.password = :expected")
+                    .setParameter("password", newHash)
+                    .setParameter("id", userId)
+                    .setParameter("role", "Staff")
+                    .setParameter("accessVersion", accessVersion)
+                    .setParameter("expected", expectedPasswordHash)
+                    .executeUpdate();
             if (changed != 1) {
                 em.getTransaction().rollback();
                 return null;
@@ -179,8 +201,11 @@ public class UserDAO {
             em.getEntityManagerFactory().getCache().evict(Users.class, userId);
             em.clear();
             Users user = em.find(Users.class, userId);
+            if (user == null) {
+                return null;
+            }
             em.refresh(user);
-            return user;
+            return user.isActive() && user.getAccessVersion() == accessVersion ? user : null;
         } catch (RuntimeException exception) {
             if (em.getTransaction().isActive()) {
                 em.getTransaction().rollback();
@@ -193,12 +218,18 @@ public class UserDAO {
 
     /* An administrator can resend credentials only while first-login setup is pending. */
     /** Set a new temporary password for a staff account that still needs setup. */
-    public boolean renewStaffTemporaryPassword(int userId, String temporaryPassword) {
+    public boolean renewStaffTemporaryPassword(int userId, int accessVersion, String temporaryPassword) {
         EntityManager em = createEntityManager();
         try {
             em.getTransaction().begin();
-            int changed = em.createQuery("UPDATE Users u SET u.password = :password WHERE u.userID = :id AND u.role = :role AND u.mustChangePassword = true")
-                    .setParameter("password", hashMD5(temporaryPassword)).setParameter("id", userId).setParameter("role", "Staff").executeUpdate();
+            int changed = em.createQuery("UPDATE Users u SET u.password = :password"
+                    + " WHERE u.userID = :id AND u.role = :role AND u.active = true AND u.mustChangePassword = true"
+                    + " AND u.accessVersion = :accessVersion")
+                    .setParameter("password", hashMD5(temporaryPassword))
+                    .setParameter("id", userId)
+                    .setParameter("role", "Staff")
+                    .setParameter("accessVersion", accessVersion)
+                    .executeUpdate();
             em.getTransaction().commit();
             em.getEntityManagerFactory().getCache().evict(Users.class, userId);
             return changed == 1;

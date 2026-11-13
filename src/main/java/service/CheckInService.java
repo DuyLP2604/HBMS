@@ -1,7 +1,6 @@
 package service;
 
 import dao.PaymentmethodDAO;
-import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -11,7 +10,6 @@ import java.sql.Statement;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import util.PersistenceManager;
@@ -44,13 +42,13 @@ public class CheckInService {
     /** Check guest documents and payment details before confirming check-in. */
     public void confirm(CheckInRequest request, int actorUserID, String[] documents,
             String methodID, boolean collectionConfirmed, String bankReference) {
-        if (request == null || actorUserID <= 0 || request.actorUserID != actorUserID) {
+        if (request == null || actorUserID <= 0 || request.getActorUserID() != actorUserID) {
             throw new IllegalArgumentException("Reload the check-in form before trying again.");
         }
         String guestDocuments = validateDocuments(documents);
         String method = methodID == null ? "" : methodID.trim();
-        String reference = "CHECKIN-" + request.token;
-        if (request.roomAmount.signum() > 0) {
+        String reference = "CHECKIN-" + request.getToken();
+        if (request.getRoomAmount().signum() > 0) {
             if (!collectionConfirmed) {
                 throw new IllegalArgumentException("Confirm that the outstanding room payment has been collected.");
             }
@@ -60,7 +58,7 @@ public class CheckInService {
         } else {
             method = null;
         }
-        if (request.roomAmount.signum() > 0 && "PT01".equals(method)) {
+        if (request.getRoomAmount().signum() > 0 && "PT01".equals(method)) {
             reference = bankReference == null ? "" : bankReference.trim();
             if (reference.isEmpty() || reference.length() > 100) {
                 throw new IllegalArgumentException("Enter the verified bank transaction reference (maximum 100 characters).");
@@ -102,10 +100,10 @@ public class CheckInService {
         try (PreparedStatement statement = connection.prepareStatement(
                 "EXEC dbo.SP_CHECKIN_WITH_ROOM_PAYMENT @BookingID = ?, @ActorUserID = ?, "
                 + "@GuestDocuments = ?, @ExpectedRoomAmount = ?, @MethodID = ?, @TransactionCode = ?, @TransactionID = ?;")) {
-            statement.setString(1, request.bookingID);
-            statement.setInt(2, request.actorUserID);
+            statement.setString(1, request.getBookingID());
+            statement.setInt(2, request.getActorUserID());
             statement.setString(3, documents);
-            statement.setBigDecimal(4, request.roomAmount);
+            statement.setBigDecimal(4, request.getRoomAmount());
             statement.setString(5, method);
             statement.setString(6, reference);
             statement.setString(7, "PT01".equals(method) ? reference : null);
@@ -173,28 +171,5 @@ public class CheckInService {
             default: return "Check-in could not be confirmed. Verify the booking and payment history before retrying."
                     + " (SQL " + exception.getErrorCode() + ")";
         }
-    }
-
-    public static final class CheckInRequest implements Serializable {
-        private static final long serialVersionUID = 1L;
-        private final String token = UUID.randomUUID().toString();
-        private final String bookingID;
-        private final int actorUserID;
-        private final int customerUserID;
-        private final BigDecimal roomAmount;
-        private final boolean deposit;
-        private CheckInRequest(String bookingID, int actorUserID, int customerUserID, BigDecimal roomAmount, boolean deposit) {
-            this.bookingID = bookingID;
-            this.actorUserID = actorUserID;
-            this.customerUserID = customerUserID;
-            this.roomAmount = roomAmount;
-            this.deposit = deposit;
-        }
-        public String getToken() { return token; }
-        public String getBookingID() { return bookingID; }
-        public int getActorUserID() { return actorUserID; }
-        public int getCustomerUserID() { return customerUserID; }
-        public BigDecimal getRoomAmount() { return roomAmount; }
-        public boolean isPayOsRoomBalance() { return deposit && roomAmount.signum() > 0; }
     }
 }
