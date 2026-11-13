@@ -3,7 +3,8 @@ package controller;
 import dao.BookingDAO;
 import dao.InvoiceDAO;
 import dao.PayOsOrderDAO;
-import dao.PayOsOrderDAO.Order;
+import dto.PayOsLink;
+import dto.PayOsOrder;
 import dao.PaymentmethodDAO;
 import entity.Users;
 import jakarta.servlet.ServletException;
@@ -23,9 +24,10 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.UUID;
 import service.PaymentService;
-import service.PaymentService.PaymentRequest;
+import service.PaymentRequest;
 import service.PayOsService;
 import util.security.CsrfTokens;
+import util.CounterPaymentSupport;
 import util.PersistenceManager;
 import java.net.URI;
 import java.sql.Connection;
@@ -309,7 +311,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
             {
                 String baseUrl = PayOsService.publicBaseUrl(request.getScheme() + "://" + request.getServerName()
                         + ":" + request.getServerPort() + request.getContextPath());
-                Order order = openCheckoutOrder(shown.payment, user.getUserID(),
+                PayOsOrder order = openCheckoutOrder(shown.payment, user.getUserID(),
                         baseUrl + "/CheckoutEmployee?action=detail&bookingID=" + bookingID);
                 CounterPaymentSupport.writeOrder(request, response, order, "/CheckoutEmployee");
                 return;
@@ -353,7 +355,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
         try
         {
             String code = request.getParameter("orderCode");
-            Order order;
+            PayOsOrder order;
             try (Connection connection = PersistenceManager.openConnection())
             {
                 order = findCheckoutOrder(connection, bookingID,
@@ -399,7 +401,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
     }
 
     /** Create the same PayOS QR used at check-in, for the outstanding checkout BALANCE. */
-    private Order openCheckoutOrder(PaymentRequest shown, int staffUserID, String returnUrl) throws Exception
+    private PayOsOrder openCheckoutOrder(PaymentRequest shown, int staffUserID, String returnUrl) throws Exception
     {
         if (!new dao.EmployeeDAO().isReceptionistByUserId(staffUserID))
         {
@@ -407,10 +409,10 @@ public class CheckoutEmployeeServlet extends HttpServlet
         }
         return payOsOrders.withCounterPaymentLock(shown.getBookingID(), connection -> {
             validateCheckoutPayment(shown);
-            Order active = findCheckoutOrder(connection, shown.getBookingID(), null);
+            PayOsOrder active = findCheckoutOrder(connection, shown.getBookingID(), null);
             if (active != null) return active;
             requireNoOpenPayment(connection, shown.getBookingID());
-            Order order = new Order();
+            PayOsOrder order = new PayOsOrder();
             order.orderCode = PayOsService.newOrderCode();
             order.bookingID = shown.getBookingID();
             order.userID = shown.getUserID();
@@ -418,7 +420,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
             order.externalAmount = shown.getAmount();
             order.status = "PENDING";
             order.checkInExpiresAt = Instant.now().plusSeconds(900).getEpochSecond();
-            PayOsService.Link link;
+            PayOsLink link;
             try
             {
                 link = new PayOsService().createPaymentLink(order.orderCode, order.externalAmount, order.bookingID,
@@ -445,7 +447,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
     }
 
     /** Read checkout QR details from the existing PAYOS_ORDER table without changing the DAO. */
-    private Order findCheckoutOrder(Connection connection, String bookingID, Long code) throws SQLException
+    private PayOsOrder findCheckoutOrder(Connection connection, String bookingID, Long code) throws SQLException
     {
         String filter = code == null
                 ? "AND o.Status <> 'PAID' AND o.CheckInExpiresAt > ? ORDER BY o.CreatedAt DESC, o.OrderCode DESC"
@@ -465,7 +467,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
             try (ResultSet result = statement.executeQuery())
             {
                 if (!result.next()) return null;
-                Order order = new Order();
+                PayOsOrder order = new PayOsOrder();
                 order.bookingID = bookingID;
                 order.orderCode = result.getLong("OrderCode");
                 order.paymentID = result.getString("PaymentID");
