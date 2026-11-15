@@ -123,6 +123,7 @@ public class DataService {
             CellStyle titleStyle = reportStyle(workbook, true, 14, false, null);
             CellStyle headerStyle = reportStyle(workbook, true, 11, true, null);
             CellStyle textStyle = reportStyle(workbook, false, 11, true, null);
+            CellStyle textDate = reportStyle(workbook, false, 11, false, null);
             CellStyle intStyle = reportStyle(workbook, false, 11, true, "0");
             CellStyle moneyStyle = reportStyle(workbook, false, 11, true, "#,##0");
             CellStyle totalLabel = reportStyle(workbook, true, 11, true, null);
@@ -131,7 +132,7 @@ public class DataService {
             // Tiêu đề
             putMerged(sheet, 1, titleStyle, hotelName);
             putMerged(sheet, 3, titleStyle, "Revenue Report By Date");
-            putMerged(sheet, 5, textStyle,
+            putMerged(sheet, 5, textDate,
                     "From: " + begin.format(fmt) + "   To: " + end.format(fmt));
             // Header bảng
             int headerRow = 7;
@@ -205,6 +206,14 @@ public class DataService {
             for (int col = FIRST_COL; col <= FIRST_COL + 4; col++) {
                 sheet.setColumnWidth(col, 20 * 256);
             }
+            PrintSetup printSetup = sheet.getPrintSetup();
+            printSetup.setLandscape(true);
+            printSetup.setPaperSize(PrintSetup.A4_PAPERSIZE);
+
+            sheet.setFitToPage(true);
+            printSetup.setFitWidth((short) 1);
+            printSetup.setFitHeight((short) 0);
+
             // Bảo đảm công thức được tính ngay (đặc biệt với LibreOffice, Google Sheets…)
             workbook.setForceFormulaRecalculation(true);
             XSSFFormulaEvaluator evaluator = new XSSFWorkbook().getCreationHelper()
