@@ -89,8 +89,9 @@ public class EmployeeServlet extends HttpServlet {
         boolean resend = "resendCredentials".equalsIgnoreCase(action);
         boolean deactivate = "deactivateAccount".equalsIgnoreCase(action);
         boolean reactivate = "reactivateAccount".equalsIgnoreCase(action);
+        boolean delete = "deleteAccount".equalsIgnoreCase(action);
         boolean accountStatusChange = deactivate || reactivate;
-        boolean accountManagement = add || resend || accountStatusChange;
+        boolean accountManagement = add || resend || accountStatusChange || delete;
         if (!profileUpdate && !accountManagement) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid employee action.");
             return;
@@ -115,6 +116,16 @@ public class EmployeeServlet extends HttpServlet {
                     Flash.warning(request, reactivate
                             ? "No deactivated staff account was found for this employee."
                             : "No active staff account was found for this employee.");
+                }
+            } else if (delete) {
+                String employeeID = requireParameter(request, "id", "Employee ID is required.");
+                EmployeeDAO.DeleteResult result = createEmployeeDAO().deleteStaffAccount(employeeID);
+                if (result == EmployeeDAO.DeleteResult.DELETED) {
+                    Flash.success(request, "Staff account deleted.");
+                } else if (result == EmployeeDAO.DeleteResult.HAS_HISTORY) {
+                    Flash.warning(request, "This staff account cannot be deleted because it is already linked to booking, payment, invoice or complaint records. Use Deactivate to block access and keep the history.");
+                } else {
+                    Flash.warning(request, "No staff account was found for this employee.");
                 }
             } else if (add) {
                 boolean sent = addEmployee(request);
@@ -263,7 +274,7 @@ public class EmployeeServlet extends HttpServlet {
 
     private void handleFormFailure(HttpServletRequest request, HttpServletResponse response, String action, String message) throws ServletException, IOException {
         if ("resendCredentials".equalsIgnoreCase(action) || "deactivateAccount".equalsIgnoreCase(action)
-                || "reactivateAccount".equalsIgnoreCase(action)) {
+                || "reactivateAccount".equalsIgnoreCase(action) || "deleteAccount".equalsIgnoreCase(action)) {
             Flash.error(request, message);
             response.sendRedirect(request.getContextPath() + "/employee?action=list");
         } else {

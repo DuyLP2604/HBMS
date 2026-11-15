@@ -118,6 +118,13 @@
                                                         ${accountActive ? 'Deactivate' : 'Reactivate'}
                                                     </button>
                                                 </form>
+                                                <form action="${pageContext.request.contextPath}/employee" method="post" class="d-inline-block m-0"
+                                                      onsubmit="return confirm('Delete this staff account permanently? This cannot be undone. Accounts that already have booking, payment, invoice or complaint history cannot be deleted - use Deactivate instead.');">
+                                                    <input type="hidden" name="action" value="deleteAccount">
+                                                    <input type="hidden" name="id" value="${fn:escapeXml(e.employeeID)}">
+                                                    <input type="hidden" name="csrfToken" value="${fn:escapeXml(csrfToken)}">
+                                                    <button type="submit" class="ui-button ui-button-small employee-delete-button">Delete</button>
+                                                </form>
                                             </c:if>
                                         </td>
                                     </tr>

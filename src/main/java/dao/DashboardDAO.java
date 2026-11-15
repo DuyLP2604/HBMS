@@ -135,7 +135,8 @@ public class DashboardDAO {
         validateDateRange(startDate, endDate);
         EntityManager em = PersistenceManager.createEntityManager();
         try {
-            if (startDate.getYear() <= 2000) {
+            // "All Time" starts at ALL_TIME_START: begin the chart at the first paid payment instead.
+            if (!startDate.isAfter(ALL_TIME_START)) {
                 String minDateJpql = "SELECT MIN(p.paymentTime) FROM Payment p WHERE p.status = 'PAID'";
                 java.util.Date firstDate = em.createQuery(minDateJpql, java.util.Date.class).getSingleResult();
                 startDate = firstDate != null ? toLocalDate(firstDate) : LocalDate.now();
