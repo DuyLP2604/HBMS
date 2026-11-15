@@ -8,13 +8,16 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import jakarta.servlet.http.Part;
 import java.io.IOException;
-import service.ExportDataService;
-import service.ImportDataService;
-import util.flash.Flash;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import service.DataService;
 
-/** Lets admins export and restore database data with Excel workbooks. */
+/**
+ * Lets admins export and restore database data with Excel workbooks.
+ */
 @WebServlet(name = "DataServlet", urlPatterns = {"/data"})
 @MultipartConfig(
         fileSizeThreshold = 1024 * 1024 * 2,
@@ -23,21 +26,30 @@ import util.flash.Flash;
 )
 public class DataServlet extends HttpServlet {
 
-    /** Download the database backup as an Excel workbook for an admin. */
+    private static final int MAX_REPORT_DAYS = 60;
+
+    /**
+     * Download the database backup as an Excel workbook for an admin.
+     *
+     * @param request
+     * @param response
+     * @throws jakarta.servlet.ServletException
+     * @throws java.io.IOException
+     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!requireAdmin(request.getSession())) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only Admin can Backup/Restore Database.");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only Admin can access this feature.");
             return;
         }
 
-        ExportDataService backupService = new ExportDataService();
+        DataService backupService = new DataService();
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=\"HBMS_Full_Backup_" + System.currentTimeMillis() + ".xlsx\"");
 
         try {
             backupService.exportDB(response.getOutputStream());
-            response.getOutputStream().flush(); // Đẩy toàn bộ dữ liệu ra luồng
+            response.getOutputStream().flush();
         } catch (Exception e) {
             if (!response.isCommitted()) {
                 response.reset(); // Xóa sạch header cũ đang bị lỗi
@@ -46,47 +58,47 @@ public class DataServlet extends HttpServlet {
         }
     }
 
-    /** Read the uploaded workbook and restore the database for an admin. */
+    /**
+     * Read the uploaded workbook and restore the database for an admin.
+     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!requireAdmin(request.getSession())) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only Admin can Backup/Restore Database.");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Only Admin can access this feature.");
             return;
         }
 
-        String action = request.getParameter("action");
-        if (action == null || action.trim().isEmpty()) {
-            action = "importFullDB";
+        LocalDate begin;
+        LocalDate end;
+        try {
+            begin = LocalDate.parse(request.getParameter("from"));
+            end = LocalDate.parse(request.getParameter("to"));
+        } catch (DateTimeParseException | NullPointerException e) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Begin date and end date are required (yyyy-MM-dd).");
+            return;
+        }
+        if (end.isBefore(begin)) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "End date must not be before begin date.");
+            return;
+        }
+        if (ChronoUnit.DAYS.between(begin, end) + 1 > MAX_REPORT_DAYS) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "The date range must not exceed " + MAX_REPORT_DAYS + " days.");
+            return;
         }
 
-        ImportDataService backupService = new ImportDataService();
-        if ("importFullDB".equals(action)) {
-            try {
-                Part filePart = request.getPart("backupFile");
-                if (filePart != null && filePart.getSize() > 0) {
-                    try (java.io.InputStream input = filePart.getInputStream()) {
-                        backupService.importDB(input);
-                    }
-                    Flash.success(request, "Phục hồi dữ liệu từ Excel thành công!");
-                } else {
-                    Flash.error(request, "Vui lòng chọn file Excel để import.");
-                }
-            } catch (Exception e) {
-                // Truy tìm nguyên nhân gốc rễ (Root Cause) của lỗi SQL
-                Throwable rootCause = e;
-                while (rootCause.getCause() != null && rootCause.getCause() != rootCause) {
-                    rootCause = rootCause.getCause();
-                }
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"HBMS_Revenue_Report_" + begin + "_to_" + end + ".xlsx\"");
 
-                // Print ra console server để bạn dễ check log cụ thể dòng nào lỗi
-                e.printStackTrace();
-
-                // Trả lỗi gốc ra giao diện cho Admin thấy
-                Flash.error(request, "Lỗi nạp dữ liệu: " + rootCause.getMessage());
+        try {
+            new DataService().exportReport(response.getOutputStream(), Date.valueOf(begin), Date.valueOf(end));
+            response.getOutputStream().flush();
+        } catch (Exception e) {
+            if (!response.isCommitted()) {
+                response.reset();
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to export report: " + e.getMessage());
             }
         }
-
-        response.sendRedirect(request.getContextPath() + "/dashboard");
     }
 
     private boolean requireAdmin(HttpSession session) throws IOException {
@@ -99,4 +111,5 @@ public class DataServlet extends HttpServlet {
         }
         return true;
     }
+
 }
