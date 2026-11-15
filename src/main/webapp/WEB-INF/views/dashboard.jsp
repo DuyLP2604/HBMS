@@ -6,8 +6,8 @@
 <%-- Shows admin reports and Excel backup controls. --%>
 <layout:layout
     title="Dashboard"
-    pageCss="dashboard.css"
-    pageJs="dashboard.js"
+    pageCss="dashboard.css?v=2"
+    pageJs="dashboard.js?v=2"
     useBootstrap="true"
     >
     <div class="dashboard-container">
@@ -17,33 +17,46 @@
                 <i class="fas fa-chart-line dashboard-accent-icon"></i> Dashboard
             </div>
 
-            <!-- Thanh Filter Bootstrap -->
-            <form id="filterForm" class="date-filter d-flex align-items-center gap-2" action="${pageContext.request.contextPath}/dashboard" method="get">
-                <!-- Date Picker Input -->
+            <c:url var="dashboardUrl" value="/dashboard" />
+            <c:url var="thisWeekUrl" value="/dashboard">
+                <c:param name="from" value="${weekStart}" />
+                <c:param name="to" value="${reportToday}" />
+            </c:url>
+            <c:url var="thisMonthUrl" value="/dashboard">
+                <c:param name="from" value="${monthStart}" />
+                <c:param name="to" value="${reportToday}" />
+            </c:url>
+            <c:url var="thisYearUrl" value="/dashboard">
+                <c:param name="from" value="${yearStart}" />
+                <c:param name="to" value="${reportToday}" />
+            </c:url>
+            <form id="filterForm" class="date-filter d-flex align-items-center gap-2"
+                  action="${dashboardUrl}" method="get" data-all-time="${allTime}">
                 <div class="position-relative d-flex align-items-center">
                     <i class="fas fa-calendar dashboard-muted-icon position-absolute" style="left: 12px; z-index: 10;"></i>
-                    <input type="text" id="dateRange" name="dateRange" class="form-control form-control-sm ps-5" readonly style="cursor: pointer; min-width: 220px; background-color: #fff;">
+                    <input type="text" id="dateRange" class="form-control form-control-sm ps-5"
+                           value="${reportDateRange}" aria-label="Date range"
+                           readonly style="cursor: pointer; min-width: 220px; background-color: #fff;">
                 </div>
 
-                <input type="hidden" id="from" name="from">
-                <input type="hidden" id="to" name="to">
+                <input type="hidden" id="from" name="from" value="${from}">
+                <input type="hidden" id="to" name="to" value="${to}">
 
-                <!-- Quick Filter Dropdown -->
                 <div class="dropdown">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" style="border-radius: 6px; font-weight: 500;">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 6px; font-weight: 500;">
                         <i class="fas fa-filter"></i> Filter
                     </button>
                     <ul class="dropdown-menu shadow-sm">
-                        <li><a class="dropdown-item" href="#" onclick="applyQuickFilter('week')">This Week</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="applyQuickFilter('month')">This Month</a></li>
-                        <li><a class="dropdown-item" href="#" onclick="applyQuickFilter('year')">This Year</a></li>
+                        <li><a class="dropdown-item" href="${fn:escapeXml(thisWeekUrl)}">This Week</a></li>
+                        <li><a class="dropdown-item" href="${fn:escapeXml(thisMonthUrl)}">This Month</a></li>
+                        <li><a class="dropdown-item" href="${fn:escapeXml(thisYearUrl)}">This Year</a></li>
                     </ul>
                 </div>
 
-                <!-- Reset Button -->
-                <button type="button" class="btn btn-secondary btn-sm text-nowrap" onclick="resetFilter()" style="border-radius: 6px; font-weight: 500;">
+                <a class="btn btn-secondary btn-sm text-nowrap" href="${dashboardUrl}">
                     <i class="fas fa-undo"></i> Reset
-                </button>
+                </a>
             </form>
         </div>
 
@@ -58,7 +71,7 @@
                 <div class="kpi-value" id="todayRevenue">
                     <fmt:formatNumber value="${todayRevenue}" type="number" pattern="#,##0" /> VND
                 </div>
-                <div class="kpi-subtitle">Revenue</div>
+                <div class="kpi-subtitle"><c:out value="${reportDateRange}" /></div>
             </div>
 
             <!-- Card 2: Total Rooms Booked -->
@@ -388,7 +401,7 @@
     <!-- Dashboard dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/daterangepicker@3.1.0/daterangepicker.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
     <script>
@@ -437,72 +450,5 @@
                             }
                         });
                     });
-                    $(document).ready(function () {
-                        const urlParams = new URLSearchParams(window.location.search);
-                        let fromDate = urlParams.get('from');
-                        let toDate = urlParams.get('to');
-
-                        let start, end;
-                        let isResetState = false;
-
-                        if (fromDate && toDate) {
-                            start = moment(fromDate, "YYYY-MM-DD");
-                            end = moment(toDate, "YYYY-MM-DD");
-                            if (fromDate === "2010-01-01") {
-                                isResetState = true;
-                            }
-                        } else {
-                            start = moment().subtract(29, 'days');
-                            end = moment();
-                        }
-
-                        $('#from').val(start.format('YYYY-MM-DD'));
-                        $('#to').val(end.format('YYYY-MM-DD'));
-
-                        $('#dateRange').daterangepicker({
-                            startDate: start,
-                            endDate: end,
-                            autoApply: true,
-                            locale: {
-                                format: 'DD/MM/YYYY'
-                            }
-                        });
-                        if (isResetState || (!fromDate && !toDate)) {
-                            $('#dateRange').val('All Time');
-                        }
-
-                        $('#dateRange').on('apply.daterangepicker', function (ev, picker) {
-                            $('#from').val(picker.startDate.format('YYYY-MM-DD'));
-                            $('#to').val(picker.endDate.format('YYYY-MM-DD'));
-                            $('#filterForm').submit();
-                        });
-                    });
-
-                    function applyQuickFilter(type) {
-                        let start, end = moment();
-                        if (type === 'week') {
-                            start = moment().subtract(6, 'days');
-                        } else if (type === 'month') {
-                            start = moment().startOf('month');
-                        } else if (type === 'year') {
-                            start = moment().startOf('year');
-                        }
-
-                        $('#from').val(start.format('YYYY-MM-DD'));
-                        $('#to').val(end.format('YYYY-MM-DD'));
-
-                        $('#dateRange').data('daterangepicker').setStartDate(start);
-                        $('#dateRange').data('daterangepicker').setEndDate(end);
-                        $('#filterForm').submit();
-                    }
-
-                    // Nút Reset
-                    function resetFilter() {
-                        $('#from').val('2010-01-01');
-                        $('#to').val(moment().format('YYYY-MM-DD'));
-                        $('#filterForm').submit();
-                    }
     </script>
-    <!-- Bootstrap 5 JS Bundle (Đã bao gồm Popper.js cho Popover, Modal, Tooltip) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </layout:layout>
