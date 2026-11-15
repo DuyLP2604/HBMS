@@ -14,12 +14,16 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /** Builds the admin dashboard for revenue, customers, room usage, and service usage. */
 @WebServlet(name = "DashboardServlet", urlPatterns = {"/dashboard"})
 public class DashboardServlet extends HttpServlet {
+
+    private static final LocalDate ALL_TIME_START = LocalDate.of(2010, 1, 1);
+    private static final DateTimeFormatter DATE_LABEL_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /** Load admin dashboard data for the selected date range. */
     @Override
@@ -30,7 +34,8 @@ public class DashboardServlet extends HttpServlet {
         }
 
         try {
-            LocalDate[] dateRange = parseDateRange(request);
+            LocalDate reportToday = LocalDate.now();
+            LocalDate[] dateRange = parseDateRange(request, reportToday);
             LocalDate startDate = dateRange[0];
             LocalDate endDate = dateRange[1];
 
@@ -54,10 +59,19 @@ public class DashboardServlet extends HttpServlet {
             request.setAttribute("customerSource", customerSource);
             request.setAttribute("roomUtilization", roomUtilization);
             request.setAttribute("serviceUsage", serviceUsage);
+            boolean allTime = ALL_TIME_START.equals(startDate) && reportToday.equals(endDate);
+            request.setAttribute("allTime", allTime);
+            request.setAttribute("reportDateRange", allTime ? "All Time"
+                    : startDate.format(DATE_LABEL_FORMAT) + " - " + endDate.format(DATE_LABEL_FORMAT));
+            request.setAttribute("reportToday", reportToday.toString());
+            request.setAttribute("weekStart", reportToday.minusDays(6).toString());
+            request.setAttribute("monthStart", reportToday.withDayOfMonth(1).toString());
+            request.setAttribute("yearStart", reportToday.withDayOfYear(1).toString());
             request.setAttribute("from", startDate.toString());
             request.setAttribute("to", endDate.toString());
             request.setAttribute("revenueLabel", createRevenueLabel(startDate, endDate));
 
+            response.setHeader("Cache-Control", "no-store");
             request.getRequestDispatcher("/WEB-INF/views/dashboard.jsp").forward(request, response);
         } catch (IllegalArgumentException exception) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
@@ -72,16 +86,15 @@ public class DashboardServlet extends HttpServlet {
     }
 
     /** Read the reporting period from the dashboard request. */
-    private LocalDate[] parseDateRange(HttpServletRequest request) {
+    private LocalDate[] parseDateRange(HttpServletRequest request, LocalDate reportToday) {
         String fromValue = request.getParameter("from");
         String toValue = request.getParameter("to");
 
         boolean fromEmpty = fromValue == null || fromValue.trim().isEmpty();
         boolean toEmpty = toValue == null || toValue.trim().isEmpty();
 
-        // ĐÃ SỬA: Load lần đầu tiên sẽ tự động load All Time
         if (fromEmpty && toEmpty) {
-            return new LocalDate[]{LocalDate.of(2010, 1, 1), LocalDate.now()};
+            return new LocalDate[]{ALL_TIME_START, reportToday};
         }
 
         if (fromEmpty || toEmpty) {
