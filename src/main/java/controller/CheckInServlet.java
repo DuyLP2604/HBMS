@@ -65,7 +65,7 @@ public class CheckInServlet extends HttpServlet
                 throw new IllegalArgumentException("Mã booking không hợp lệ.");
             }
             bookingID = bookingID.trim();
-            // Use the room-payment and identity form for every check-in entry point.
+            // Submit a new request to update CCCD for check-in.
             response.sendRedirect(request.getContextPath() + "/process-checkin?bookingID="
                     + java.net.URLEncoder.encode(bookingID, java.nio.charset.StandardCharsets.UTF_8));
             return;
@@ -79,6 +79,7 @@ public class CheckInServlet extends HttpServlet
         response.sendRedirect(request.getContextPath() + "/checkin");
     }
 
+    /** Check login and access permissions **/
     private Users requireStaff(HttpServletRequest request, HttpServletResponse response) throws IOException
     {
         HttpSession session = request.getSession(false);
