@@ -18,7 +18,10 @@ import util.PersistenceManager;
 public class CheckInService {
     private static final Logger LOGGER = Logger.getLogger(CheckInService.class.getName());
 
-    /** Prepare check-in with the booking owner and current unpaid room charges. */
+    /** 
+     * Prepare check-in with the booking owner and current unpaid room charges. 
+     * 
+     */
     public CheckInRequest createRequest(String bookingID, int actorUserID, Map<String, Object> summary) {
         if (bookingID == null || bookingID.isBlank() || bookingID.trim().length() > 6 || actorUserID <= 0) {
             throw new IllegalArgumentException("A valid booking and staff account are required.");
@@ -26,25 +29,30 @@ public class CheckInService {
         if (!"ASSIGNED".equals(summary.get("bookingStatus"))) {
             throw new IllegalStateException("Assign all rooms before opening check-in.");
         }
-        // Collect only unpaid room charges at check-in. Service charges are due at checkout.
+        // Retrieve and verify the money for the guest's room before creating a CheckInRequest
         Object amount = summary.get("roomRemainingAmount");
         if (!(amount instanceof BigDecimal) || ((BigDecimal) amount).signum() < 0) {
             throw new IllegalStateException("Room payment details are unavailable. Run the check-in payment database migration.");
         }
+        // Check account customer, check booking payment method
         Object owner = summary.get("customerUserID");
         if (!(owner instanceof Number) || ((Number) owner).intValue() <= 0) {
             throw new IllegalStateException("The booking customer account is unavailable. Reload check-in.");
         }
+        // Check booking deposit
         boolean deposit = "DEPOSIT".equals(summary.get("paymentOption")) && summary.get("firstPaidAt") != null;
         return new CheckInRequest(bookingID.trim(), actorUserID, ((Number) owner).intValue(), (BigDecimal) amount, deposit);
     }
 
-    /** Check guest documents and payment details before confirming check-in. */
+    /** 
+     * Process when staff confirm check-in. 
+     */
     public void confirm(CheckInRequest request, int actorUserID, String[] documents,
             String methodID, boolean collectionConfirmed, String bankReference) {
         if (request == null || actorUserID <= 0 || request.getActorUserID() != actorUserID) {
             throw new IllegalArgumentException("Reload the check-in form before trying again.");
         }
+        // check CCCD 
         String guestDocuments = validateDocuments(documents);
         String method = methodID == null ? "" : methodID.trim();
         String reference = "CHECKIN-" + request.getToken();
@@ -92,7 +100,7 @@ public class CheckInService {
         }
     }
 
-    /** Save guest documents, any room payment, and check-in together. */
+    /** Save CCCD, any room payment, and check-in together. */
     void writeCheckIn(Connection connection, CheckInRequest request, String documents,
             String method, String reference) throws SQLException {
         connection.setAutoCommit(false);
@@ -135,7 +143,7 @@ public class CheckInService {
         if (documents == null || documents.length == 0) {
             throw new IllegalArgumentException("Enter guest identity documents before check-in.");
         }
-        Set<String> valid = new LinkedHashSet<>();
+        Set<String> valid = new LinkedHashSet<>(); // to check same CCCD
         for (String document : documents) {
             String value = document == null ? "" : document.trim();
             if (!value.matches("[0-9]{12}")) {
