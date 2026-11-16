@@ -18,7 +18,7 @@ public class PasswordResetDAO {
         String value = identifier.trim();
         try (EntityManager em = createEntityManager()) {
             Query query = em.createNativeQuery(
-                    "SELECT u.UserID, o.Email, u.Password FROM USERS u JOIN " + table
+                    "SELECT u.UserID, o.Email, u.Password, u.AccessVersion FROM USERS u JOIN " + table
                     + " o ON o.UserID = u.UserID WHERE u.Role = ?"
                     + " AND (LOWER(LTRIM(RTRIM(o.Email))) = LOWER(?) OR o.Phone = ?)"
                     + " AND o.Email IS NOT NULL AND LTRIM(RTRIM(o.Email)) <> ''"
@@ -33,7 +33,7 @@ public class PasswordResetDAO {
             }
             Object[] row = (Object[]) matches.get(0);
             return new PasswordResetAccount(((Number) row[0]).intValue(), role,
-                    ((String) row[1]).trim(), (String) row[2]);
+                    ((String) row[1]).trim(), (String) row[2], ((Number) row[3]).intValue());
         }
     }
 
@@ -47,7 +47,7 @@ public class PasswordResetDAO {
             Query query = em.createNativeQuery(
                     "SELECT COUNT(*) FROM USERS u JOIN " + table
                     + " o ON o.UserID = u.UserID WHERE u.UserID = ? AND u.Role = ?"
-                    + " AND u.Password = ? AND LOWER(LTRIM(RTRIM(o.Email))) = LOWER(?)"
+                    + " AND u.Password = ? AND u.AccessVersion = ? AND LOWER(LTRIM(RTRIM(o.Email))) = LOWER(?)"
                     + staffCondition(account.getRole(), "u."));
             bindAccount(query, account, 1);
             return ((Number) query.getSingleResult()).intValue() == 1;
@@ -67,7 +67,7 @@ public class PasswordResetDAO {
             // The UPDATE checks that the account details still match the verified reset request.
             Query query = em.createNativeQuery(
                     "UPDATE USERS SET Password = ? WHERE UserID = ? AND Role = ?"
-                    + " AND Password = ?" + staffCondition(account.getRole(), "")
+                    + " AND Password = ? AND AccessVersion = ?" + staffCondition(account.getRole(), "")
                     + " AND EXISTS (SELECT 1 FROM " + table
                     + " o WHERE o.UserID = USERS.UserID"
                     + " AND LOWER(LTRIM(RTRIM(o.Email))) = LOWER(?))");
@@ -94,7 +94,8 @@ public class PasswordResetDAO {
         query.setParameter(first, account.getUserId());
         query.setParameter(first + 1, account.getRole());
         query.setParameter(first + 2, account.getPasswordHash());
-        query.setParameter(first + 3, account.getEmail());
+        query.setParameter(first + 3, account.getAccessVersion());
+        query.setParameter(first + 4, account.getEmail());
     }
 
     private String accountTable(String role) {

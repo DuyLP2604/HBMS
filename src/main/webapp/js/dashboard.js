@@ -1,7 +1,7 @@
 // Renders the admin dashboard charts and report controls.
 document.addEventListener("DOMContentLoaded", function () {
 
-    initializeDateRangePicker();
+    initializeDateFilters();
     initializeRevenueChart();
     initializeUtilizationChart();
     initializeServiceChart();
@@ -10,7 +10,14 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
-function initializeDateRangePicker() {
+function initializeDateFilters() {
+    const form = document.getElementById("filterForm");
+    if (!form) {
+        return;
+    }
+
+    const fromInput = form.elements.namedItem("from");
+    const toInput = form.elements.namedItem("to");
 
     if (typeof $ === "undefined"
             || typeof moment === "undefined"
@@ -19,37 +26,25 @@ function initializeDateRangePicker() {
     }
 
     const dateRange = $("#dateRange");
-    const fromInput = $("#from");
-    const toInput = $("#to");
+    const isAllTime = form.dataset.allTime === "true";
+    const endDate = moment(toInput.value, "YYYY-MM-DD");
+    const startDate = isAllTime
+            ? endDate.clone().subtract(29, "days")
+            : moment(fromInput.value, "YYYY-MM-DD");
 
-    dateRange.daterangepicker(
-        {
-            startDate: moment(),
-            endDate: moment(),
+    dateRange.daterangepicker({
+        startDate: startDate,
+        endDate: endDate,
+        autoApply: true,
+        autoUpdateInput: false,
+        locale: { format: "DD/MM/YYYY" }
+    });
 
-            locale: {
-                format: "DD/MM/YYYY"
-            }
-        },
-        function (start, end) {
-
-            fromInput.val(
-                start.format("YYYY-MM-DD")
-            );
-
-            toInput.val(
-                end.format("YYYY-MM-DD")
-            );
-        }
-    );
-
-    fromInput.val(
-        moment().format("YYYY-MM-DD")
-    );
-
-    toInput.val(
-        moment().format("YYYY-MM-DD")
-    );
+    dateRange.on("apply.daterangepicker", function (event, picker) {
+        fromInput.value = picker.startDate.format("YYYY-MM-DD");
+        toInput.value = picker.endDate.format("YYYY-MM-DD");
+        form.requestSubmit();
+    });
 }
 
 

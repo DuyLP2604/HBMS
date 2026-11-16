@@ -60,7 +60,8 @@ public class SetNewPasswordServlet extends HttpServlet {
         Users user;
         try {
             // Replace the temporary password if the first-login request is still valid.
-            user = createUserDAO().completeFirstLogin(pending.getUserId(), pending.getPasswordHash(), password);
+            user = createUserDAO().completeFirstLogin(
+                    pending.getUserId(), pending.getAccessVersion(), pending.getPasswordHash(), password);
         } catch (IllegalArgumentException exception) {
             Flash.error(request, exception.getMessage());
             response.sendRedirect(request.getContextPath() + "/set-new-password");
