@@ -62,7 +62,7 @@ public class ChangePasswordServlet extends HttpServlet {
         try {
             // Account identity and role come exclusively from the authenticated session.
             changed = createPasswordChangeDAO().changePassword(user.getUserID(), user.getRole(),
-                    currentPassword, newPassword);
+                    user.getAccessVersion(), currentPassword, newPassword);
         } catch (RuntimeException exception) {
             getServletContext().log("Unable to change account password.", exception);
             request.setAttribute("passwordError", "Unable to save your password. Please try again later.");

@@ -13,6 +13,7 @@ public final class PasswordResetSession {
         session.setAttribute("resetEmail", account.getEmail());
         session.setAttribute("resetAccountRole", account.getRole());
         session.setAttribute("resetPasswordHash", account.getPasswordHash());
+        session.setAttribute("resetAccessVersion", account.getAccessVersion());
     }
 
     public static PasswordResetAccount account(HttpSession session) {
@@ -28,7 +29,9 @@ public final class PasswordResetSession {
                 || ((String) hash).isBlank()) {
             return null;
         }
-        return new PasswordResetAccount((Integer) id, (String) role, (String) email, (String) hash);
+        Object version = session.getAttribute("resetAccessVersion");
+        return new PasswordResetAccount((Integer) id, (String) role, (String) email, (String) hash,
+                version instanceof Integer ? (Integer) version : 0);
     }
 
     /** Check that the session still points to an eligible recovery account. */
@@ -41,7 +44,7 @@ public final class PasswordResetSession {
         if (session == null) {
             return;
         }
-        String[] attributes = {"resetUserId", "resetEmail", "resetAccountRole", "resetPasswordHash",
+        String[] attributes = {"resetUserId", "resetEmail", "resetAccountRole", "resetPasswordHash", "resetAccessVersion",
             "resetOtp", "resetOtpExpiry", "resetOtpAttempts", "resetOtpVerified", "resetVerifiedExpiry",
             "resetOtpResendCount", "resetOtpResendWindowStart"};
         for (String name : attributes) {

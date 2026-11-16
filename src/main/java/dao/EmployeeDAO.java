@@ -209,15 +209,18 @@ public class EmployeeDAO {
         }
     }
 
-    /** Disable the linked Staff account without changing the employee record. */
-    public boolean deactivateStaffAccount(String employeeID) {
+    /** Change access for the linked Staff account and invalidate its old sessions. */
+    public boolean setStaffAccountActive(String employeeID, boolean active) {
         EntityManager em = PersistenceManager.createEntityManager();
         try {
             em.getTransaction().begin();
             int changed = em.createNativeQuery(
-                    "UPDATE dbo.USERS SET IsActive = 0 WHERE Role = 'Staff' AND IsActive = 1"
+                    "UPDATE dbo.USERS SET IsActive = ?, AccessVersion = AccessVersion + 1"
+                    + " WHERE Role = 'Staff' AND IsActive = ?"
                     + " AND UserID IN (SELECT UserID FROM dbo.EMPLOYEE WHERE EmployeeID = ?)")
-                    .setParameter(1, employeeID)
+                    .setParameter(1, active ? 1 : 0)
+                    .setParameter(2, active ? 0 : 1)
+                    .setParameter(3, employeeID)
                     .executeUpdate();
             em.getTransaction().commit();
             if (changed == 1) {
@@ -230,6 +233,64 @@ public class EmployeeDAO {
         } finally {
             close(em);
         }
+    }
+
+    /** Outcome of {@link #deleteStaffAccount(String)}. */
+    public enum DeleteResult { DELETED, NOT_FOUND, HAS_HISTORY }
+
+    /**
+     * Permanently delete a Staff employee profile together with its login account.
+     * Nothing is deleted (HAS_HISTORY) when booking, payment, invoice, complaint or
+     * other records still point to the employee or the account, so history is kept.
+     * Sessions of the deleted account end on their next request because the
+     * account no longer exists (see UserDAO.isStaffSessionValid).
+     */
+    public DeleteResult deleteStaffAccount(String employeeID) {
+        EntityManager em = PersistenceManager.createEntityManager();
+        try {
+            em.getTransaction().begin();
+            List<?> rows = em.createNativeQuery(
+                    "SELECT e.UserID FROM dbo.EMPLOYEE e JOIN dbo.USERS u ON u.UserID = e.UserID"
+                    + " WHERE e.EmployeeID = ? AND u.Role = 'Staff'")
+                    .setParameter(1, employeeID)
+                    .getResultList();
+            if (rows.isEmpty()) {
+                rollback(em);
+                return DeleteResult.NOT_FOUND;
+            }
+            int userId = ((Number) rows.get(0)).intValue();
+            em.createNativeQuery("DELETE FROM dbo.EMPLOYEE WHERE EmployeeID = ?")
+                    .setParameter(1, employeeID)
+                    .executeUpdate();
+            em.createNativeQuery("DELETE FROM dbo.USERS WHERE UserID = ? AND Role = 'Staff'")
+                    .setParameter(1, userId)
+                    .executeUpdate();
+            em.getTransaction().commit();
+            em.getEntityManagerFactory().getCache().evict(Users.class);
+            em.getEntityManagerFactory().getCache().evict(Employee.class);
+            return DeleteResult.DELETED;
+        } catch (RuntimeException exception) {
+            rollback(em);
+            if (isForeignKeyViolation(exception)) {
+                return DeleteResult.HAS_HISTORY;
+            }
+            throw exception;
+        } finally {
+            close(em);
+        }
+    }
+
+    // SQL Server reports a foreign key conflict as error 547 (SQLState 23000).
+    private boolean isForeignKeyViolation(Throwable exception) {
+        for (Throwable cause = exception; cause != null; cause = cause.getCause() == cause ? null : cause.getCause()) {
+            if (cause instanceof java.sql.SQLException) {
+                java.sql.SQLException sql = (java.sql.SQLException) cause;
+                if (sql.getErrorCode() == 547 || "23000".equals(sql.getSQLState())) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Check whether the login account belongs to a receptionist. */
