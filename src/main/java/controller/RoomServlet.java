@@ -141,6 +141,12 @@ public class RoomServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/room");
             return;
         }
+        // Validate file
+        if (!ProjectFileUtil.isUploadSizeValid(request)) {
+            Flash.error(request, "Error: Please upload file < 5MB.");
+            response.sendRedirect(request.getContextPath() + "/room?action=list");
+            return;
+        }
         String action = request.getParameter("action");
         RoomDAO roomDAO = new RoomDAO();
         if ("update".equalsIgnoreCase(action)) {
