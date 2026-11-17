@@ -142,7 +142,14 @@ public class RoomServlet extends HttpServlet {
             return;
         }
         // Validate file
-        if (!ProjectFileUtil.isUploadSizeValid(request)) {
+        boolean validUpload;
+        try {
+            validUpload = ProjectFileUtil.isUploadSizeValid(request);
+        } catch (IOException | ServletException e) {
+            log("Cannot parse upload request.", e);
+            validUpload = false;
+        }
+        if (!validUpload) {
             Flash.error(request, "Error: Please upload file < 5MB.");
             response.sendRedirect(request.getContextPath() + "/room?action=list");
             return;
