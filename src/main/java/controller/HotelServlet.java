@@ -13,10 +13,6 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -26,22 +22,24 @@ import java.util.Map;
 import java.util.regex.Pattern;
 import util.HotelContent;
 import util.HotelImageSlot;
+import util.ProjectFileUtil;
 import util.flash.Flash;
 import util.flash.FlashMessage;
 import util.flash.FlashType;
 
 /**
- * Lets the admin manager change the hotel images:
- * the background image and the three Overview images.
+ * Lets the admin manager change the hotel images: the background image and the
+ * three Overview images.
  *
  * The hotel name and the address are shown on the page but cannot be changed.
  * The project has a single hotel.
  *
- * How an image is replaced:
- * 1. the new file is written to assets/images/hotel under a new, unique name,
- * 2. the new file name is saved in the database (HOTEL table),
- * 3. only after the database update succeeded, the old file is deleted.
- * If step 1 or 2 fails, the new files are removed and the old image stays in use.
+ * How an image is replaced: 1. the new file is written to assets/images/hotel
+ * under a new, unique name (ProjectFileUtil saves it to both the Tomcat deploy
+ * folder and src/main/webapp), 2. the new file name is saved in the database
+ * (HOTEL table), 3. only after the database update succeeded, the old file is
+ * deleted. If step 1 or 2 fails, the new files are removed and the old image
+ * stays in use.
  */
 @WebServlet(name = "HotelServlet", urlPatterns = {"/hotel"})
 @MultipartConfig(
@@ -50,9 +48,14 @@ import util.flash.FlashType;
 )
 public class HotelServlet extends HttpServlet {
 
-    private static final String IMAGE_FOLDER = "/assets/images/hotel";
+    /**
+     * Sub folder under /assets/images, used by ProjectFileUtil.
+     */
+    private static final String IMAGE_SUBFOLDER = "hotel";
 
-    /** File names created by this servlet, so old uploads can be cleaned up. */
+    /**
+     * File names created by this servlet, so old uploads can be cleaned up.
+     */
     private static final Pattern GENERATED_NAME = Pattern.compile(
             "^hotel-(hero|room|pool|restaurant)-\\d+\\.(jpg|png|webp)$");
 
@@ -73,7 +76,9 @@ public class HotelServlet extends HttpServlet {
 
     private final HotelDAO hotelDAO = new HotelDAO();
 
-    /** Load the current hotel information for the admin edit form. */
+    /**
+     * Load the current hotel information for the admin edit form.
+     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -92,7 +97,9 @@ public class HotelServlet extends HttpServlet {
         forwardForm(request, response, hotel);
     }
 
-    /** Validate the hotel fields and images before saving the changes. */
+    /**
+     * Validate the hotel fields and images before saving the changes.
+     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -125,7 +132,6 @@ public class HotelServlet extends HttpServlet {
         }
 
         // The hotel name and the address are fixed: they are never read from the request.
-
         // Check every chosen image before anything is saved.
         Map<HotelImageSlot, Part> chosen = new LinkedHashMap<>();
         Map<HotelImageSlot, String> extensions = new LinkedHashMap<>();
@@ -155,37 +161,30 @@ public class HotelServlet extends HttpServlet {
         }
 
         // Step 1: write the new images (the old ones are still in place).
-        List<Path> savedFiles = new ArrayList<>();
+        List<String> savedNames = new ArrayList<>();
         Map<HotelImageSlot, String> newNames = new LinkedHashMap<>();
 
-        try {
-            if (!chosen.isEmpty()) {
-                Path folder = imageFolder();
-                Files.createDirectories(folder);
+        for (Map.Entry<HotelImageSlot, Part> entry : chosen.entrySet()) {
+            HotelImageSlot slot = entry.getKey();
 
-                for (Map.Entry<HotelImageSlot, Part> entry : chosen.entrySet()) {
-                    HotelImageSlot slot = entry.getKey();
+            // The server picks the name, so an upload cannot choose a path.
+            // The format must match GENERATED_NAME.
+            String fileName = "hotel-" + slot.getKey() + "-"
+                    + System.currentTimeMillis() + "."
+                    + extensions.get(slot);
 
-                    // The server picks the name, so an upload cannot choose a path.
-                    String fileName = "hotel-" + slot.getKey() + "-"
-                            + System.currentTimeMillis() + "."
-                            + extensions.get(slot);
+            String saved = ProjectFileUtil.saveImageWithExactName(
+                    getServletContext(), entry.getValue(), IMAGE_SUBFOLDER, fileName);
 
-                    try (InputStream in = entry.getValue().getInputStream()) {
-                        Files.copy(in, folder.resolve(fileName),
-                                StandardCopyOption.REPLACE_EXISTING);
-                    }
-
-                    savedFiles.add(folder.resolve(fileName));
-                    newNames.put(slot, fileName);
-                }
+            if (saved == null) {
+                deleteSavedImages(savedNames);
+                forwardForm(request, response, hotel,
+                        "Unable to save the images on the server.");
+                return;
             }
-        } catch (IOException exception) {
-            exception.printStackTrace();
-            deleteQuietly(savedFiles);
-            forwardForm(request, response, hotel,
-                    "Unable to save the images on the server.");
-            return;
+
+            savedNames.add(saved);
+            newNames.put(slot, saved);
         }
 
         // Step 2: save the new file names in the database.
@@ -196,7 +195,7 @@ public class HotelServlet extends HttpServlet {
         }
 
         if (!hotelDAO.updateHotel(hotel)) {
-            deleteQuietly(savedFiles);
+            deleteSavedImages(savedNames);
             // Reload so the form does not show the unsaved image names.
             Hotel stored = hotelDAO.getHotel();
             forwardForm(request, response, stored != null ? stored : hotel,
@@ -215,8 +214,8 @@ public class HotelServlet extends HttpServlet {
     }
 
     /**
-     * Only the admin manager may open or change this page.
-     * Sends the response and returns false when access is denied.
+     * Only the admin manager may open or change this page. Sends the response
+     * and returns false when access is denied.
      */
     private boolean isAdmin(HttpServletRequest request,
             HttpServletResponse response) throws IOException {
@@ -261,7 +260,9 @@ public class HotelServlet extends HttpServlet {
         return matchesImageSignature(header, read, extension) ? extension : null;
     }
 
-    /** Returns jpg, png or webp, or null when the extension is not allowed. */
+    /**
+     * Returns jpg, png or webp, or null when the extension is not allowed.
+     */
     private String extensionOf(String fileName) {
         if (fileName == null) {
             return null;
@@ -308,35 +309,26 @@ public class HotelServlet extends HttpServlet {
         }
     }
 
-    private Path imageFolder() throws IOException {
-        String folderPath = getServletContext().getRealPath(IMAGE_FOLDER);
-        if (folderPath == null) {
-            throw new IOException("The image folder is not on the file system.");
-        }
-        return Paths.get(folderPath);
-    }
-
-    private void deleteQuietly(List<Path> files) {
-        for (Path file : files) {
-            try {
-                Files.deleteIfExists(file);
-            } catch (IOException ignored) {
-                // Nothing more can be done.
-            }
+    /**
+     * Removes files that were just saved (rollback).
+     */
+    private void deleteSavedImages(List<String> fileNames) {
+        for (String fileName : fileNames) {
+            ProjectFileUtil.deleteImageFromProject(
+                    getServletContext(), IMAGE_SUBFOLDER, fileName);
         }
     }
 
-    /** Deletes an old upload, but only if this servlet created it. */
+    /**
+     * Deletes an old upload, but only if this servlet created it.
+     */
     private void deleteIfGenerated(String fileName) {
         if (fileName == null || !GENERATED_NAME.matcher(fileName).matches()) {
             return;
         }
 
-        try {
-            Files.deleteIfExists(imageFolder().resolve(fileName));
-        } catch (IOException ignored) {
-            // An old file left behind is harmless.
-        }
+        ProjectFileUtil.deleteImageFromProject(
+                getServletContext(), IMAGE_SUBFOLDER, fileName);
     }
 
     private void forwardForm(HttpServletRequest request,
