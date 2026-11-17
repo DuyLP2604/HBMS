@@ -148,22 +148,29 @@ public class ProcessCheckInServlet extends HttpServlet {
         response.sendRedirect(request.getContextPath() + "/staff/stays");
     }
 
-    /** Record the selected direct payment and complete the guest check-in. */
+    /** 
+     * Using for staff choice Cash
+     * Transfer the CCCD and payment collection details to the service to confirm check-in
+     * "collectionConfirmed" read checkbox to confirm (Cash)
+     */
     private void collectAndCheckIn(HttpServletRequest request, CheckInRequest payment, String method) {
         createCheckInService().confirm(payment, payment.getActorUserID(), request.getParameterValues("cccd"),
                 method, "true".equals(request.getParameter("collectionConfirmed")),
                 request.getParameter("bankReference"));
     }
 
-    /** Complete check-in after the QR payment has been confirmed. */
+    /** 
+     * Using staff choice QR PayOS
+     * Check status "PAID", if payment done, balance is 0 then CCCD to confirm check-in
+     */
     private void completePaidCheckIn(HttpServletRequest request, CheckInRequest payment) throws SQLException {
         String bookingID = payment.getBookingID();
         PayOsOrder order = payOsOrders.findCheckInOrder(bookingID, CounterPaymentSupport.parseOrderCode(request.getParameter("payOsOrderCode")));
         if (order == null || !"PAID".equals(order.status) || order.paymentID == null) {
             throw new IllegalArgumentException("Wait until PayOS confirms the room payment.");
         }
-
         // The webhook already collected the balance.
+        // getPaymentSummary read result and save with CheckInRequest to show on form
         CheckInRequest current = createCheckInService().createRequest(bookingID, payment.getActorUserID(),
                 createBookingDAO().getPaymentSummary(bookingID));
         if (current.getRoomAmount().signum() != 0) {
@@ -173,7 +180,7 @@ public class ProcessCheckInServlet extends HttpServlet {
                 null, false, null);
     }
 
-    /** Open a PayOS order for the remaining room balance. */
+    /** Open a Open a PayOS order for the remaining room balance */
     private void createPayOsOrder(HttpServletRequest request, HttpServletResponse response, CheckInRequest payment)
             throws IOException {
         response.setHeader("Cache-Control", "no-store");

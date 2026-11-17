@@ -51,8 +51,10 @@
                     <dl class="guest-facts"><div><dt>Arrival</dt><dd><fmt:formatDate value="${booking.checkInDate}" pattern="dd MMM yyyy" /></dd></div><div><dt>Departure</dt><dd><fmt:formatDate value="${booking.checkOutDate}" pattern="dd MMM yyyy" /></dd></div><div><dt>Booking ID</dt><dd><c:out value="${booking.bookingID}" /></dd></div><div><dt>Status</dt><dd><span class="guest-state">In-house</span></dd></div></dl>
                     <section class="guest-dialog-section"><h3>Assigned rooms</h3><div class="guest-rooms"><c:forEach var="detail" items="${booking.bookingDetailCollection}"><c:forEach var="assignment" items="${detail.roomAssignmentCollection}"><span class="guest-room-chip">Room <c:out value="${assignment.roomID.roomNumber}" /> · <c:out value="${detail.roomTypeID.typeName}" /></span></c:forEach></c:forEach></div></section>
                     <section class="guest-dialog-section"><h3>Guest identity documents</h3><c:choose><c:when test="${not empty fn:trim(booking.guestCCCDs)}"><ul class="guest-documents-list"><c:forEach var="document" items="${fn:split(booking.guestCCCDs, ',')}" varStatus="guest"><c:if test="${not empty fn:trim(document)}"><li><span>Guest ${guest.index + 1}</span><code><c:out value="${fn:trim(document)}" /></code></li></c:if></c:forEach></ul></c:when><c:otherwise><p class="guest-help">No guest documents have been recorded.</p></c:otherwise></c:choose></section>
-                                </div>
-                                    <div class="guest-dialog-footer"><button type="button" class="stay-button stay-button-secondary" data-close-stay>Close</button><a href="${detailCheckoutUrl}" class="stay-button stay-button-primary">Review checkout <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+                </div>
+                <div 
+                    class="guest-dialog-footer"><button type="button" class="stay-button stay-button-secondary" data-close-stay>Close</button><a href="${detailCheckoutUrl}" class="stay-button stay-button-primary">Review checkout <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                </div>
             </dialog>
         </c:forEach>
     </div>

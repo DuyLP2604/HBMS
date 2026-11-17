@@ -78,7 +78,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
         }
     }
 
-    /** Load checked-in stays and issued invoices for reception. */
+    /** Get status booking "CHECKED_IN" and filter by customer name */
     private void showCheckoutList(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
         List<Map<String, String>> occupiedRooms;
@@ -110,7 +110,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
         request.getRequestDispatcher("/WEB-INF/views/checkout-employee.jsp").forward(request, response);
     }
 
-    /** Load room and service charges and determine whether the stay can be closed. */
+    /** Retrieve room */
     private void showCheckoutDetail(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
     {
         String bookingID = request.getParameter("bookingID");
@@ -145,6 +145,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
                 response.sendError(HttpServletResponse.SC_CONFLICT, "Only checked-in/out bookings can use this checkout page.");
                 return;
             }
+            // Retrieve total amount of services
             roomDetail = invoiceDAO.getRoomDetailByBooking(bookingID);
             if (roomDetail == null || roomDetail.isEmpty())
             {
@@ -222,7 +223,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
             return;
         }
         
-        // Điều hướng các logic thanh toán (Cash & QR PayOS)
+        // Check get money in session, using Cash and checkbox 
         if ("collectCash".equals(action) || "createPayOs".equals(action))
         {
             collectPayment(request, response, user, action);
@@ -234,7 +235,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
             return;
         }
         
-        // Xử lý tạo Invoice sau khi thanh toán xong
+        // Create invoice before payment
         HttpSession session = request.getSession(false);
         try
         {
@@ -253,16 +254,19 @@ public class CheckoutEmployeeServlet extends HttpServlet
             {
                 throw new IllegalStateException("Only checked-in/out bookings can use this checkout action.");
             }
+            //Check the outstanding money 
             BigDecimal remainingAmount = requireAmount(summary, "remainingAmount");
             if (remainingAmount.signum() > 0)
             {
                 String amount = NumberFormat.getNumberInstance(new Locale("vi", "VN")).format(remainingAmount);
                 throw new IllegalStateException("The booking still owes " + amount + " VND. Complete payment before checkout.");
             }
+            // If firstPaidAt = null or total amount paid <= 0 then stop checkout
             if (summary.get("firstPaidAt") == null || requireAmount(summary, "totalPaidAmount").signum() <= 0)
             {
                 throw new IllegalStateException("The booking has no successful payment. Checkout cannot continue.");
             }
+            // checkout and export invoice
             boolean success = invoiceDAO.processCheckout(bookingID, user.getUserID());
             if (success)
             {
@@ -287,7 +291,11 @@ public class CheckoutEmployeeServlet extends HttpServlet
                 + (id == null ? "" : "?action=detail&bookingID=" + id));
     }
 
-    /** Record cash or open QR; neither action marks the stay as checked out. */
+    /** 
+     * Check token of form. 
+     * If cash, read checkbox and read QR whether QR 
+     * cash call collectionConfirmed and QR call PaymentService().collectAtCounter
+     */
     private void collectPayment(HttpServletRequest request, HttpServletResponse response, Users user, String action)
             throws IOException
     {
@@ -391,7 +399,6 @@ public class CheckoutEmployeeServlet extends HttpServlet
             throw new IllegalStateException("The outstanding amount changed. Reload checkout before collecting payment.");
         }
     }
-
     private void requireNoOpenPayment(Connection connection, String bookingID) throws SQLException
     {
         if (payOsOrders.hasOpenPaymentOrder(connection, bookingID, "BALANCE", true))
@@ -400,6 +407,7 @@ public class CheckoutEmployeeServlet extends HttpServlet
         }
     }
 
+    
     /** Create the same PayOS QR used at check-in, for the outstanding checkout BALANCE. */
     private PayOsOrder openCheckoutOrder(PaymentRequest shown, int staffUserID, String returnUrl) throws Exception
     {
@@ -452,7 +460,6 @@ public class CheckoutEmployeeServlet extends HttpServlet
         String filter = code == null
                 ? "AND o.Status <> 'PAID' AND o.CheckInExpiresAt > ? ORDER BY o.CreatedAt DESC, o.OrderCode DESC"
                 : "AND o.OrderCode = ?";
-        // Đã update SQL condition ở dòng `AND b.BookingStatus NOT IN ('CHECKED_IN', 'CHECKED_OUT')` để QR hiển thị mượt mà.
         String sql = "SELECT TOP (1) o.OrderCode, o.PaymentID, o.ExternalAmount, o.CheckInExpiresAt, "
                 + "o.CheckInQrCode, o.CheckInCheckoutUrl, CASE WHEN o.Status IN ('PENDING','PROCESSING') "
                 + "AND (b.BookingStatus NOT IN ('CHECKED_IN', 'CHECKED_OUT') OR b.RemainingAmount <> o.ExternalAmount) "
