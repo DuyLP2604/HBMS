@@ -22,9 +22,12 @@ import java.util.Locale;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import util.BookingTimePolicy;
+import util.ProjectFileUtil;
 import util.flash.Flash;
 
-/** Handles room type search and room type maintenance. */
+/**
+ * Handles room type search and room type maintenance.
+ */
 @WebServlet(name = "RoomTypeServlet", urlPatterns = {"/room-types"})
 @MultipartConfig(fileSizeThreshold = 1024 * 1024,
         maxFileSize = 1024 * 1024 * 5,
@@ -186,8 +189,7 @@ public class RoomTypeServlet extends HttpServlet {
                     roomType.setDescription(description);
 
                     String oldImageName = roomType.getRoomTypeImage();
-                    String uploadedImage = processImage(request, "roomTypeImage");
-
+                    String uploadedImage = processImageUpdate(request, "roomTypeImage", oldImageName, "room-types");
                     if (uploadedImage != null) {
                         roomType.setRoomTypeImage(uploadedImage);
                     }
@@ -197,10 +199,6 @@ public class RoomTypeServlet extends HttpServlet {
 
                     if (isOkUpdate) {
                         Flash.success(request, "Room type updated successfully!");
-                        // Xóa ảnh cũ nếu upload ảnh mới thành công
-                        if (uploadedImage != null && oldImageName != null && !oldImageName.isEmpty()) {
-                            deletePhysicalFile(request, oldImageName);
-                        }
                     } else {
                         Flash.error(request, "Error! Cannot update room type information.");
                         // Rollback: Xóa ảnh mới upload nếu DB update thất bại
@@ -208,6 +206,7 @@ public class RoomTypeServlet extends HttpServlet {
                             deletePhysicalFile(request, uploadedImage);
                         }
                     }
+
                 } else {
                     Flash.error(request, "Room type not found for update.");
                 }
@@ -221,7 +220,9 @@ public class RoomTypeServlet extends HttpServlet {
     }
 
     // ================= HELPER METHODS =================
-    /** Validate the stay dates and show availability by room type. */
+    /**
+     * Validate the stay dates and show availability by room type.
+     */
     private void showSearchPage(HttpServletRequest request, HttpServletResponse response, RoomTypeDAO roomTypeDAO) throws ServletException, IOException {
         moveFlashMessage(request);
         //Get current time
@@ -272,13 +273,15 @@ public class RoomTypeServlet extends HttpServlet {
         request.getRequestDispatcher("/WEB-INF/views/room-type-search.jsp").forward(request, response);
     }
 
-    /** Show the selected room type and availability for the default stay. */
+    /**
+     * Show the selected room type and availability for the default stay.
+     */
     private void showRoomDetail(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String id = request.getParameter("id");
         if (id != null && !id.trim().isEmpty()) {
             RoomTypeDAO roomTypeDAO = new RoomTypeDAO();
             String roomTypeId = id.trim();
-            
+
             //Get room type detail
             RoomType roomType = roomTypeDAO.getById(roomTypeId);
             request.setAttribute("roomType", roomType);
@@ -342,27 +345,15 @@ public class RoomTypeServlet extends HttpServlet {
             if (extension == null) {
                 return null;
             }
-            String uniqueFileName = "room-type-" + System.currentTimeMillis() + "." + extension;
-            String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room-types";
-            File uploadDir = new File(uploadPath);
-            if (!uploadDir.exists()) {
-                uploadDir.mkdirs();
-            }
-            part.write(uploadPath + File.separator + uniqueFileName);
-            return uniqueFileName;
+            return ProjectFileUtil.saveImageToProject(request.getServletContext(), part, "room-types", part.getSubmittedFileName());
+
         } catch (ServletException | IOException e) {
             return null;
         }
     }
 
     private void deletePhysicalFile(HttpServletRequest request, String fileName) {
-        if (fileName != null && !fileName.isEmpty()) {
-            String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room-types";
-            File file = new File(uploadPath + File.separator + fileName);
-            if (file.exists()) {
-                file.delete();
-            }
-        }
+        ProjectFileUtil.deleteImageFromProject(request.getServletContext(), "room-types", fileName);
     }
 
     private String validateImage(Part part) throws IOException {
@@ -419,6 +410,36 @@ public class RoomTypeServlet extends HttpServlet {
                         && h[8] == 'W' && h[9] == 'E' && h[10] == 'B' && h[11] == 'P';
             default:
                 return false;
+        }
+    }
+
+    private String processImageUpdate(HttpServletRequest request, String inputName, String oldFileName, String subFolder) {
+        try {
+            Part part = request.getPart(inputName);
+            if (part == null || part.getSize() == 0 || part.getSubmittedFileName() == null || part.getSubmittedFileName().isEmpty()) {
+                return null;
+            }
+            String extension = validateImage(part);
+            if (extension == null) {
+                return null;
+            }
+
+            String newFileName;
+            if (oldFileName != null && !oldFileName.isEmpty()) {
+                // Get file name without extension
+                String baseName = oldFileName.substring(0, oldFileName.lastIndexOf('.'));
+                newFileName = baseName + "." + extension; // Nối với đuôi định dạng của file mới
+
+                // Delete old file
+                ProjectFileUtil.deleteImageFromProject(request.getServletContext(), subFolder, oldFileName);
+            } else {
+                // Create new if not exist
+                newFileName = subFolder + "-" + System.currentTimeMillis() + "." + extension;
+            }
+
+            return ProjectFileUtil.saveImageWithExactName(request.getServletContext(), part, subFolder, newFileName);
+        } catch (Exception e) {
+            return null;
         }
     }
 
