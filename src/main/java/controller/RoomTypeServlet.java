@@ -129,7 +129,19 @@ public class RoomTypeServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/room-types");
             return;
         }
-
+        // Validate file
+        boolean validUpload;
+        try {
+            validUpload = ProjectFileUtil.isUploadSizeValid(request);
+        } catch (IOException | ServletException e) {
+            log("Cannot parse upload request.", e);
+            validUpload = false;
+        }
+        if (!validUpload) {
+            Flash.error(request, "Error: Please upload file < 5MB.");
+            response.sendRedirect(request.getContextPath() + "/room-types?action=manage");
+            return;
+        }
         String action = request.getParameter("action");
         RoomTypeDAO roomTypeDAO = new RoomTypeDAO();
 
