@@ -116,10 +116,18 @@ public class CounterBookingServlet extends HttpServlet {
                         throw new IllegalStateException("This customer needs a login account before booking.");
                     }
                     req.setAttribute("selectedCustomer", customer);
-                    req.setAttribute("roomTypes", new RoomTypeDAO().getAll());
-                    synchronized (session) {
-                        if (session.getAttribute("counterCreateToken") == null) {
-                            session.setAttribute("counterCreateToken", UUID.randomUUID().toString());
+                    Booking pending = findActiveCounterBooking(customer);
+                    if (pending != null) {
+                        pending = new BookingDAO().getByIdWithDetails(pending.getBookingID());
+                    }
+                    if (hasActivePaymentHold(pending)) {
+                        req.setAttribute("pendingBooking", pending);
+                    } else {
+                        req.setAttribute("roomTypes", new RoomTypeDAO().getAll());
+                        synchronized (session) {
+                            if (session.getAttribute("counterCreateToken") == null) {
+                                session.setAttribute("counterCreateToken", UUID.randomUUID().toString());
+                            }
                         }
                     }
                 } else if (req.getParameter("phone") != null) {
@@ -137,6 +145,24 @@ public class CounterBookingServlet extends HttpServlet {
             throw new ServletException("Unable to load counter booking.", ex);
         }
         req.getRequestDispatcher("/WEB-INF/views/counter-booking.jsp").forward(req, res);
+    }
+
+    private Booking findActiveCounterBooking(Customer customer) {
+        if (customer == null || customer.getUserID() == null || customer.getUserID().getUserID() == null) {
+            return null;
+        }
+        int customerUserID = customer.getUserID().getUserID();
+        Booking pending = new BookingDAO().getLatestPendingBookingByUserId(customerUserID);
+        if (!hasActivePaymentHold(pending) || pending.getBookedByUserID() == null
+                || pending.getBookedByUserID() == customerUserID) {
+            return null;
+        }
+        return pending;
+    }
+
+    private boolean hasActivePaymentHold(Booking booking) {
+        return booking != null && "PENDING_PAYMENT".equals(booking.getBookingStatus())
+                && booking.getPaymentDeadline() != null && booking.getPaymentDeadline().after(new Date());
     }
 
     /** Return available room counts for the selected stay dates. */
@@ -158,6 +184,12 @@ public class CounterBookingServlet extends HttpServlet {
 
         JsonObject counts = new JsonObject();
         try {
+            String customerID = trim(req.getParameter("customerID"));
+            if (!customerID.isEmpty() && findActiveCounterBooking(new CustomerDAO().getCustomerById(customerID)) != null) {
+                // A restored form may predate the booking that now holds these rooms.
+                res.setStatus(HttpServletResponse.SC_CONFLICT);
+                return;
+            }
             // SP_GET_ROOM_TYPE_AVAILABILITY counts free rooms by room type and stay dates.
             for (RoomTypeAvailability type : new RoomTypeDAO().getAvailability(checkIn, checkOut)) {
                 counts.addProperty(type.getRoomTypeID(), Math.max(0L, type.getAvailableRooms()));

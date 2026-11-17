@@ -1,9 +1,17 @@
 // Update the room counts when reception changes the stay dates.
 (function () {
     'use strict';
+    if (document.querySelector('[data-counter-booking-hold]')) {
+        window.addEventListener('pageshow', event => {
+            if (event.persisted) window.location.reload();
+        });
+        return;
+    }
+
     const table = document.querySelector('[data-room-availability-url]');
     if (!table) return;
 
+    const customerID = table.closest('form').elements.namedItem('customerID').value;
     const checkIn = document.getElementById('checkInDate');
     const checkOut = document.getElementById('checkOutDate');
     const status = document.getElementById('counterRoomAvailability');
@@ -69,6 +77,7 @@
         const url = new URL(table.dataset.roomAvailabilityUrl, document.baseURI);
         url.search = new URLSearchParams({
             action: 'roomAvailability',
+            customerID,
             checkInDate: checkIn.value,
             checkOutDate: checkOut.value
         });
@@ -76,6 +85,11 @@
         status.textContent = 'Checking room availability…';
         try {
             const response = await fetch(url, {signal: request.signal});
+            if (request.signal.aborted) return;
+            if (response.status === 409) {
+                window.location.reload();
+                return;
+            }
             if (!response.ok) throw new Error('Room availability request failed.');
             const counts = await response.json();
             if (request.signal.aborted) return;
