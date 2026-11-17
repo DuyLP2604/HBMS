@@ -20,6 +20,7 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.http.Part;
 import java.io.File;
 import java.io.InputStream;
+import util.ProjectFileUtil;
 import util.flash.Flash;
 
 /**
@@ -99,17 +100,13 @@ public class RoomServlet extends HttpServlet {
                     // 1. Thực hiện XÓA TRONG DATABASE TRƯỚC
                     isOk = roomDAO.deleteById(deleteId);
                     if (isOk) {
-                        // 2. Nếu DB xóa thành công, tiến hành xóa ảnh vật lý
+                        // 2. Nếu DB xóa thành công, tiến hành xóa ảnh đúp
                         if (roomToDelete.getRoomImage() != null && !roomToDelete.getRoomImage().isEmpty()) {
-                            String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room";
-                            File imageFile = new File(uploadPath + File.separator + roomToDelete.getRoomImage());
-                            if (imageFile.exists()) {
-                                imageFile.delete(); // Dọn dẹp file
-                            }
+                            deletePhysicalFile(request, roomToDelete.getRoomImage());
                         }
                         Flash.success(request, "Delete success!");
                     } else {
-                        // DB không xóa được (thường do vướng khóa ngoại constraints)
+                        // DB không xóa được
                         Flash.error(request, "Error! Delete failed (Room might be in use)!");
                     }
                 } else {
@@ -166,9 +163,9 @@ public class RoomServlet extends HttpServlet {
                 String oldImageName = room.getRoomImage();
 
                 // Upload file mới (hàm processImage đã tự động ghi file ra server lúc này)
-                String uploadedImage = processImage(request, "roomImage");
+                String uploadedImage = processImageUpdate(request, "roomImage", oldImageName, "room");
                 if (uploadedImage != null) {
-                    room.setRoomImage(uploadedImage); // Cập nhật tên ảnh mới vào object
+                    room.setRoomImage(uploadedImage);
                 }
 
                 // 1. Thực hiện UPDATE TRONG DATABASE TRƯỚC
@@ -177,25 +174,11 @@ public class RoomServlet extends HttpServlet {
                 // 2. Xử lý logic File dựa trên kết quả Database
                 if (isOkUpdate) {
                     Flash.success(request, "Room updated successfully!");
-
-                    // DB thành công + Có ảnh mới -> Xóa ảnh CŨ
-                    if (uploadedImage != null && oldImageName != null && !oldImageName.isEmpty()) {
-                        String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room";
-                        File oldImageFile = new File(uploadPath + File.separator + oldImageName);
-                        if (oldImageFile.exists()) {
-                            oldImageFile.delete(); // Xóa file cũ đi cho sạch
-                        }
-                    }
                 } else {
                     Flash.error(request, "Error! Cannot save room information.");
-
-                    // DB thất bại + Có ảnh mới vừa lưu -> Xóa ảnh MỚI đi để dọn rác (Rollback)
-                    if (uploadedImage != null) {
-                        String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room";
-                        File newUploadedFile = new File(uploadPath + File.separator + uploadedImage);
-                        if (newUploadedFile.exists()) {
-                            newUploadedFile.delete();
-                        }
+                    // Chỉ dọn ảnh mới khi tên khác ảnh cũ
+                    if (uploadedImage != null && !uploadedImage.equals(oldImageName)) {
+                        deletePhysicalFile(request, uploadedImage);
                     }
                 }
             } else {
@@ -244,13 +227,17 @@ public class RoomServlet extends HttpServlet {
         return u != null && "admin".equalsIgnoreCase(u.getRole());
     }
 
-    /** Load room records for the room list. */
+    /**
+     * Load room records for the room list.
+     */
     private void viewList(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setAttribute("roomList", new RoomDAO().getAll());
         request.getRequestDispatcher("/WEB-INF/views/room.jsp").forward(request, response);
     }
 
-    /** Load one room and its information for the detail view. */
+    /**
+     * Load one room and its information for the detail view.
+     */
     private void viewDetail(HttpServletRequest request, HttpServletResponse response, String id) throws ServletException, IOException {
         request.setAttribute("room", new RoomDAO().getById(id));
         request.getRequestDispatcher("/WEB-INF/views/room-detail.jsp").forward(request, response);
@@ -267,14 +254,7 @@ public class RoomServlet extends HttpServlet {
                 // Trả về null nếu file bị từ chối (không phải jpg, png, webp hợp lệ)
                 return null;
             }
-            String uniqueFileName = "room-" + System.currentTimeMillis() + "." + extension;
-            String uploadPath = request.getServletContext().getRealPath("") + File.separator + "assets" + File.separator + "images" + File.separator + "room";
-            File uploadDir = new File(uploadPath);
-            if (!uploadDir.exists()) {
-                uploadDir.mkdirs();
-            }
-            part.write(uploadPath + File.separator + uniqueFileName);
-            return uniqueFileName;
+            return ProjectFileUtil.saveImageToProject(request.getServletContext(), part, "room", part.getSubmittedFileName());
         } catch (ServletException | IOException e) {
             return null;
         }
@@ -334,6 +314,42 @@ public class RoomServlet extends HttpServlet {
                         && h[8] == 'W' && h[9] == 'E' && h[10] == 'B' && h[11] == 'P';
             default:
                 return false;
+        }
+    }
+
+    private void deletePhysicalFile(HttpServletRequest request, String fileName) {
+        if (fileName != null && !fileName.isEmpty()) {
+            ProjectFileUtil.deleteImageFromProject(request.getServletContext(), "room", fileName);
+        }
+    }
+
+    private String processImageUpdate(HttpServletRequest request, String inputName, String oldFileName, String subFolder) {
+        try {
+            Part part = request.getPart(inputName);
+            if (part == null || part.getSize() == 0 || part.getSubmittedFileName() == null || part.getSubmittedFileName().isEmpty()) {
+                return null;
+            }
+            String extension = validateImage(part);
+            if (extension == null) {
+                return null;
+            }
+
+            String newFileName;
+            if (oldFileName != null && !oldFileName.isEmpty()) {
+                // Get file name without extension
+                String baseName = oldFileName.substring(0, oldFileName.lastIndexOf('.'));
+                newFileName = baseName + "." + extension; // Nối với đuôi định dạng của file mới
+
+                // Delete old file
+                ProjectFileUtil.deleteImageFromProject(request.getServletContext(), subFolder, oldFileName);
+            } else {
+                // Create new if not exist
+                newFileName = subFolder + "-" + System.currentTimeMillis() + "." + extension;
+            }
+
+            return ProjectFileUtil.saveImageWithExactName(request.getServletContext(), part, subFolder, newFileName);
+        } catch (Exception e) {
+            return null;
         }
     }
 
