@@ -146,7 +146,8 @@ public class PaymentServlet extends HttpServlet {
         String methodID = trim(request.getParameter("methodID"));
         boolean useWallet = "true".equals(request.getParameter("useWallet"));
         String token = trim(request.getParameter("paymentRequestToken"));
-
+        
+        //Get the payment request from server
         PaymentRequest paymentRequest = getValidPaymentRequest(session, token, user.getUserID(), bookingID);
         if (paymentRequest == null) {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "The payment form is invalid or expired. Reload the payment page.");
@@ -176,7 +177,8 @@ public class PaymentServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/payment?bookingID=" + URLEncoder.encode(bookingID, StandardCharsets.UTF_8));
         }
     }
-
+    
+    //for payment choice
     private void submitPayment(HttpServletRequest request, HttpServletResponse response, HttpSession session,
             String methodID, boolean useWallet, PaymentRequest paymentRequest) throws IOException {
         if ("PT01".equals(methodID)) {
@@ -185,7 +187,8 @@ public class PaymentServlet extends HttpServlet {
             }
             methodID = "PT02";
         }
-
+        
+        //process direact payment with wallet
         String redirectPath = processDirectPayment(session, paymentRequest, methodID, paymentRequest.getUserID(),
                 useWallet, paymentRequest.getBookingID());
         response.sendRedirect(request.getContextPath() + redirectPath);
@@ -207,6 +210,7 @@ public class PaymentServlet extends HttpServlet {
     /** Record a direct payment and choose the next page. */
     private String processDirectPayment(HttpSession session, PaymentRequest paymentRequest, String methodID, int userID, boolean useWallet, String bookingID) {
         try {
+            //PaymentService.processPayment() to process payment through service
             Payment payment = createPaymentService().processPayment(paymentRequest, methodID, userID, useWallet);
 
             if ("REFUNDED".equals(payment.getStatus())) {
@@ -309,7 +313,7 @@ public class PaymentServlet extends HttpServlet {
         return "Customer deposit, full payment and balance payment servlet";
     }
 
-    /** Read the PayOS order and show its receipt or pending status. */
+    /**Read the PayOS order and show its receipt or pending status. */
     private boolean handlePayOsReturn(HttpServletRequest request, HttpServletResponse response, HttpSession session, Users user)
             throws ServletException, IOException {
         String orderCodeParam = request.getParameter("orderCode");
@@ -369,11 +373,12 @@ public class PaymentServlet extends HttpServlet {
         return true;
     }
 
-    /** Create a PayOS payment link and save its order before redirecting the customer. */
+    /**Create a PayOS payment link and save its order before redirecting the customer. */
     private boolean handlePayOsCheckout(HttpServletRequest request, HttpServletResponse response, HttpSession session,
             PaymentRequest paymentRequest, boolean useWallet) throws IOException {
         String bookingID = paymentRequest.getBookingID();
         int userID = paymentRequest.getUserID();
+        //Get the remaining amount to paid when using with wallet
         BigDecimal walletAmount = useWallet ? paymentRequest.getOfferedWalletAmount() : BigDecimal.ZERO;
         BigDecimal shortfall = paymentRequest.getAmount().subtract(walletAmount);
 

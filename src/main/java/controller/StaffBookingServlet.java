@@ -65,7 +65,8 @@ public class StaffBookingServlet extends HttpServlet {
 
         if (bookingID == null
                 || bookingID.trim().isEmpty()) {
-
+            
+            //Get booking need to assign room
             List<Booking> bookings
                     = assignmentService
                             .getWaitingBookings();
@@ -74,6 +75,7 @@ public class StaffBookingServlet extends HttpServlet {
                     "bookings",
                     bookings
             );
+            //MArk no show booking prior
             request.setAttribute("noShowBookings", BookingTimePolicy.prepareStaffList(bookings, BookingTimePolicy.now()));
 
         request.getRequestDispatcher(

@@ -117,6 +117,7 @@ public class ForgotPasswordServlet extends HttpServlet {
             accountType = "Customer";
         }
         PasswordResetDAO resetDAO = createPasswordResetDAO();
+        // Find User Account
         PasswordResetAccount account = resetDAO.findAccount(identifier, accountType);
 
 

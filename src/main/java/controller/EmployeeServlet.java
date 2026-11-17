@@ -135,6 +135,7 @@ public class EmployeeServlet extends HttpServlet {
                     Flash.warning(request, "The staff account was created, but email delivery failed. Open View Details and use Resend login email. Do not create the account again.");
                 }
             } else {
+                //resend credentials to staff
                 boolean sent = resendCredentials(request);
                 if (sent) {
                     Flash.success(request, "A new temporary password was sent. Earlier temporary credentials are no longer valid.");
@@ -226,7 +227,7 @@ public class EmployeeServlet extends HttpServlet {
         return deliverCredentials(emailService, employee, user, password);
     }
 
-    /** Replace and email the temporary password for an account awaiting first login. */
+    /**Replace and email the temporary password for an account awaiting first login. */
     private boolean resendCredentials(HttpServletRequest request) {
         String employeeID = requireParameter(request, "id", "Employee ID is required.");
         Employee employee = createEmployeeDAO().getEmployeeById(employeeID);
@@ -240,7 +241,7 @@ public class EmployeeServlet extends HttpServlet {
         }
         EmailService emailService = configuredEmailService();
         String password = TemporaryPasswordGenerator.generate();
-        // Renew the temporary password only while first-login setup is pending.
+        //Renew the temporary password only while first-login setup is pending.
         if (!createUserDAO().renewStaffTemporaryPassword(user.getUserID(), user.getAccessVersion(), password)) {
             throw new IllegalArgumentException("This account is no longer eligible for a temporary password.");
         }

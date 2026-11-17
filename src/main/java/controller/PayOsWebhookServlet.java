@@ -85,6 +85,11 @@ public class PayOsWebhookServlet extends HttpServlet {
             log("Unable to refresh the booking cache after PayOS confirmation.", exception);
         }
         response.setStatus(HttpServletResponse.SC_OK);
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+        String jsonResponse = "{\"Process payment\": true}";
+        response.getWriter().write(jsonResponse);
+        response.getWriter().flush();
     }
 
     private String value(JsonObject object, String key) {

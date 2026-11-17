@@ -34,7 +34,7 @@ public class StaffStayServlet extends HttpServlet
         List<Booking> bookings;
         try
         {
-            // Show confirmed, room-assigned, and checked-in bookings in Guest Stay.
+            //Show confirmed, room-assigned, and checked-in bookings in Guest Stay.
             bookings = lifecycleService.getOperationalBookings();
         }
         catch (RuntimeException ex)
@@ -50,7 +50,7 @@ public class StaffStayServlet extends HttpServlet
                 session.setAttribute("bookingCsrfToken", UUID.randomUUID().toString());
             }
         }
-        // Flag overdue arrivals using Vietnam time.
+        //Flag overdue arrivals using Vietnam time.
         request.setAttribute("noShowBookings", BookingTimePolicy.prepareStaffList(bookings, BookingTimePolicy.now()));
         request.setAttribute("bookings", bookings);
         request.getRequestDispatcher("/WEB-INF/views/staff-stays.jsp").forward(request, response);
@@ -83,6 +83,7 @@ public class StaffStayServlet extends HttpServlet
             bookingID = bookingID.trim();
             if ("cancelNoShow".equals(action))
             {
+                // Cancel no show booking
                 lifecycleService.cancelNoShow(bookingID, user.getUserID());
                 setFlash(session, "lifecycleSuccess", "Booking " + bookingID + " was cancelled for no-show. No refund applies.");
             }

@@ -144,7 +144,8 @@ public class PaymentService {
             return processPayment(paymentRequest, methodID, paymentRequest.getUserID(), useWallet, actorUserID, walletAuthorized);
         }
     }
-
+    
+    //process payment with procedure
     private Payment processPayment(PaymentRequest paymentRequest, String methodID, int userID,
             boolean useWallet, int actorUserID, boolean walletAuthorized) {
 
@@ -176,7 +177,8 @@ public class PaymentService {
             paymentRequest.walletAuthorizedBy = walletAuthorized ? userID : null;
             paymentRequest.methodID = selectedMethod;
             paymentRequest.walletAmount = walletAmount;
-
+            
+            //call paymeny procedure
             return executePaymentTransaction(paymentRequest, booking, method);
         }
     }
@@ -197,6 +199,7 @@ public class PaymentService {
             selectedMethod = "PT02";
         }
         if ("PT02".equals(selectedMethod)) {
+            // Check the wallet amount
             if (paymentRequest.getOfferedWalletAmount().compareTo(paymentRequest.getAmount()) < 0) {
                 throw new IllegalArgumentException("Your wallet cannot cover the full payment. Select an external method and use your wallet for part of it.");
             }
@@ -213,7 +216,7 @@ public class PaymentService {
 
         return selectedMethod;
     }
-
+    
     /** Return the wallet portion of this payment. */
     private BigDecimal calculateWalletAmount(PaymentRequest paymentRequest, String selectedMethod, boolean useWallet) {
         if ("PT02".equals(selectedMethod)) {

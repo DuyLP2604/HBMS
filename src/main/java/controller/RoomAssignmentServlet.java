@@ -122,6 +122,7 @@ public class RoomAssignmentServlet extends HttpServlet {
             }
 
             /*
+             * Assign room to booking
              * The user ID is taken from the authenticated session.
              * It is not taken from a form parameter.
              */

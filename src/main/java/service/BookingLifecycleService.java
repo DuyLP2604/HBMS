@@ -74,7 +74,7 @@ public class BookingLifecycleService
         requireUserID(actorUserID);
         try
         {
-            // SP_CANCEL_BOOKING checks staff permission, the 14:15 cutoff, and the booking status.
+            //SP_CANCEL_BOOKING checks staff permission, the 14:15 cutoff, and the booking status.
             new BookingDAO().cancelBooking(id, actorUserID, "NO_SHOW");
         }
         catch (BookingOperationException exception)
@@ -97,7 +97,7 @@ public class BookingLifecycleService
         boolean alreadyCancelled = "CANCELLED".equals(booking.getBookingStatus());
         try
         {
-            // SP_CANCEL_BOOKING cancels the booking, credits eligible refunds, and updates cancellation counts.
+            //SP_CANCEL_BOOKING cancels the booking, credits eligible refunds, and updates cancellation counts.
             dao.cancelBooking(id, userID, "CUSTOMER_REQUEST");
         }
         catch (BookingOperationException exception)

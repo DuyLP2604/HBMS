@@ -66,6 +66,7 @@ public class MyBookingServlet extends HttpServlet
             }
             // Expire unpaid bookings before showing the list or details.
             coreBookingDAO.expirePendingBookings(customer.getCustomerID());
+            //Get booking access whether the customer can book another booking
             Map<String, Object> access = coreBookingDAO.getBookingAccess(userID);
             request.setAttribute("bookingAccess", access);
             request.setAttribute("canCreateBooking", Boolean.TRUE.equals(access.get("canCreateBooking")));
@@ -101,6 +102,7 @@ public class MyBookingServlet extends HttpServlet
         for (Booking booking : coreBookingDAO.getByAccountUserId(userID))
         {
             String id = booking.getBookingID().trim();
+            // Read V_Booking_Payment_Summary
             Map<String, Object> summary = coreBookingDAO.getPaymentSummary(id);
             if (summary.isEmpty())
             {
@@ -109,6 +111,7 @@ public class MyBookingServlet extends HttpServlet
             summaries.put(id, summary);
             summaries.put(booking.getBookingID(), summary);
         }
+        // Get booking List
         List<CustomerBookingView> bookings = bookingDAO.getByUserID(userID);
         request.setAttribute("bookings", bookings);
         request.setAttribute("paymentSummaries", summaries);
@@ -125,12 +128,14 @@ public class MyBookingServlet extends HttpServlet
             response.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested booking was not found.");
             return;
         }
+        // Get booking detail
         CustomerBookingView booking = bookingDAO.getDetail(bookingID, userID);
         if (booking == null)
         {
             response.sendError(HttpServletResponse.SC_NOT_FOUND, "The requested booking was not found.");
             return;
         }
+        //Get booking summary
         Map<String, Object> summary = coreBookingDAO.getPaymentSummary(bookingID);
         if (summary.isEmpty())
         {

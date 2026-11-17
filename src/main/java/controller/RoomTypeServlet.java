@@ -137,7 +137,7 @@ public class RoomTypeServlet extends HttpServlet {
                 BigDecimal price = BigDecimal.valueOf(Double.parseDouble(request.getParameter("price")));
                 String description = request.getParameter("description");
 
-                // Tạo ID mới (Ví dụ RT05, RT06... tùy thuộc vào hàm trong DAO của bạn)
+                // RT05, RT06...
                 String newRoomTypeId = roomTypeDAO.generateRoomTypeID();
 
                 RoomType newRoomType = new RoomType();
@@ -224,7 +224,9 @@ public class RoomTypeServlet extends HttpServlet {
     /** Validate the stay dates and show availability by room type. */
     private void showSearchPage(HttpServletRequest request, HttpServletResponse response, RoomTypeDAO roomTypeDAO) throws ServletException, IOException {
         moveFlashMessage(request);
+        //Get current time
         LocalDateTime now = BookingTimePolicy.now();
+        //Get neareast posible checkin date
         LocalDate minimumCheckIn = BookingTimePolicy.minimumCheckInDate(now);
         // JSP uses "today" as the minimum selectable check-in date.
         request.setAttribute("today", minimumCheckIn.toString());
@@ -276,7 +278,8 @@ public class RoomTypeServlet extends HttpServlet {
         if (id != null && !id.trim().isEmpty()) {
             RoomTypeDAO roomTypeDAO = new RoomTypeDAO();
             String roomTypeId = id.trim();
-
+            
+            //Get room type detail
             RoomType roomType = roomTypeDAO.getById(roomTypeId);
             request.setAttribute("roomType", roomType);
 

@@ -24,16 +24,7 @@ function validateAccount()
     {
         confirmInput.setCustomValidity("Passwords do not match.");
     }
-    for (const field of fields)
-    {
-        if (!field.checkValidity())
-        {
-            showStep(1);
-            field.reportValidity();
-            return false;
-        }
-    }
-    return true;
+    return validateFields(fields, 1);
 }
 
 function validatePersonalInformation()
@@ -46,10 +37,20 @@ function validatePersonalInformation()
         field.setCustomValidity("");
         field.value = field.value.trim();
     }
+    return validateFields(fields, 2);
+}
+
+function validateFields(fields, step)
+{
     for (const field of fields)
     {
+        if (field.validity.patternMismatch)
+        {
+            field.setCustomValidity(field.title);
+        }
         if (!field.checkValidity())
         {
+            showStep(step);
             field.reportValidity();
             return false;
         }
@@ -144,6 +145,8 @@ function handleNationalityChange()
     const phoneRequiredMark = document.getElementById("phoneRequiredMark");
     const isVietnamese = nationalitySelect.value === "N01";
     phoneInput.required = isVietnamese;
+    phoneInput.pattern = isVietnamese ? phoneInput.dataset.vietnamesePattern : phoneInput.dataset.internationalPattern;
+    phoneInput.title = isVietnamese ? phoneInput.dataset.vietnameseFormat : phoneInput.dataset.internationalFormat;
     phoneInput.setCustomValidity("");
     phoneRequiredMark.classList.toggle("register-step-hidden", !isVietnamese);
 }
