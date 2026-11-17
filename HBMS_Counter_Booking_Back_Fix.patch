@@ -1,0 +1,158 @@
+diff --git a/src/main/java/controller/CounterBookingServlet.java b/src/main/java/controller/CounterBookingServlet.java
+index 0ad0dd3e20f3d289ae41bf4e822c9d5c47ae5b6b..eb4df1a5676cb23ef0a7e1be7585549c1502f98b 100644
+--- a/src/main/java/controller/CounterBookingServlet.java
++++ b/src/main/java/controller/CounterBookingServlet.java
+@@ -116,10 +116,18 @@ public class CounterBookingServlet extends HttpServlet {
+                         throw new IllegalStateException("This customer needs a login account before booking.");
+                     }
+                     req.setAttribute("selectedCustomer", customer);
+-                    req.setAttribute("roomTypes", new RoomTypeDAO().getAll());
+-                    synchronized (session) {
+-                        if (session.getAttribute("counterCreateToken") == null) {
+-                            session.setAttribute("counterCreateToken", UUID.randomUUID().toString());
++                    Booking pending = findActiveCounterBooking(customer);
++                    if (pending != null) {
++                        pending = new BookingDAO().getByIdWithDetails(pending.getBookingID());
++                    }
++                    if (hasActivePaymentHold(pending)) {
++                        req.setAttribute("pendingBooking", pending);
++                    } else {
++                        req.setAttribute("roomTypes", new RoomTypeDAO().getAll());
++                        synchronized (session) {
++                            if (session.getAttribute("counterCreateToken") == null) {
++                                session.setAttribute("counterCreateToken", UUID.randomUUID().toString());
++                            }
+                         }
+                     }
+                 } else if (req.getParameter("phone") != null) {
+@@ -139,6 +147,24 @@ public class CounterBookingServlet extends HttpServlet {
+         req.getRequestDispatcher("/WEB-INF/views/counter-booking.jsp").forward(req, res);
+     }
+ 
++    private Booking findActiveCounterBooking(Customer customer) {
++        if (customer == null || customer.getUserID() == null || customer.getUserID().getUserID() == null) {
++            return null;
++        }
++        int customerUserID = customer.getUserID().getUserID();
++        Booking pending = new BookingDAO().getLatestPendingBookingByUserId(customerUserID);
++        if (!hasActivePaymentHold(pending) || pending.getBookedByUserID() == null
++                || pending.getBookedByUserID() == customerUserID) {
++            return null;
++        }
++        return pending;
++    }
++
++    private boolean hasActivePaymentHold(Booking booking) {
++        return booking != null && "PENDING_PAYMENT".equals(booking.getBookingStatus())
++                && booking.getPaymentDeadline() != null && booking.getPaymentDeadline().after(new Date());
++    }
++
+     /** Return available room counts for the selected stay dates. */
+     private void showRoomAvailability(HttpServletRequest req, HttpServletResponse res) throws IOException {
+         LocalDate checkIn;
+@@ -158,6 +184,12 @@ public class CounterBookingServlet extends HttpServlet {
+ 
+         JsonObject counts = new JsonObject();
+         try {
++            String customerID = trim(req.getParameter("customerID"));
++            if (!customerID.isEmpty() && findActiveCounterBooking(new CustomerDAO().getCustomerById(customerID)) != null) {
++                // A restored form may predate the booking that now holds these rooms.
++                res.setStatus(HttpServletResponse.SC_CONFLICT);
++                return;
++            }
+             // SP_GET_ROOM_TYPE_AVAILABILITY counts free rooms by room type and stay dates.
+             for (RoomTypeAvailability type : new RoomTypeDAO().getAvailability(checkIn, checkOut)) {
+                 counts.addProperty(type.getRoomTypeID(), Math.max(0L, type.getAvailableRooms()));
+diff --git a/src/main/webapp/WEB-INF/views/counter-booking.jsp b/src/main/webapp/WEB-INF/views/counter-booking.jsp
+index bca7c7ca89bed464365bb23655dac7f5db7d21ab..232ca0e9b100458d676d960fd9b45277a181c795 100644
+--- a/src/main/webapp/WEB-INF/views/counter-booking.jsp
++++ b/src/main/webapp/WEB-INF/views/counter-booking.jsp
+@@ -87,6 +87,46 @@
+                 </div>
+                 <div class="ui-after-panel"><a class="ui-button ui-button-secondary" href="${pageContext.request.contextPath}/staff/counter-booking">Book for another customer</a></div>
+             </c:when>
++            <c:when test="${not empty pendingBooking}">
++                <script src="${pageContext.request.contextPath}/js/counter-booking-availability.js" defer></script>
++                <c:url var="resumePaymentUrl" value="/staff/counter-booking">
++                    <c:param name="bookingID" value="${fn:trim(pendingBooking.bookingID)}"/>
++                </c:url>
++                <section class="ui-panel" aria-label="Pending counter booking" data-counter-booking-hold>
++                    <div class="ui-panel-body">
++                        <div class="ui-section-heading">
++                            <h2>Rooms held for booking <c:out value="${pendingBooking.bookingID}"/></h2>
++                        </div>
++                        <div class="ui-notice ui-notice-warning">
++                            <span>The rooms below are held for <c:out value="${selectedCustomer.fullName}"/>.
++                                Pay before <strong><fmt:formatDate value="${pendingBooking.paymentDeadline}" pattern="dd/MM/yyyy HH:mm:ss"/></strong>.</span>
++                        </div>
++                        <dl class="ui-facts">
++                            <div><dt>Check-in date</dt><dd><fmt:formatDate value="${pendingBooking.checkInDate}" pattern="dd/MM/yyyy"/></dd></div>
++                            <div><dt>Check-out date</dt><dd><fmt:formatDate value="${pendingBooking.checkOutDate}" pattern="dd/MM/yyyy"/></dd></div>
++                            <div><dt>Payment option</dt><dd><c:out value="${pendingBooking.paymentOption eq 'DEPOSIT' ? '30% deposit' : 'Full payment (100%)'}"/></dd></div>
++                        </dl>
++                        <div class="ui-table-scroll" role="region" aria-label="Rooms held for this booking">
++                            <table class="ui-table">
++                                <thead><tr><th scope="col">Room type</th><th scope="col">Rooms held</th><th scope="col">Guests</th></tr></thead>
++                                <tbody>
++                                    <c:forEach items="${pendingBooking.bookingDetailCollection}" var="detail">
++                                        <tr>
++                                            <td class="ui-name"><c:out value="${detail.roomTypeID.typeName}"/></td>
++                                            <td><c:out value="${detail.quantity}"/></td>
++                                            <td><c:out value="${detail.guestCount}"/></td>
++                                        </tr>
++                                    </c:forEach>
++                                </tbody>
++                            </table>
++                        </div>
++                    </div>
++                    <div class="ui-panel-footer ui-booking-actions">
++                        <a class="ui-button ui-button-primary" href="${fn:escapeXml(resumePaymentUrl)}">Continue to Payment <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
++                        <a class="ui-button ui-button-secondary" href="${pageContext.request.contextPath}/staff/counter-booking">Choose another customer</a>
++                    </div>
++                </section>
++            </c:when>
+             <c:when test="${not empty selectedCustomer}">
+                 <script src="${pageContext.request.contextPath}/js/counter-booking-payment-option.js" defer></script>
+                 <script src="${pageContext.request.contextPath}/js/counter-booking-availability.js" defer></script>
+diff --git a/src/main/webapp/js/counter-booking-availability.js b/src/main/webapp/js/counter-booking-availability.js
+index dba5d62499f765ef3ace3b8dc0378f479c554dc4..50c7499c4fa892c10ceaada7e8e32fcf439ebe6b 100644
+--- a/src/main/webapp/js/counter-booking-availability.js
++++ b/src/main/webapp/js/counter-booking-availability.js
+@@ -1,9 +1,17 @@
+ // Update the room counts when reception changes the stay dates.
+ (function () {
+     'use strict';
++    if (document.querySelector('[data-counter-booking-hold]')) {
++        window.addEventListener('pageshow', event => {
++            if (event.persisted) window.location.reload();
++        });
++        return;
++    }
++
+     const table = document.querySelector('[data-room-availability-url]');
+     if (!table) return;
+ 
++    const customerID = table.closest('form').elements.namedItem('customerID').value;
+     const checkIn = document.getElementById('checkInDate');
+     const checkOut = document.getElementById('checkOutDate');
+     const status = document.getElementById('counterRoomAvailability');
+@@ -69,6 +77,7 @@
+         const url = new URL(table.dataset.roomAvailabilityUrl, document.baseURI);
+         url.search = new URLSearchParams({
+             action: 'roomAvailability',
++            customerID,
+             checkInDate: checkIn.value,
+             checkOutDate: checkOut.value
+         });
+@@ -76,6 +85,11 @@
+         status.textContent = 'Checking room availability…';
+         try {
+             const response = await fetch(url, {signal: request.signal});
++            if (request.signal.aborted) return;
++            if (response.status === 409) {
++                window.location.reload();
++                return;
++            }
+             if (!response.ok) throw new Error('Room availability request failed.');
+             const counts = await response.json();
+             if (request.signal.aborted) return;

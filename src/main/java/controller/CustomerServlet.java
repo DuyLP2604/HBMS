@@ -18,7 +18,9 @@ import java.util.List;
 import util.PersistenceManager;
 import util.flash.Flash;
 
-/** Handles staff access to customer records and account creation. */
+/**
+ * Handles staff access to customer records and account creation.
+ */
 @WebServlet(name = "CustomerServlet", urlPatterns = {"/customer"})
 public class CustomerServlet extends HttpServlet {
 
@@ -40,7 +42,9 @@ public class CustomerServlet extends HttpServlet {
         return "add".equalsIgnoreCase(action) || "update".equalsIgnoreCase(action);
     }
 
-    /** Check whether the signed-in user can open customer management. */
+    /**
+     * Check whether the signed-in user can open customer management.
+     */
     private boolean checkAccess(HttpServletRequest request, HttpServletResponse response) throws IOException {
         Users user = getSessionUser(request);
         if (user == null) {
@@ -75,7 +79,9 @@ public class CustomerServlet extends HttpServlet {
         return size == 10 || size == 20 || size == 50 || size == 100 ? size : 10;
     }
 
-    /** Show customer search results, a profile, or a customer form. */
+    /**
+     * Show customer search results, a profile, or a customer form.
+     */
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         if (!checkAccess(request, response)) {
@@ -91,7 +97,8 @@ public class CustomerServlet extends HttpServlet {
         }
         boolean counter = "counter".equals(request.getParameter("flow"));
         if (counter && !new dao.EmployeeDAO().isReceptionistByUserId(getSessionUser(request).getUserID())) {
-            response.sendError(403); return;
+            response.sendError(403);
+            return;
         }
         CustomerDAO daoCus = new CustomerDAO();
         NationalityDAO daoNat = new NationalityDAO();
@@ -164,7 +171,9 @@ public class CustomerServlet extends HttpServlet {
         }
     }
 
-    /** Save a new or updated customer record after checking staff access. */
+    /**
+     * Save a new or updated customer record after checking staff access.
+     */
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
@@ -182,12 +191,14 @@ public class CustomerServlet extends HttpServlet {
         }
         boolean counter = "counter".equals(request.getParameter("flow"));
         if (counter && !new dao.EmployeeDAO().isReceptionistByUserId(getSessionUser(request).getUserID())) {
-            response.sendError(403); return;
+            response.sendError(403);
+            return;
         }
         CustomerDAO daoCus = new CustomerDAO();
         if (counter && (request.getSession().getAttribute("counterCsrf") == null
                 || !java.util.Objects.equals(request.getSession().getAttribute("counterCsrf"), request.getParameter("csrfToken")))) {
-            response.sendError(403); return;
+            response.sendError(403);
+            return;
         }
         String name = trimToNull(request.getParameter("name"));
         String phone = trimToNull(request.getParameter("phone"));
@@ -214,12 +225,14 @@ public class CustomerServlet extends HttpServlet {
             request.getSession().setAttribute("counterRegistration", values);
             if (phone == null || !phone.matches("[+0-9 .-]{8,15}")) {
                 Flash.error(request, "Enter a valid phone number.");
-                response.sendRedirect(request.getContextPath() + formUrl); return;
+                response.sendRedirect(request.getContextPath() + formUrl);
+                return;
             }
             if ("add".equalsIgnoreCase(action) && !daoCus.findByPhone(phone).isEmpty()) {
                 Flash.error(request, "This phone already has a customer profile. Please search and select the customer.");
                 response.sendRedirect(request.getContextPath() + "/staff/counter-booking?phone="
-                        + java.net.URLEncoder.encode(phone, java.nio.charset.StandardCharsets.UTF_8)); return;
+                        + java.net.URLEncoder.encode(phone, java.nio.charset.StandardCharsets.UTF_8));
+                return;
             }
         }
         if (name == null || nationalityId == null) {

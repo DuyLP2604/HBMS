@@ -13,8 +13,8 @@
         </header>
         <c:if test="${not empty message}"><div class="ui-notice ui-notice-info" role="alert"><i class="fa-solid fa-circle-info" aria-hidden="true"></i><span><c:out value="${message}"/></span></div></c:if>
         <c:if test="${not empty error}"><div class="ui-notice ui-notice-danger" role="alert"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><span><c:out value="${error}"/></span></div></c:if>
-        <c:choose>
-            <c:when test="${not empty booking}">
+                <c:choose>
+                    <c:when test="${not empty booking}">
                 <div class="ui-counter-payment">
                     <section class="ui-panel" aria-label="Booking information">
                         <div class="ui-panel-body">
@@ -32,10 +32,10 @@
                             <c:choose>
                                 <c:when test="${booking.bookingStatus eq 'CONFIRMED'}">
                                     <div class="ui-result-action"><a class="ui-button ui-button-primary" href="${pageContext.request.contextPath}/staff/bookings?bookingID=${fn:escapeXml(booking.bookingID)}&amp;flow=counter">Assign Room Now <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
-                                </c:when>
-                                <c:when test="${booking.bookingStatus eq 'ASSIGNED'}">
-                                    <c:choose>
-                                        <c:when test="${canCheckIn}">
+                                        </c:when>
+                                        <c:when test="${booking.bookingStatus eq 'ASSIGNED'}">
+                                            <c:choose>
+                                                <c:when test="${canCheckIn}">
                                             <div class="ui-result-action"><a class="ui-button ui-button-primary" href="${pageContext.request.contextPath}/process-checkin?bookingID=${fn:escapeXml(booking.bookingID)}">Check In Now <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
                                             <p class="ui-help">Verify guest identity documents in the next step. Check-in requires all assigned rooms to be ready.</p>
                                         </c:when>
@@ -86,6 +86,46 @@
                     </c:if>
                 </div>
                 <div class="ui-after-panel"><a class="ui-button ui-button-secondary" href="${pageContext.request.contextPath}/staff/counter-booking">Book for another customer</a></div>
+            </c:when>
+            <c:when test="${not empty pendingBooking}">
+                <script src="${pageContext.request.contextPath}/js/counter-booking-availability.js" defer></script>
+                <c:url var="resumePaymentUrl" value="/staff/counter-booking">
+                    <c:param name="bookingID" value="${fn:trim(pendingBooking.bookingID)}"/>
+                </c:url>
+                <section class="ui-panel" aria-label="Pending counter booking" data-counter-booking-hold>
+                    <div class="ui-panel-body">
+                        <div class="ui-section-heading">
+                            <h2>Rooms held for booking <c:out value="${pendingBooking.bookingID}"/></h2>
+                        </div>
+                        <div class="ui-notice ui-notice-warning">
+                            <span>The rooms below are held for <c:out value="${selectedCustomer.fullName}"/>.
+                                Pay before <strong><fmt:formatDate value="${pendingBooking.paymentDeadline}" pattern="dd/MM/yyyy HH:mm:ss"/></strong>.</span>
+                        </div>
+                        <dl class="ui-facts">
+                            <div><dt>Check-in date</dt><dd><fmt:formatDate value="${pendingBooking.checkInDate}" pattern="dd/MM/yyyy"/></dd></div>
+                            <div><dt>Check-out date</dt><dd><fmt:formatDate value="${pendingBooking.checkOutDate}" pattern="dd/MM/yyyy"/></dd></div>
+                            <div><dt>Payment option</dt><dd><c:out value="${pendingBooking.paymentOption eq 'DEPOSIT' ? '30% deposit' : 'Full payment (100%)'}"/></dd></div>
+                        </dl>
+                        <div class="ui-table-scroll" role="region" aria-label="Rooms held for this booking">
+                            <table class="ui-table">
+                                <thead><tr><th scope="col">Room type</th><th scope="col">Rooms held</th><th scope="col">Guests</th></tr></thead>
+                                <tbody>
+                                    <c:forEach items="${pendingBooking.bookingDetailCollection}" var="detail">
+                                        <tr>
+                                            <td class="ui-name"><c:out value="${detail.roomTypeID.typeName}"/></td>
+                                            <td><c:out value="${detail.quantity}"/></td>
+                                            <td><c:out value="${detail.guestCount}"/></td>
+                                        </tr>
+                                    </c:forEach>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="ui-panel-footer ui-booking-actions">
+                        <a class="ui-button ui-button-primary" href="${fn:escapeXml(resumePaymentUrl)}">Continue to Payment <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+                        <a class="ui-button ui-button-secondary" href="${pageContext.request.contextPath}/staff/counter-booking">Choose another customer</a>
+                    </div>
+                </section>
             </c:when>
             <c:when test="${not empty selectedCustomer}">
                 <script src="${pageContext.request.contextPath}/js/counter-booking-payment-option.js" defer></script>
@@ -159,13 +199,13 @@
                                 <c:when test="${not empty matches}">
                                     <div class="ui-table-scroll ui-search-results" role="region" aria-label="Matching customers">
                                         <table class="ui-table ui-customer-matches"><thead><tr><th scope="col">Name</th><th scope="col">Phone</th><th scope="col">Email</th><th scope="col">Action</th></tr></thead><tbody>
-                                            <c:forEach items="${matches}" var="customer"><tr><td class="ui-name"><c:out value="${customer.fullName}"/></td><td><c:out value="${customer.phone}"/></td><td><c:out value="${customer.email}"/></td><td><a class="ui-button ui-button-soft ui-button-small" href="${pageContext.request.contextPath}/staff/counter-booking?customerID=${fn:escapeXml(customer.customerID)}">Book for this customer</a></td></tr></c:forEach>
-                                        </tbody></table>
-                                    </div>
+                                                <c:forEach items="${matches}" var="customer"><tr><td class="ui-name"><c:out value="${customer.fullName}"/></td><td><c:out value="${customer.phone}"/></td><td><c:out value="${customer.email}"/></td><td><a class="ui-button ui-button-soft ui-button-small" href="${pageContext.request.contextPath}/staff/counter-booking?customerID=${fn:escapeXml(customer.customerID)}">Book for this customer</a></td></tr></c:forEach>
+                                                </tbody></table>
+                                        </div>
                                 </c:when>
                                 <c:otherwise>
                                     <div class="ui-search-results ui-empty-search"><i class="fa-regular fa-address-book" aria-hidden="true"></i><p>No customer found. Register their information and login account first.</p>
-                                        <c:url var="registerUrl" value="/customer"><c:param name="action" value="add"/><c:param name="flow" value="counter"/><c:param name="phone" value="${param.phone}"/></c:url>
+                                            <c:url var="registerUrl" value="/customer"><c:param name="action" value="add"/><c:param name="flow" value="counter"/><c:param name="phone" value="${param.phone}"/></c:url>
                                         <a class="ui-button ui-button-primary" href="${fn:escapeXml(registerUrl)}">Register New Customer</a>
                                     </div>
                                 </c:otherwise>
