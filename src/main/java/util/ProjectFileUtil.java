@@ -1,10 +1,12 @@
 package util;
 
 import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
@@ -112,18 +114,24 @@ public class ProjectFileUtil {
      *
      * @param request HttpServletRequest
      * @return true nếu hợp lệ, false nếu file quá lớn gây lỗi
+     * @throws java.io.IOException
+     * @throws jakarta.servlet.ServletException
      */
-    public static boolean isUploadSizeValid(HttpServletRequest request) {
+    public static boolean isUploadSizeValid(HttpServletRequest request) throws IOException, ServletException {
+        String contentType = request.getContentType();
+        // Normal form post (not a file upload): nothing to check
+        if (contentType == null || !contentType.toLowerCase().startsWith("multipart/")) {
+            return true;
+        }
         try {
-            // Việc gọi getParts() sẽ ép Tomcat phân tích request.
-            // Nếu dung lượng file vượt quá maxFileSize, Tomcat sẽ ném lỗi ngay tại đây.
+            // getParts() forces Tomcat to parse the request.
+            // If a file exceeds maxFileSize / maxRequestSize, Tomcat throws here.
             request.getParts();
             return true;
         } catch (IllegalStateException e) {
-            // Lỗi vượt quá dung lượng file
-            return false;
-        } catch (Exception e) {
+            // File too large
             return false;
         }
+        // IOException / ServletException are thrown to the servlet
     }
 }
