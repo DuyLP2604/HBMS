@@ -62,7 +62,9 @@ public class WalletServlet extends HttpServlet
         {
             // Load the signed-in customer's balance and one page of wallet history.
             WalletDAO dao = new WalletDAO();
+            // Get customer wallet
             WalletSummary wallet = dao.getWalletByUserID(user.getUserID());
+            // Get wallet transaction
             List<WalletTransactionItem> items = wallet == null ? new ArrayList<>() : dao.getTransactionsByUserID(user.getUserID(), page, PAGE_SIZE);
             boolean hasNext = page < 100000 && items.size() > PAGE_SIZE;
             if (items.size() > PAGE_SIZE)

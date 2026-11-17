@@ -120,7 +120,7 @@ public class LoginServlet extends HttpServlet {
             );
             return;
         }
-
+        
         if ("Staff".equalsIgnoreCase(user.getRole()) && user.isMustChangePassword()) {
             LoginSession.beginPasswordSetup(request, user);
             response.sendRedirect(request.getContextPath() + "/set-new-password");

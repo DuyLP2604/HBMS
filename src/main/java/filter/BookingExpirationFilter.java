@@ -26,7 +26,8 @@ public class BookingExpirationFilter implements Filter
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException
     {
         try
-        {
+        {   
+            //Call expire booking service
             expirationService.expirePendingBookings();
         }
         catch (RuntimeException ex)

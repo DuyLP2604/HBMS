@@ -14,7 +14,8 @@
             </div>
             <h3>Account Information</h3>
             <label for="username">Username</label>
-            <input type="text" id="username" name="username" value="${fn:escapeXml(username)}" maxlength="50" autocomplete="username" required>
+            <input type="text" id="username" name="username" value="${fn:escapeXml(username)}" maxlength="50" autocomplete="username"
+                   pattern="${fn:escapeXml(usernamePattern)}" title="${fn:escapeXml(usernameFormat)}" required>
             <label for="password">Password</label>
             <input type="password" id="password" name="password" minlength="6" autocomplete="new-password" required>
             <label for="confirmPassword">Confirm Password</label>
@@ -36,12 +37,21 @@
             </select>
             <div class="form-grid">
                 <label for="fullname">Full Name</label>
-                <input type="text" id="fullname" name="fullname" value="${fn:escapeXml(fullname)}" maxlength="100" autocomplete="name" required>
+                <input type="text" id="fullname" name="fullname" value="${fn:escapeXml(fullname)}" maxlength="100" autocomplete="name"
+                       pattern="${fn:escapeXml(namePattern)}" title="${fn:escapeXml(nameFormat)}" required>
                 <label for="email">Email</label>
-                <input type="email" id="email" name="email" value="${fn:escapeXml(email)}" maxlength="100" autocomplete="email" required>
+                <input type="email" id="email" name="email" value="${fn:escapeXml(email)}" maxlength="100" autocomplete="email"
+                       pattern="${fn:escapeXml(emailPattern)}" title="${fn:escapeXml(emailFormat)}" required>
                 <div id="phoneGroup">
                     <label for="phone">Phone Number <span id="phoneRequiredMark" class="${nationalityID eq 'N01' ? '' : 'register-step-hidden'}">*</span></label>
-                    <input type="tel" id="phone" name="phone" value="${fn:escapeXml(phone)}" maxlength="15" autocomplete="tel" ${nationalityID eq 'N01' ? 'required' : ''}>
+                    <input type="tel" id="phone" name="phone" value="${fn:escapeXml(phone)}" maxlength="15" autocomplete="tel"
+                           pattern="${fn:escapeXml(nationalityID eq 'N01' ? vietnamesePhonePattern : internationalPhonePattern)}"
+                           title="${fn:escapeXml(nationalityID eq 'N01' ? vietnamesePhoneFormat : internationalPhoneFormat)}"
+                           data-vietnamese-pattern="${fn:escapeXml(vietnamesePhonePattern)}"
+                           data-vietnamese-format="${fn:escapeXml(vietnamesePhoneFormat)}"
+                           data-international-pattern="${fn:escapeXml(internationalPhonePattern)}"
+                           data-international-format="${fn:escapeXml(internationalPhoneFormat)}"
+                           ${nationalityID eq 'N01' ? 'required' : ''}>
                 </div>
             </div>
             <label for="address">Address</label>

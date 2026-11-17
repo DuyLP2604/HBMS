@@ -5,7 +5,7 @@ import dao.BookingDAO;
 /** Cancels unpaid bookings that pass their payment deadline. */
 public class BookingExpirationService
 {
-    /** Run overdue booking cleanup for all customers. */
+    /**Run overdue booking cleanup for all customers. */
     public int expirePendingBookings()
     {
         return new BookingDAO().expirePendingBookings();

@@ -68,7 +68,7 @@ public class StaffDashboardServlet extends HttpServlet {
             request.setAttribute("dashboardDate", now.format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy", Locale.ENGLISH)));
             request.setAttribute("dashboardTime", now.format(DateTimeFormatter.ofPattern("HH:mm")));
             try {
-                // Build the task counts from active bookings using Vietnam time.
+                //Build the task counts from active bookings using Vietnam time.
                 request.setAttribute("receptionDashboard", ReceptionDashboard.from(
                         createLifecycleService().getOperationalBookings(), now, request.getParameter("focus")));
             } catch (RuntimeException exception) {

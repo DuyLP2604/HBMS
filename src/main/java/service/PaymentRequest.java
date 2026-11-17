@@ -55,7 +55,7 @@ public final class PaymentRequest implements Serializable {
     public BigDecimal getWalletBalance() {
         return walletBalance;
     }
-
+    
     public BigDecimal getOfferedWalletAmount() {
         // Limit the wallet contribution to the amount due.
         return walletBalance == null ? BigDecimal.ZERO : walletBalance.max(BigDecimal.ZERO).min(amount);

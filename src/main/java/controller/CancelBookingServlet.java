@@ -58,7 +58,7 @@ public class CancelBookingServlet extends HttpServlet
         String bookingID = request.getParameter("bookingID");
         try
         {
-            // Cancel as the signed-in customer and let SQL decide whether a refund applies.
+            //Cancel as the signed-in customer and let SQL decide whether a refund applies.
             Map<String, Object> result = lifecycleService.cancelByCustomerWithResult(bookingID, userID);
             session.removeAttribute("customerBookingError");
             session.setAttribute("customerBookingSuccess", result.get("message"));

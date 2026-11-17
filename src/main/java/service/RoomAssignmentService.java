@@ -220,6 +220,7 @@ public class RoomAssignmentService {
             }
         }
         try (java.sql.Connection connection = PersistenceManager.openConnection()) {
+            // call assign room procedure
             writeAssignments(connection, bookingID, details, selectedRooms, userID);
         } catch (java.sql.SQLException ex) {
             throw new IllegalStateException(assignmentError(ex), ex);

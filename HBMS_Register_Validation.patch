@@ -1,0 +1,243 @@
+diff --git a/src/main/java/controller/RegisterServlet.java b/src/main/java/controller/RegisterServlet.java
+--- a/src/main/java/controller/RegisterServlet.java
++++ b/src/main/java/controller/RegisterServlet.java
+@@ -6,7 +6,7 @@
+ import entity.Customer;
+ import entity.Nationality;
+ import java.io.IOException;
+-import java.util.List;
++import java.util.regex.Pattern;
+ import jakarta.servlet.ServletException;
+ import jakarta.servlet.annotation.WebServlet;
+ import jakarta.servlet.http.HttpServlet;
+@@ -17,6 +17,22 @@
+ /** Validates registration details and creates a customer account. */
+ @WebServlet(name = "RegisterServlet", urlPatterns = {"/register"})
+ public class RegisterServlet extends HttpServlet {
++
++    private static final Pattern USERNAME_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._\\-]{3,49}");
++    private static final Pattern NAME_PATTERN = Pattern.compile("\\p{L}[\\p{L}\\p{M} .'’·・\\-]*");
++    private static final String EMAIL_ATOM = "[A-Za-z0-9!#$%&'*+\\-\\/=?^_\\x60\\{\\|\\}~]+";
++    private static final String DOMAIN_LABEL = "[A-Za-z0-9](?:[A-Za-z0-9\\-]{0,61}[A-Za-z0-9])?";
++    private static final Pattern EMAIL_PATTERN = Pattern.compile(
++            "(?=[^@]{1,64}@)" + EMAIL_ATOM + "(?:\\." + EMAIL_ATOM + ")*@"
++            + "(?:" + DOMAIN_LABEL + "\\.)+[A-Za-z]{2,63}");
++    private static final Pattern VIETNAMESE_PHONE_PATTERN = Pattern.compile("(?:0|\\+84)[0-9]{9}");
++    private static final Pattern INTERNATIONAL_PHONE_PATTERN = Pattern.compile("(?:[0-9]{8,15}|\\+[1-9][0-9]{7,13})");
++
++    private static final String USERNAME_FORMAT = "Use 4 to 50 characters. Start with a letter or digit. Use ASCII letters, digits, dots, underscores or hyphens.";
++    private static final String NAME_FORMAT = "Start with a letter and use only letters, spaces, periods, apostrophes, hyphens or middle dots.";
++    private static final String EMAIL_FORMAT = "Enter a valid email address, such as name@example.com.";
++    private static final String VIETNAMESE_PHONE_FORMAT = "Enter 0 followed by 9 digits, or +84 followed by 9 digits.";
++    private static final String INTERNATIONAL_PHONE_FORMAT = "Enter 8 to 15 digits, or + followed by 8 to 14 digits starting with 1 to 9.";
+ 
+     /** Load the registration form with the available nationalities. */
+     @Override
+@@ -26,7 +42,7 @@
+             response.setCharacterEncoding("UTF-8");
+             response.setHeader("Cache-Control", "no-store");
+             String username = trimParameter(request.getParameter("username"));
+-            if (isBlank(username) || username.length() > 50) {
++            if (username == null || !USERNAME_PATTERN.matcher(username).matches()) {
+                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                 response.getWriter().write("{\"error\":true}");
+                 return;
+@@ -41,10 +57,7 @@
+             }
+             return;
+         }
+-        NationalityDAO nationalityDAO = new NationalityDAO();
+-        List<Nationality> nationalities = nationalityDAO.getAll();
+-        request.setAttribute("nationalities", nationalities);
+-        request.getRequestDispatcher("/WEB-INF/views/registerCustomer.jsp").forward(request, response);
++        forwardRegister(request, response, new NationalityDAO());
+     }
+ 
+     /** Validate the form and create the customer profile and user account. */
+@@ -63,6 +76,10 @@
+         String nationalityId = trimParameter(request.getParameter("nationalityID"));
+         keepFormData(request, username, fullname, phone, email, address, nationalityId);
+         if ("checkUsername".equals(request.getParameter("action"))) {
++            if (username == null || !USERNAME_PATTERN.matcher(username).matches()) {
++                forwardRegisterWithError(request, response, nationalityDAO, USERNAME_FORMAT);
++                return;
++            }
+             try {
+                 if (userDAO.isUsernameExists(username)) {
+                     forwardRegisterWithError(request, response, nationalityDAO, "Username already exists. Please choose another username.");
+@@ -73,16 +90,15 @@
+                 forwardRegisterWithError(request, response, nationalityDAO, "Unable to check username. Please try again.");
+                 return;
+             }
+-            request.setAttribute("nationalities", nationalityDAO.getAll());
+-            request.getRequestDispatcher("/WEB-INF/views/registerCustomer.jsp").forward(request, response);
++            forwardRegister(request, response, nationalityDAO);
+             return;
+         }
+         if (isBlank(username) || isBlank(password) || isBlank(fullname) || isBlank(email) || isBlank(address) || isBlank(nationalityId)) {
+             forwardRegisterWithError(request, response, nationalityDAO, "Please complete all required fields.");
+             return;
+         }
+-        if (username.length() > 50) {
+-            forwardRegisterWithError(request, response, nationalityDAO, "Username must not exceed 50 characters.");
++        if (!USERNAME_PATTERN.matcher(username).matches()) {
++            forwardRegisterWithError(request, response, nationalityDAO, USERNAME_FORMAT);
+             return;
+         }
+         String confirmPassword = request.getParameter("confirmPassword");
+@@ -98,12 +114,20 @@
+             forwardRegisterWithError(request, response, nationalityDAO, "Full name must not exceed 100 characters.");
+             return;
+         }
++        if (!NAME_PATTERN.matcher(fullname).matches()) {
++            forwardRegisterWithError(request, response, nationalityDAO, NAME_FORMAT);
++            return;
++        }
+         if (phone != null && phone.length() > 15) {
+             forwardRegisterWithError(request, response, nationalityDAO, "Phone number must not exceed 15 characters.");
+             return;
+         }
+         if (email.length() > 100) {
+             forwardRegisterWithError(request, response, nationalityDAO, "Email must not exceed 100 characters.");
++            return;
++        }
++        if (!EMAIL_PATTERN.matcher(email).matches()) {
++            forwardRegisterWithError(request, response, nationalityDAO, EMAIL_FORMAT);
+             return;
+         }
+         if (address.length() > 200) {
+@@ -119,12 +143,20 @@
+             forwardRegisterWithError(request, response, nationalityDAO, "Please select a valid nationality.");
+             return;
+         }
+-        if (isVietnamese(selectedNationality) && isBlank(phone)) {
+-            forwardRegisterWithError(request, response, nationalityDAO, "Vietnamese customers must provide a phone number.");
+-            return;
+-        }
++        boolean vietnamese = isVietnamese(selectedNationality);
+         if (isBlank(phone)) {
++            if (vietnamese) {
++                forwardRegisterWithError(request, response, nationalityDAO, "Vietnamese customers must provide a phone number.");
++                return;
++            }
+             phone = null;
++        } else {
++            Pattern phonePattern = vietnamese ? VIETNAMESE_PHONE_PATTERN : INTERNATIONAL_PHONE_PATTERN;
++            if (!phonePattern.matcher(phone).matches()) {
++                forwardRegisterWithError(request, response, nationalityDAO,
++                        vietnamese ? VIETNAMESE_PHONE_FORMAT : INTERNATIONAL_PHONE_FORMAT);
++                return;
++            }
+         }
+         Customer customer = new Customer();
+         customer.setCustomerID(customerDAO.generateCustomerID());
+@@ -164,6 +196,20 @@
+ 
+     private void forwardRegisterWithError(HttpServletRequest request, HttpServletResponse response, NationalityDAO nationalityDAO, String message) throws ServletException, IOException {
+         Flash.error(request, message);
++        forwardRegister(request, response, nationalityDAO);
++    }
++
++    private void forwardRegister(HttpServletRequest request, HttpServletResponse response, NationalityDAO nationalityDAO) throws ServletException, IOException {
++        request.setAttribute("usernamePattern", USERNAME_PATTERN.pattern());
++        request.setAttribute("usernameFormat", USERNAME_FORMAT);
++        request.setAttribute("namePattern", NAME_PATTERN.pattern());
++        request.setAttribute("nameFormat", NAME_FORMAT);
++        request.setAttribute("emailPattern", EMAIL_PATTERN.pattern());
++        request.setAttribute("emailFormat", EMAIL_FORMAT);
++        request.setAttribute("vietnamesePhonePattern", VIETNAMESE_PHONE_PATTERN.pattern());
++        request.setAttribute("vietnamesePhoneFormat", VIETNAMESE_PHONE_FORMAT);
++        request.setAttribute("internationalPhonePattern", INTERNATIONAL_PHONE_PATTERN.pattern());
++        request.setAttribute("internationalPhoneFormat", INTERNATIONAL_PHONE_FORMAT);
+         request.setAttribute("nationalities", nationalityDAO.getAll());
+         request.getRequestDispatcher("/WEB-INF/views/registerCustomer.jsp").forward(request, response);
+     }
+diff --git a/src/main/webapp/WEB-INF/views/registerCustomer.jsp b/src/main/webapp/WEB-INF/views/registerCustomer.jsp
+--- a/src/main/webapp/WEB-INF/views/registerCustomer.jsp
++++ b/src/main/webapp/WEB-INF/views/registerCustomer.jsp
+@@ -14,7 +14,8 @@
+             </div>
+             <h3>Account Information</h3>
+             <label for="username">Username</label>
+-            <input type="text" id="username" name="username" value="${fn:escapeXml(username)}" maxlength="50" autocomplete="username" required>
++            <input type="text" id="username" name="username" value="${fn:escapeXml(username)}" maxlength="50" autocomplete="username"
++                   pattern="${fn:escapeXml(usernamePattern)}" title="${fn:escapeXml(usernameFormat)}" required>
+             <label for="password">Password</label>
+             <input type="password" id="password" name="password" minlength="6" autocomplete="new-password" required>
+             <label for="confirmPassword">Confirm Password</label>
+@@ -36,12 +37,21 @@
+             </select>
+             <div class="form-grid">
+                 <label for="fullname">Full Name</label>
+-                <input type="text" id="fullname" name="fullname" value="${fn:escapeXml(fullname)}" maxlength="100" autocomplete="name" required>
++                <input type="text" id="fullname" name="fullname" value="${fn:escapeXml(fullname)}" maxlength="100" autocomplete="name"
++                       pattern="${fn:escapeXml(namePattern)}" title="${fn:escapeXml(nameFormat)}" required>
+                 <label for="email">Email</label>
+-                <input type="email" id="email" name="email" value="${fn:escapeXml(email)}" maxlength="100" autocomplete="email" required>
++                <input type="email" id="email" name="email" value="${fn:escapeXml(email)}" maxlength="100" autocomplete="email"
++                       pattern="${fn:escapeXml(emailPattern)}" title="${fn:escapeXml(emailFormat)}" required>
+                 <div id="phoneGroup">
+                     <label for="phone">Phone Number <span id="phoneRequiredMark" class="${nationalityID eq 'N01' ? '' : 'register-step-hidden'}">*</span></label>
+-                    <input type="tel" id="phone" name="phone" value="${fn:escapeXml(phone)}" maxlength="15" autocomplete="tel" ${nationalityID eq 'N01' ? 'required' : ''}>
++                    <input type="tel" id="phone" name="phone" value="${fn:escapeXml(phone)}" maxlength="15" autocomplete="tel"
++                           pattern="${fn:escapeXml(nationalityID eq 'N01' ? vietnamesePhonePattern : internationalPhonePattern)}"
++                           title="${fn:escapeXml(nationalityID eq 'N01' ? vietnamesePhoneFormat : internationalPhoneFormat)}"
++                           data-vietnamese-pattern="${fn:escapeXml(vietnamesePhonePattern)}"
++                           data-vietnamese-format="${fn:escapeXml(vietnamesePhoneFormat)}"
++                           data-international-pattern="${fn:escapeXml(internationalPhonePattern)}"
++                           data-international-format="${fn:escapeXml(internationalPhoneFormat)}"
++                           ${nationalityID eq 'N01' ? 'required' : ''}>
+                 </div>
+             </div>
+             <label for="address">Address</label>
+diff --git a/src/main/webapp/js/register.js b/src/main/webapp/js/register.js
+--- a/src/main/webapp/js/register.js
++++ b/src/main/webapp/js/register.js
+@@ -24,16 +24,7 @@
+     {
+         confirmInput.setCustomValidity("Passwords do not match.");
+     }
+-    for (const field of fields)
+-    {
+-        if (!field.checkValidity())
+-        {
+-            showStep(1);
+-            field.reportValidity();
+-            return false;
+-        }
+-    }
+-    return true;
++    return validateFields(fields, 1);
+ }
+ 
+ function validatePersonalInformation()
+@@ -46,10 +37,20 @@
+         field.setCustomValidity("");
+         field.value = field.value.trim();
+     }
++    return validateFields(fields, 2);
++}
++
++function validateFields(fields, step)
++{
+     for (const field of fields)
+     {
++        if (field.validity.patternMismatch)
++        {
++            field.setCustomValidity(field.title);
++        }
+         if (!field.checkValidity())
+         {
++            showStep(step);
+             field.reportValidity();
+             return false;
+         }
+@@ -144,6 +145,8 @@
+     const phoneRequiredMark = document.getElementById("phoneRequiredMark");
+     const isVietnamese = nationalitySelect.value === "N01";
+     phoneInput.required = isVietnamese;
++    phoneInput.pattern = isVietnamese ? phoneInput.dataset.vietnamesePattern : phoneInput.dataset.internationalPattern;
++    phoneInput.title = isVietnamese ? phoneInput.dataset.vietnameseFormat : phoneInput.dataset.internationalFormat;
+     phoneInput.setCustomValidity("");
+     phoneRequiredMark.classList.toggle("register-step-hidden", !isVietnamese);
+ }
