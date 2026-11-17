@@ -1,6 +1,7 @@
 package util;
 
 import jakarta.servlet.ServletContext;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Part;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -102,6 +103,27 @@ public class ProjectFileUtil {
             return exactFileName;
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * Kích hoạt đọc Multipart request để kiểm tra file có vượt quá giới hạn cấu
+     * hình trong @MultipartConfig hay không (ví dụ > 5MB).
+     *
+     * @param request HttpServletRequest
+     * @return true nếu hợp lệ, false nếu file quá lớn gây lỗi
+     */
+    public static boolean isUploadSizeValid(HttpServletRequest request) {
+        try {
+            // Việc gọi getParts() sẽ ép Tomcat phân tích request.
+            // Nếu dung lượng file vượt quá maxFileSize, Tomcat sẽ ném lỗi ngay tại đây.
+            request.getParts();
+            return true;
+        } catch (IllegalStateException e) {
+            // Lỗi vượt quá dung lượng file
+            return false;
+        } catch (Exception e) {
+            return false;
         }
     }
 }
